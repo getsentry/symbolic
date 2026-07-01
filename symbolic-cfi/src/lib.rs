@@ -55,9 +55,6 @@ pub const CFICACHE_MAGIC: u32 = u32::from_be_bytes(*b"CFIC");
 /// The latest version of the file format.
 pub const CFICACHE_LATEST_VERSION: u32 = 2;
 
-/// Maximum length of a chained `UNWIND_INFO` list to follow for a single function.
-const MAX_UNWIND_CHAIN_LEN: usize = 128;
-
 // The preamble are 8 bytes, a 4-byte magic and 4 bytes for the version.
 // The 4-byte magic should be read as little endian to check for endian mismatch.
 
@@ -161,6 +158,9 @@ pub enum CfiErrorKind {
 
     /// Invalid magic bytes in the cfi cache header.
     BadFileMagic,
+
+    /// A chained `UNWIND_INFO` list exceeded the maximum allowed length.
+    ExceededUnwindChainLength,
 }
 
 impl fmt::Display for CfiErrorKind {
@@ -173,6 +173,7 @@ impl fmt::Display for CfiErrorKind {
             Self::InvalidAddress => write!(f, "invalid cfi address"),
             Self::WriteFailed => write!(f, "failed to write cfi"),
             Self::BadFileMagic => write!(f, "bad cfi cache magic"),
+            Self::ExceededUnwindChainLength => write!(f, "exceeded maximum unwind chain length"),
         }
     }
 }
@@ -375,12 +376,27 @@ fn cfi_register_name(arch: CpuFamily, register: u16) -> Option<&'static str> {
 /// ```
 pub struct AsciiCfiWriter<W: Write> {
     inner: W,
+    max_unwind_chain_len: Option<usize>,
 }
 
 impl<W: Write> AsciiCfiWriter<W> {
+    /// Default maximum length of a chained `UNWIND_INFO` list.
+    pub const MAX_UNWIND_CHAIN_LEN: usize = 128;
+
     /// Creates a new `AsciiCfiWriter` that outputs to a writer.
     pub fn new(inner: W) -> Self {
-        AsciiCfiWriter { inner }
+        AsciiCfiWriter {
+            inner,
+            max_unwind_chain_len: Some(Self::MAX_UNWIND_CHAIN_LEN),
+        }
+    }
+
+    /// Sets the maximum length of a chained `UNWIND_INFO` list to follow for a
+    /// single function. Chains longer than this cause [`process`](Self::process)
+    /// to fail with [`CfiErrorKind::ExceededUnwindChainLength`]. Defaults to 128.
+    pub fn max_unwind_chain_len(mut self, max_unwind_chain_len: Option<usize>) -> Self {
+        self.max_unwind_chain_len = max_unwind_chain_len;
+        self
     }
 
     /// Extracts CFI from the given object file.
@@ -1098,7 +1114,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             saved_regs.clear();
 
             let mut next_function = Some(function);
-            for _ in 0..MAX_UNWIND_CHAIN_LEN {
+            for _ in 0..self.max_unwind_chain_len.unwrap_or(usize::MAX) {
                 let Some(next) = next_function else {
                     break;
                 };
@@ -1202,10 +1218,9 @@ impl<W: Write> AsciiCfiWriter<W> {
                 next_function = unwind_info.chained_info;
             }
 
-            // If we reached the `MAX_UNWIND_CHAIN_LEN` limit treat the input as malformed data and
-            // skip emitting CFI.
+            // If we reached the `MAX_UNWIND_CHAIN_LEN` limit treat the input as malformed data.
             if next_function.is_some() {
-                continue 'functions;
+                return Err(CfiErrorKind::ExceededUnwindChainLength.into());
             }
 
             if cfa_reg.is_empty() {

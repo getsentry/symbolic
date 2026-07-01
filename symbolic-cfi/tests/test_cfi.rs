@@ -2,7 +2,7 @@ use std::str;
 use std::sync::mpsc;
 use std::time::Duration;
 
-use symbolic_cfi::{AsciiCfiWriter, CfiCache};
+use symbolic_cfi::{AsciiCfiWriter, CfiCache, CfiErrorKind};
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
 use symbolic_testutils::fixture;
@@ -142,12 +142,18 @@ fn cfi_process_pe_self_loop_terminates() {
         let buffer = ByteView::open(fixture("windows/cfi_chained_loop.exe"))
             .expect("failed to open fixture");
         let object = Object::parse(&buffer).expect("failed to parse PE");
-        let cfi: Vec<u8> = AsciiCfiWriter::transform(&object).expect("failed to transform CFI");
-        let _ = tx.send(cfi);
+
+        let result: Result<Vec<u8>, CfiErrorKind> =
+            AsciiCfiWriter::transform(&object).map_err(|e| e.kind());
+        let _ = tx.send(result);
     });
 
     match rx.recv_timeout(Duration::from_secs(10)) {
-        Ok(_) => {}
-        Err(_) => panic!("process_pe did not terminate: chained_info loop is unbounded"),
+        Ok(result) => assert_eq!(
+            result,
+            Err(CfiErrorKind::ExceededUnwindChainLength),
+            "should be rejected once the limit is reached"
+        ),
+        Err(_) => panic!("process_pe did not terminate: loop is unbounded"),
     }
 }
