@@ -71,7 +71,7 @@ fn test_embedded_ppdb_none() {
     let object = objects.remove(0);
 
     assert_eq!(&object.file_format(), "pe");
-    let pe = object.as_pe().unwrap().expect("expected a PE file");
+    let pe = object.as_pe().unwrap();
     assert!(pe.embedded_ppdb().unwrap().is_none());
 }
 
@@ -87,7 +87,7 @@ fn test_embedded_ppdb_some() {
     let mut objects = archive.objects().unwrap();
     let object = objects.remove(0);
 
-    let pe = object.as_pe().unwrap().expect("expected a PE file");
+    let pe = object.as_pe().unwrap();
     let ppdb = pe.embedded_ppdb().unwrap().unwrap();
 
     // Decompressed size matches what symbolic-debuginfo reports for this fixture,
@@ -112,7 +112,7 @@ fn test_as_pe_none_for_non_pe() {
     let object = objects.remove(0);
 
     assert_eq!(&object.file_format(), "elf");
-    assert!(object.as_pe().unwrap().is_none());
+    assert!(object.as_pe().is_none());
 }
 
 #[test]

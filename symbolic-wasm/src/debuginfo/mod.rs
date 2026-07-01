@@ -151,28 +151,11 @@ impl Object {
     /// equivalent on other object formats, mirroring the `Object::Pe` variant of
     /// the underlying `symbolic_debuginfo` types.
     #[wasm_bindgen(js_name = asPe)]
-    pub fn as_pe(&self) -> Result<Option<PeFile>> {
-        let di::Object::Pe(pe) = self.inner.get() else {
-            return Ok(None);
-        };
-        // `PeObject` is neither `Clone` nor movable out of the borrowed enum, so
-        // re-parse it from the same backing bytes to obtain an owned handle that
-        // can live in its own cell sharing this object's `ByteView`. Parsing only
-        // reads the PE header and is cheap; the heavy lifting happens lazily in the
-        // PE-specific operations on `PeFile`.
-        let pe = di::pe::PeObject::parse(pe.data())?;
-        Ok(Some(PeFile {
-            // SAFETY: `pe` is derived from `self.inner` and only borrows data from
-            // the same `ByteView`.
-            inner: unsafe {
-                utils::derived_from_cell!(
-                    di::pe::PeObject<'_>,
-                    di::pe::PeObject<'static>,
-                    self.inner,
-                    pe
-                )
-            },
-        }))
+    pub fn as_pe(self) -> Option<PeFile> {
+        match self.inner.get() {
+            di::Object::Pe(_) => Some(PeFile { inner: self.inner }),
+            _ => None,
+        }
     }
 }
 
@@ -182,11 +165,21 @@ impl Object {
 /// PE-specific surface of `symbolic_debuginfo`'s `PeObject`.
 #[wasm_bindgen(js_name = PeFile)]
 pub struct PeFile {
-    inner: SelfCell<ByteView<'static>, di::pe::PeObject<'static>>,
+    // Since we don't have a good way of extracting a `PeObject` from the
+    // `SelfCell`, we just rely on the invariant to always be constructed
+    // with a valid `PeObject`.
+    inner: SelfCell<ByteView<'static>, di::Object<'static>>,
 }
 
 #[wasm_bindgen(js_class = PeFile)]
 impl PeFile {
+    fn pe(&self) -> &di::pe::PeObject<'_> {
+        match self.inner.get() {
+            di::Object::Pe(pe) => pe,
+            _ => unreachable!("inner must always be a pe object"),
+        }
+    }
+
     /// Extracts the embedded Portable PDB from this PE, if present.
     ///
     /// Some Windows PE images (managed/.NET assemblies) embed their Portable
@@ -198,7 +191,7 @@ impl PeFile {
     /// Returns `undefined` when this PE has no embedded Portable PDB.
     #[wasm_bindgen(js_name = embeddedPpdb)]
     pub fn embedded_ppdb(&self) -> Result<Option<Vec<u8>>> {
-        let Some(ppdb) = self.inner.get().embedded_ppdb()? else {
+        let Some(ppdb) = self.pe().embedded_ppdb()? else {
             return Ok(None);
         };
         // Decompress into a growable buffer rather than pre-allocating from
