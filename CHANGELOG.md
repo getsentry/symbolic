@@ -7,6 +7,10 @@
 - Add recursion limit to vendored msvc-demangler. ([#1006](https://github.com/getsentry/symbolic/pull/1006))
 - Vendor [msvc-demangler](https://github.com/mstange/msvc-demangler-rust). ([#998](https://github.com/getsentry/symbolic/pull/998))
 
+**Fixes**
+
+- Fix bugs in the vendored msvc-demangler lib. ([#1008](https://github.com/getsentry/symbolic/pull/1008))
+
 **Dependencies**
 
 - Bump the `memmap2` floor to 0.9.11 to exclude versions affected by [RUSTSEC-2026-0186](https://rustsec.org/advisories/RUSTSEC-2026-0186.html). ([#996](https://github.com/getsentry/symbolic/pull/996))
