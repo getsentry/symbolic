@@ -1,5 +1,7 @@
 //! Exposes `symbolic_debuginfo` to WASM.
 
+use std::sync::Arc;
+
 use symbolic_common::{ByteView, SelfCell};
 use symbolic_debuginfo as di;
 use wasm_bindgen::prelude::*;
@@ -59,7 +61,9 @@ impl Archive {
                     .map(|object| Object {
                         // SAFETY: `object` is directly derived from `self.inner` and
                         // only borrows data from the same `ByteView`.
-                        inner: unsafe { utils::derived_from_cell!(Object, self.inner, object) },
+                        inner: Arc::new(unsafe {
+                            utils::derived_from_cell!(Object, self.inner, object)
+                        }),
                     })
                     .map_err(Error::from)
             })
@@ -70,7 +74,7 @@ impl Archive {
 /// A generic object file providing uniform access to various file formats.
 #[wasm_bindgen(js_name = ObjectFile)]
 pub struct Object {
-    inner: SelfCell<ByteView<'static>, di::Object<'static>>,
+    inner: Arc<SelfCell<ByteView<'static>, di::Object<'static>>>,
 }
 
 #[wasm_bindgen(js_class = ObjectFile)]
@@ -151,9 +155,11 @@ impl Object {
     /// equivalent on other object formats, mirroring the `Object::Pe` variant of
     /// the underlying `symbolic_debuginfo` types.
     #[wasm_bindgen(js_name = asPe)]
-    pub fn as_pe(self) -> Option<PeFile> {
+    pub fn as_pe(&self) -> Option<PeFile> {
         match self.inner.get() {
-            di::Object::Pe(_) => Some(PeFile { inner: self.inner }),
+            di::Object::Pe(_) => Some(PeFile {
+                inner: Arc::clone(&self.inner),
+            }),
             _ => None,
         }
     }
@@ -168,7 +174,7 @@ pub struct PeFile {
     // Since we don't have a good way of extracting a `PeObject` from the
     // `SelfCell`, we just rely on the invariant to always be constructed
     // with a valid `PeObject`.
-    inner: SelfCell<ByteView<'static>, di::Object<'static>>,
+    inner: Arc<SelfCell<ByteView<'static>, di::Object<'static>>>,
 }
 
 #[wasm_bindgen(js_class = PeFile)]
