@@ -25,6 +25,7 @@ const wasmPath = require.resolve("@sentry/symbolic/symbolic_bg.wasm");
 symbolic.initSync({ module: readFileSync(wasmPath) });
 
 const data = new Uint8Array(readFileSync(process.env.SMOKE_FIXTURE));
+const ppdbData = new Uint8Array(readFileSync(process.env.SMOKE_FIXTURE_PPDB));
 
 test("the shipped package parses a debug file via the Archive API", () => {
   const archive = new symbolic.Archive(data);
@@ -44,6 +45,29 @@ test("Archive.peek detects the format without a full parse", () => {
   assert.equal(symbolic.Archive.peek(data), "elf");
 });
 
+test("asPe().embeddedPpdb() extracts a standalone Portable PDB from a managed PE", () => {
+  const [object] = new symbolic.Archive(ppdbData).objects();
+  assert.equal(object.fileFormat, "pe");
+
+  const pe = object.asPe();
+  assert.ok(pe, "expected asPe() to return a PeFile for a PE object");
+
+  const ppdb = pe.embeddedPpdb();
+  assert.ok(ppdb instanceof Uint8Array, "expected embeddedPpdb() to return bytes");
+  assert.equal(ppdb.length, 10540);
+
+  // The extracted bytes are themselves a parseable Portable PDB.
+  const ppdbArchive = new symbolic.Archive(ppdb);
+  assert.equal(ppdbArchive.fileFormat, "portablepdb");
+  assert.equal(ppdbArchive.objectCount, 1);
+});
+
+test("asPe() returns undefined for a non-PE object", () => {
+  // The ELF fixture is not a PE, so it cannot be narrowed to a PeFile.
+  const [object] = new symbolic.Archive(data).objects();
+  assert.equal(object.asPe(), undefined);
+});
+
 test("the debug session enumerates referenced source files", () => {
   const archive = new symbolic.Archive(data);
   const [object] = archive.objects();
@@ -58,4 +82,36 @@ test("the debug session enumerates referenced source files", () => {
 
   // A path the object does not reference resolves to undefined.
   assert.equal(session.sourceByPath("/definitely/not/referenced"), undefined);
+});
+
+test("il2cppLineMapping extracts source_info markers via a provider", () => {
+  const archive = new symbolic.Archive(data);
+  const [object] = archive.objects();
+
+  // Synthetic Il2cpp C++: a `source_info` marker followed by a code line maps
+  // generated C++ line 2 to Game.cs line 42. The provider ignores the path and
+  // returns this for every referenced source file.
+  const synthetic = new TextEncoder().encode(
+    "//<source_info:Game.cs:42>\nint generated = 0;\n"
+  );
+  let calls = 0;
+  const bytes = symbolic.il2cppLineMapping(object, (path) => {
+    assert.ok(typeof path === "string" && path.length > 0, "expected a source path");
+    calls += 1;
+    return synthetic;
+  });
+  assert.ok(calls > 0, "provider should be called for referenced source files");
+  assert.ok(bytes instanceof Uint8Array, "expected JSON mapping bytes");
+
+  const mapping = JSON.parse(new TextDecoder().decode(bytes));
+  assert.ok("__debug-id__" in mapping, "expected the __debug-id__ sentinel");
+  const [, fileMap] = Object.entries(mapping).find(([k]) => k !== "__debug-id__");
+  assert.deepEqual(fileMap, { "Game.cs": { 2: 42 } });
+
+  // Returning a nullish value for every file yields no mapping (undefined).
+  assert.equal(symbolic.il2cppLineMapping(object, () => null), undefined);
+
+  // A non-Uint8Array return is rejected rather than silently coerced (e.g. a
+  // number would otherwise become a zero-filled buffer).
+  assert.throws(() => symbolic.il2cppLineMapping(object, () => 5));
 });

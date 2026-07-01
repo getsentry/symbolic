@@ -17,3 +17,8 @@ indexmap = { workspace = true }
 serde_json = { workspace = true }
 symbolic-common = { version = "13.6.1", path = "../symbolic-common" }
 symbolic-debuginfo = { version = "13.6.1", path = "../symbolic-debuginfo" }
+
+[dev-dependencies]
+symbolic-testutils = { path = "../symbolic-testutils" }
+
+insta = { workspace = true, features = ["json"] }

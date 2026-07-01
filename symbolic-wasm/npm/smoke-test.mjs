@@ -18,6 +18,11 @@ import { fileURLToPath } from "node:url";
 const here = (rel) => fileURLToPath(new URL(rel, import.meta.url));
 const PKG_DIR = here(".");
 const FIXTURE = here("../../symbolic-testutils/fixtures/linux/crash.debug");
+// A managed PE that embeds a deflate-compressed Portable PDB — exercises the
+// asPe().embeddedPpdb() extraction + decompression path in the real wasm runtime.
+const FIXTURE_PPDB = here(
+  "../../symbolic-testutils/fixtures/windows/Sentry.Samples.Console.Basic-embedded-ppdb.dll",
+);
 
 const run = (cmd, args, opts) =>
   execFileSync(cmd, args, { stdio: "inherit", ...opts });
@@ -44,7 +49,7 @@ try {
   cpSync(here("./package-smoke.test.mjs"), join(dir, "package-smoke.test.mjs"));
   run("node", ["--test", "package-smoke.test.mjs"], {
     cwd: dir,
-    env: { ...process.env, SMOKE_FIXTURE: FIXTURE },
+    env: { ...process.env, SMOKE_FIXTURE: FIXTURE, SMOKE_FIXTURE_PPDB: FIXTURE_PPDB },
   });
   console.log("packaged-artifact smoke test passed");
 } finally {

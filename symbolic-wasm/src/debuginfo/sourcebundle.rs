@@ -4,7 +4,7 @@ use symbolic_debuginfo as di;
 use wasm_bindgen::prelude::*;
 
 use super::Object;
-use crate::utils::Result;
+use crate::utils::{provider_bytes, Result};
 
 /// A descriptor that provides information about a source file.
 ///
@@ -167,12 +167,7 @@ impl SourceBundleWriter {
                 let value = provider
                     .call1(&JsValue::UNDEFINED, &JsValue::from_str(path))
                     .unwrap_throw();
-
-                if value.is_null_or_undefined() {
-                    return None;
-                }
-
-                Some(Cursor::new(js_sys::Uint8Array::new(&value).to_vec()))
+                provider_bytes(&value).map(Cursor::new)
             },
         );
 
