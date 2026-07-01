@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 13.7.0
 
 **Features**
 
