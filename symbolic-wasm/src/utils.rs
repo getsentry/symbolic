@@ -52,7 +52,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 /// (silent data corruption) and a plain object into an empty one, while other
 /// values raise an opaque `TypeError`. Validating here keeps a misbehaving callback
 /// from corrupting output or aborting the module with an unhelpful panic.
-pub(crate) fn provider_bytes(value: &wasm_bindgen::JsValue) -> Option<Vec<u8>> {
+pub fn provider_bytes(value: &wasm_bindgen::JsValue) -> Option<Vec<u8>> {
     use wasm_bindgen::JsCast;
 
     if value.is_null_or_undefined() {

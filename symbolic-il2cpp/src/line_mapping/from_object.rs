@@ -197,7 +197,11 @@ fn parse_line(line: &str) -> Option<(&str, u32)> {
 
 #[cfg(test)]
 mod tests {
-    use super::{SourceInfo, SourceInfos};
+    use symbolic_common::ByteView;
+    use symbolic_debuginfo::Object;
+    use symbolic_testutils::fixture;
+
+    use super::*;
 
     #[test]
     fn one_mapping() {
@@ -306,5 +310,69 @@ mod tests {
         // Since there is no non-comment line for the source info to attach to,
         // no source infos should be returned.
         assert_eq!(SourceInfos::new(cpp_source).count(), 0);
+    }
+
+    /// Synthetic Il2cpp C++: a `source_info` marker followed by a code line maps the
+    /// generated C++ line 2 to `Game.cs` line 42.
+    const SYNTHETIC_SOURCE: &[u8] = b"//<source_info:Game.cs:42>\nint generated = 0;\n";
+
+    #[test]
+    fn test_object_line_mapping_parses_source_info() {
+        let data = ByteView::open(fixture("windows/Sentry.Samples.Console.Basic.pdb")).unwrap();
+        let object = Object::parse(&data).unwrap();
+
+        let mut calls = 0usize;
+        let mapping = ObjectLineMapping::from_object_with_provider(&object, |path| {
+            assert!(!path.is_empty());
+            calls += 1;
+            Some(SYNTHETIC_SOURCE.to_vec())
+        })
+        .unwrap();
+
+        assert!(calls > 0);
+
+        let mut buf = Vec::new();
+        assert!(mapping.to_writer(&mut buf).unwrap());
+
+        let json: serde_json::Value = serde_json::from_slice(&buf).unwrap();
+        insta::assert_json_snapshot!(json, @r#"
+        {
+          "C:\\dev\\sentry-dotnet\\samples\\Sentry.Samples.Console.Basic\\Program.cs": {
+            "Game.cs": {
+              "2": 42
+            }
+          },
+          "C:\\dev\\sentry-dotnet\\samples\\Sentry.Samples.Console.Basic\\obj\\release\\net6.0\\.NETCoreApp,Version=v6.0.AssemblyAttributes.cs": {
+            "Game.cs": {
+              "2": 42
+            }
+          },
+          "C:\\dev\\sentry-dotnet\\samples\\Sentry.Samples.Console.Basic\\obj\\release\\net6.0\\Sentry.Samples.Console.Basic.AssemblyInfo.cs": {
+            "Game.cs": {
+              "2": 42
+            }
+          },
+          "C:\\dev\\sentry-dotnet\\samples\\Sentry.Samples.Console.Basic\\obj\\release\\net6.0\\Sentry.Samples.Console.Basic.GlobalUsings.g.cs": {
+            "Game.cs": {
+              "2": 42
+            }
+          },
+          "__debug-id__": {
+            "526f365f-4d8d-4fa8-b370-eae9a9136de4-a39453e5": {}
+          }
+        }
+        "#);
+    }
+
+    #[test]
+    fn test_object_line_mapping_no_sources() {
+        let view = ByteView::open(fixture("windows/Sentry.Samples.Console.Basic.pdb")).unwrap();
+        let object = Object::parse(&view).unwrap();
+
+        let mapping =
+            ObjectLineMapping::from_object_with_provider(&object, |_| None::<Vec<u8>>).unwrap();
+
+        let mut buf = Vec::new();
+        assert!(!mapping.to_writer(&mut buf).unwrap());
     }
 }
