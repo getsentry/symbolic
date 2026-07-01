@@ -211,6 +211,16 @@ impl PeFile {
     }
 }
 
+impl Object {
+    /// Borrows the underlying `symbolic_debuginfo` object.
+    ///
+    /// Internal helper for sibling modules (e.g. [`crate::il2cpp`]) that build on
+    /// the parsed object without re-exposing it through the WASM-facing API.
+    pub(crate) fn as_debuginfo(&self) -> &di::Object<'_> {
+        self.inner.get()
+    }
+}
+
 /// A debug session that provides access to an object's debugging information.
 ///
 /// In particular, this enumerates the source files referenced by the object and

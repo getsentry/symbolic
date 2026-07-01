@@ -6,6 +6,8 @@
 
 - Add recursion limit to vendored msvc-demangler. ([#1006](https://github.com/getsentry/symbolic/pull/1006))
 - Vendor [msvc-demangler](https://github.com/mstange/msvc-demangler-rust). ([#998](https://github.com/getsentry/symbolic/pull/998))
+- WASM: expose `il2cppLineMapping(object, provider)`, which extracts a Unity Il2cpp C++→C# line mapping by parsing `source_info` markers from an object's referenced C++ source files and returns it as a JSON document (or `undefined` when no mappings are found). Source file contents are supplied by a `(path) => Uint8Array | null` provider callback, so it works without filesystem access. `symbolic-il2cpp` also gains `ObjectLineMapping::from_object_with_provider`, the filesystem-free counterpart of `from_object`. ([#1005](https://github.com/getsentry/symbolic/pull/1005))
+- WASM: expose `ObjectFile.asPe()` to narrow an object to a `PeFile`, and `PeFile.embeddedPpdb()` returning the decompressed Portable PDB embedded in a managed Windows PE (a standalone, parseable debug information file), or `undefined` when there is no embedded PPDB. ([#1004](https://github.com/getsentry/symbolic/pull/1004))
 
 **Fixes**
 
@@ -33,7 +35,6 @@
 **Features**
 
 - WASM: expose `ObjectFile.debugSession()` returning a `DebugSession` with `files()` (the source files referenced by the object) and `sourceByPath(path)` (resolving embedded contents or a source link). `symbolic-debuginfo` also implements `AsSelf` for `ObjectDebugSession` so it can be held in a `SelfCell`. ([#997](https://github.com/getsentry/symbolic/pull/997))
-- WASM: expose `ObjectFile.asPe()` to narrow an object to a `PeFile`, and `PeFile.embeddedPpdb()` returning the decompressed Portable PDB embedded in a managed Windows PE (a standalone, parseable debug information file), or `undefined` when there is no embedded PPDB. ([#1004](https://github.com/getsentry/symbolic/pull/1004))
 
 ## 13.4.0
 

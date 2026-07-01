@@ -38,9 +38,11 @@ pub enum Error {
     #[error(transparent)]
     Object(#[from] symbolic_debuginfo::ObjectError),
     #[error(transparent)]
-    SourceBundle(#[from] symbolic_debuginfo::sourcebundle::SourceBundleError),
+    SourceBundleError(#[from] symbolic_debuginfo::sourcebundle::SourceBundleError),
     #[error(transparent)]
     Pe(#[from] symbolic_debuginfo::pe::PeError),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }
 
 impl From<Error> for wasm_bindgen::JsValue {
@@ -51,3 +53,29 @@ impl From<Error> for wasm_bindgen::JsValue {
 
 /// A common `Result` type for these WASM bindings.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+/// Converts a provider callback's return value into raw bytes.
+///
+/// Provider callbacks in these bindings are documented as
+/// `(path) => Uint8Array | null | undefined`. A nullish value is the documented
+/// "skip this file" signal and yields `None`; a `Uint8Array` yields its bytes.
+///
+/// Any other type throws a descriptive JS error rather than silently mis-coercing
+/// it: `js_sys::Uint8Array::new` would turn a `number` into a zero-filled buffer
+/// (silent data corruption) and a plain object into an empty one, while other
+/// values raise an opaque `TypeError`. Validating here keeps a misbehaving callback
+/// from corrupting output or aborting the module with an unhelpful panic.
+pub fn provider_bytes(value: &wasm_bindgen::JsValue) -> Option<Vec<u8>> {
+    use wasm_bindgen::JsCast;
+
+    if value.is_null_or_undefined() {
+        return None;
+    }
+
+    match value.dyn_ref::<js_sys::Uint8Array>() {
+        Some(array) => Some(array.to_vec()),
+        None => wasm_bindgen::throw_val(
+            JsError::new("provider callback must return a Uint8Array, null, or undefined").into(),
+        ),
+    }
+}

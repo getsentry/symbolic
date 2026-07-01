@@ -4,4 +4,5 @@
 //! (Mach-O/dSYM, ELF, PE/PDB, Portable PDB,  WebAssembly, Breakpad, SourceBundle).
 
 pub mod debuginfo;
+pub mod il2cpp;
 mod utils;
