@@ -390,7 +390,7 @@ impl<W: Write> AsciiCfiWriter<W> {
 
     /// Sets the maximum length of a chained `UNWIND_INFO` list to follow for a
     /// single function. Chains longer than this cause [`process`](Self::process)
-    /// to fail with [`CfiErrorKind::ExceededUnwindChainLength`]. Defaults to 128.
+    /// to fail with [`CfiErrorKind::ExceededUnwindChainLength`].
     pub fn max_unwind_chain_len(mut self, max_unwind_chain_len: Option<usize>) -> Self {
         self.max_unwind_chain_len = max_unwind_chain_len;
         self
