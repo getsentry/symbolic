@@ -1677,7 +1677,7 @@ enum CfiCacheInner<'a> {
     Versioned(u32, CfiCacheV1<'a>),
 }
 
-/// Options provided to [`from_object_with_opts`].
+/// Options provided to [`CfiCache::from_object_with_opts`].
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct FromObjectOptions {
