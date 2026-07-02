@@ -380,14 +380,11 @@ pub struct AsciiCfiWriter<W: Write> {
 }
 
 impl<W: Write> AsciiCfiWriter<W> {
-    /// Default maximum length of a chained `UNWIND_INFO` list.
-    pub const MAX_UNWIND_CHAIN_LEN: usize = 128;
-
     /// Creates a new `AsciiCfiWriter` that outputs to a writer.
     pub fn new(inner: W) -> Self {
         AsciiCfiWriter {
             inner,
-            max_unwind_chain_len: Some(Self::MAX_UNWIND_CHAIN_LEN),
+            max_unwind_chain_len: None,
         }
     }
 
@@ -1680,6 +1677,16 @@ enum CfiCacheInner<'a> {
     Versioned(u32, CfiCacheV1<'a>),
 }
 
+/// Options provided to [`from_object_with_opts`].
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, Default)]
+pub struct FromObjectOptions {
+    /// The maximum length of a chained `UNWIND_INFO` list to follow for a single function.
+    ///
+    /// This is only relevant for Portable Executable.
+    pub max_unwind_chain_len: Option<usize>,
+}
+
 /// A cache file for call frame information (CFI).
 ///
 /// The default way to use this cache is to construct it from an `Object` and save it to a file.
@@ -1717,6 +1724,14 @@ pub struct CfiCache<'a> {
 impl CfiCache<'static> {
     /// Construct a CFI cache from an `Object`.
     pub fn from_object(object: &Object<'_>) -> Result<Self, CfiError> {
+        Self::from_object_with_opts(object, Default::default())
+    }
+
+    /// Construct a CFI cache from an `Object` with the provided `FromObjectOptions`.
+    pub fn from_object_with_opts(
+        object: &Object<'_>,
+        opts: FromObjectOptions,
+    ) -> Result<Self, CfiError> {
         let mut buffer = vec![];
         write_preamble(&mut buffer, CFICACHE_LATEST_VERSION)?;
 
@@ -1732,7 +1747,9 @@ impl CfiCache<'static> {
             }
         }
 
-        AsciiCfiWriter::new(&mut buffer).process(object)?;
+        AsciiCfiWriter::new(&mut buffer)
+            .max_unwind_chain_len(opts.max_unwind_chain_len)
+            .process(object)?;
 
         let byteview: ByteView<'_> = ByteView::from_vec(buffer);
         let inner = CfiCacheInner::Versioned(CFICACHE_LATEST_VERSION, CfiCacheV1 { byteview });
