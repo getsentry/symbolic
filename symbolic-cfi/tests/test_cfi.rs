@@ -143,8 +143,11 @@ fn cfi_process_pe_self_loop_terminates() {
             .expect("failed to open fixture");
         let object = Object::parse(&buffer).expect("failed to parse PE");
 
-        let result: Result<Vec<u8>, CfiErrorKind> =
-            AsciiCfiWriter::transform(&object).map_err(|e| e.kind());
+        let mut buf = Vec::new();
+        let result = AsciiCfiWriter::new(&mut buf)
+            .max_unwind_chain_len(Some(8))
+            .process(&object)
+            .map_err(|e| e.kind());
         let _ = tx.send(result);
     });
 
