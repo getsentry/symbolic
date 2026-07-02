@@ -158,6 +158,9 @@ pub enum CfiErrorKind {
 
     /// Invalid magic bytes in the cfi cache header.
     BadFileMagic,
+
+    /// A chained `UNWIND_INFO` list exceeded the maximum allowed length.
+    ExceededUnwindChainLength,
 }
 
 impl fmt::Display for CfiErrorKind {
@@ -170,6 +173,7 @@ impl fmt::Display for CfiErrorKind {
             Self::InvalidAddress => write!(f, "invalid cfi address"),
             Self::WriteFailed => write!(f, "failed to write cfi"),
             Self::BadFileMagic => write!(f, "bad cfi cache magic"),
+            Self::ExceededUnwindChainLength => write!(f, "exceeded maximum unwind chain length"),
         }
     }
 }
@@ -372,12 +376,24 @@ fn cfi_register_name(arch: CpuFamily, register: u16) -> Option<&'static str> {
 /// ```
 pub struct AsciiCfiWriter<W: Write> {
     inner: W,
+    max_unwind_chain_len: Option<usize>,
 }
 
 impl<W: Write> AsciiCfiWriter<W> {
     /// Creates a new `AsciiCfiWriter` that outputs to a writer.
     pub fn new(inner: W) -> Self {
-        AsciiCfiWriter { inner }
+        AsciiCfiWriter {
+            inner,
+            max_unwind_chain_len: None,
+        }
+    }
+
+    /// Sets the maximum length of a chained `UNWIND_INFO` list to follow for a
+    /// single function. Chains longer than this cause [`process`](Self::process)
+    /// to fail with [`CfiErrorKind::ExceededUnwindChainLength`]. Defaults to 128.
+    pub fn max_unwind_chain_len(mut self, max_unwind_chain_len: Option<usize>) -> Self {
+        self.max_unwind_chain_len = max_unwind_chain_len;
+        self
     }
 
     /// Extracts CFI from the given object file.
@@ -1095,7 +1111,11 @@ impl<W: Write> AsciiCfiWriter<W> {
             saved_regs.clear();
 
             let mut next_function = Some(function);
-            while let Some(next) = next_function {
+            for _ in 0..self.max_unwind_chain_len.unwrap_or(usize::MAX) {
+                let Some(next) = next_function else {
+                    break;
+                };
+
                 let unwind_info = exception_data
                     .get_unwind_info(next, sections)
                     .map_err(|e| CfiError::new(CfiErrorKind::BadDebugInfo, e))?;
@@ -1193,6 +1213,11 @@ impl<W: Write> AsciiCfiWriter<W> {
                 }
 
                 next_function = unwind_info.chained_info;
+            }
+
+            // If we reached the `MAX_UNWIND_CHAIN_LEN` limit treat the input as malformed data.
+            if next_function.is_some() {
+                return Err(CfiErrorKind::ExceededUnwindChainLength.into());
             }
 
             if cfa_reg.is_empty() {
@@ -1652,6 +1677,16 @@ enum CfiCacheInner<'a> {
     Versioned(u32, CfiCacheV1<'a>),
 }
 
+/// Options provided to [`from_object_with_opts`].
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, Default)]
+pub struct FromObjectOptions {
+    /// The maximum length of a chained `UNWIND_INFO` list to follow for a single function.
+    ///
+    /// This is only relevant for Portable Executable.
+    pub max_unwind_chain_len: Option<usize>,
+}
+
 /// A cache file for call frame information (CFI).
 ///
 /// The default way to use this cache is to construct it from an `Object` and save it to a file.
@@ -1689,6 +1724,14 @@ pub struct CfiCache<'a> {
 impl CfiCache<'static> {
     /// Construct a CFI cache from an `Object`.
     pub fn from_object(object: &Object<'_>) -> Result<Self, CfiError> {
+        Self::from_object_with_opts(object, Default::default())
+    }
+
+    /// Construct a CFI cache from an `Object` with the provided `FromObjectOptions`.
+    pub fn from_object_with_opts(
+        object: &Object<'_>,
+        opts: FromObjectOptions,
+    ) -> Result<Self, CfiError> {
         let mut buffer = vec![];
         write_preamble(&mut buffer, CFICACHE_LATEST_VERSION)?;
 
@@ -1704,7 +1747,9 @@ impl CfiCache<'static> {
             }
         }
 
-        AsciiCfiWriter::new(&mut buffer).process(object)?;
+        AsciiCfiWriter::new(&mut buffer)
+            .max_unwind_chain_len(opts.max_unwind_chain_len)
+            .process(object)?;
 
         let byteview: ByteView<'_> = ByteView::from_vec(buffer);
         let inner = CfiCacheInner::Versioned(CFICACHE_LATEST_VERSION, CfiCacheV1 { byteview });
