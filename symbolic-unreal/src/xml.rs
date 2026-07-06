@@ -85,6 +85,9 @@ impl<'a> XMLReader<'a> {
                 quick_xml::events::Event::Start(_) => {
                     *node_depth += 1;
                 }
+                quick_xml::events::Event::Eof => {
+                    break;
+                }
 
                 _ => {}
             };
