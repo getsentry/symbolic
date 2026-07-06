@@ -97,10 +97,10 @@ impl<'a> XMLReader<'a> {
             }
         }
 
-        if val.len() > 0 {
-            Ok(val.parse().ok())
-        } else {
+        if val.is_empty() {
             Ok(None)
+        } else {
+            Ok(val.parse().ok())
         }
     }
 
@@ -111,17 +111,17 @@ impl<'a> XMLReader<'a> {
             match self.reader.read_event()? {
                 quick_xml::events::Event::Eof => break,
 
-                quick_xml::events::Event::Start(bytes_start) => {
-                    if bytes_start.name().as_ref() == name.as_bytes() {
-                        self.node_state = NodeState::Opened { node_depth: 0 };
-                        return Ok(true);
-                    }
+                quick_xml::events::Event::Start(bytes_start)
+                    if bytes_start.name().as_ref() == name.as_bytes() =>
+                {
+                    self.node_state = NodeState::Opened { node_depth: 0 };
+                    return Ok(true);
                 }
-                quick_xml::events::Event::Empty(bytes_start) => {
-                    if bytes_start.name().as_ref() == name.as_bytes() {
-                        self.node_state = NodeState::Empty;
-                        return Ok(true);
-                    }
+                quick_xml::events::Event::Empty(bytes_start)
+                    if bytes_start.name().as_ref() == name.as_bytes() =>
+                {
+                    self.node_state = NodeState::Empty;
+                    return Ok(true);
                 }
 
                 _ => {}

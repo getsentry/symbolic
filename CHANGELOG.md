@@ -11,6 +11,7 @@
 - Add limit on inline nesting depth when parsing Breakpad objects. ([#1014](https://github.com/getsentry/symbolic/pull/1014))
 - Fix potential out of bounds panic on invalid section offsets ([#1013](https://github.com/getsentry/symbolic/pull/1013))
 - Fix a potential panic when locating sections in an elf file. ([#1012](https://github.com/getsentry/symbolic/pull/1012))
+- Handle XML parsing without recursion. ([#1003](https://github.com/getsentry/symbolic/pull/1003))
 
 ## 13.8.0
 
@@ -47,6 +48,7 @@
 
 - `symbolic-debuginfo`: Add a new option `max_decompressed_embedded_source_size` to `ParseObjectOptions`. This option limits the sizes of compressed embedded source files
   when they are returned from methods like `source_by_path`. ([#999](https://github.com/getsentry/symbolic/pull/999))
+
 
 ## 13.5.0
 

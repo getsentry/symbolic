@@ -343,8 +343,8 @@ impl Unreal4Context {
         load_data_bag(data, "GameData", &mut game_data)?;
 
         Ok(Unreal4Context {
-            runtime_properties: Unreal4ContextRuntimeProperties::from_xml(&data)?,
-            platform_properties: Unreal4ContextPlatformProperties::from_xml(&data)?,
+            runtime_properties: Unreal4ContextRuntimeProperties::from_xml(data)?,
+            platform_properties: Unreal4ContextPlatformProperties::from_xml(data)?,
             engine_data,
             game_data,
         })
