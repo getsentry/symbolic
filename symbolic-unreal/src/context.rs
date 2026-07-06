@@ -324,9 +324,8 @@ fn load_data_bag(
     if r.next_instance_of_tag(tag)? {
         while let Some(mut child) = r.next_child()? {
             let name = String::from_utf8_lossy(child.tag().name().as_ref()).to_string();
-            if let Some(value) = child.value::<String>()? {
-                dest_data.insert(name, value);
-            }
+            let value = child.value::<String>()?.unwrap_or_default();
+            dest_data.insert(name, value);
         }
     }
 
@@ -394,7 +393,6 @@ fn test_get_runtime_properties_missing_element() {
 
 #[test]
 fn test_get_platform_properties_missing_element() {
-    //let root = Element::from_reader().unwrap();
     assert!(
         Unreal4ContextPlatformProperties::from_xml(ONLY_ROOT_NODE.as_bytes())
             .unwrap()
@@ -404,7 +402,6 @@ fn test_get_platform_properties_missing_element() {
 
 #[test]
 fn test_get_runtime_properties_no_children() {
-    //let root = Element::from_reader().unwrap();
     let actual = Unreal4ContextRuntimeProperties::from_xml(ONLY_ROOT_AND_CHILD_NODES.as_bytes())
         .unwrap()
         .expect("default struct");
@@ -456,7 +453,6 @@ fn test_deeply_nested_xml() {
 
 #[test]
 fn test_get_platform_properties_no_children() {
-    //let root = Element::from_reader().unwrap();
     let actual = Unreal4ContextPlatformProperties::from_xml(ONLY_ROOT_AND_CHILD_NODES.as_bytes())
         .unwrap()
         .expect("default struct");
