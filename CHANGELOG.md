@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- Fix potential out of bounds panic on invalid section offsets ([#1013](https://github.com/getsentry/symbolic/pull/1013))
+- Fix a potential panic when locating sections in an elf file. ([#1012](https://github.com/getsentry/symbolic/pull/1012))
+
 ## 13.8.0
 
 **Features**
@@ -28,7 +35,6 @@
 **Fixes**
 
 - Fix function range to addr/line resolution, this fixes a case where WASM binaries compiled with Emscripten failed to have their source code mappings resolved. (#[1002](https://github.com/getsentry/symbolic/pull/1002))
-- Fix a potential panic when locating sections in an elf file. ([#1012](https://github.com/getsentry/symbolic/pull/1012))
 
 ## 13.6.0
 

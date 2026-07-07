@@ -683,7 +683,7 @@ impl<'data> ElfObject<'data> {
                 }
 
                 let size = header.sh_size as usize;
-                let data = &self.data[offset..][..size];
+                let data = &self.data.get(offset..)?.get(..size)?;
                 let section = DwarfSection {
                     data: Cow::Borrowed(data),
                     address: header.sh_addr,
