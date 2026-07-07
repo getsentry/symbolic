@@ -945,6 +945,7 @@ pub struct BreakpadObject<'data> {
     arch: Arch,
     module: BreakpadModuleRecord<'data>,
     data: &'data [u8],
+    max_inline_depth: Option<u32>,
 }
 
 impl<'data> BreakpadObject<'data> {
@@ -982,6 +983,7 @@ impl<'data> BreakpadObject<'data> {
                 .map_err(|_| BreakpadErrorKind::InvalidArchitecture)?,
             module,
             data,
+            max_inline_depth: None,
         })
     }
 
@@ -1070,6 +1072,7 @@ impl<'data> BreakpadObject<'data> {
         Ok(BreakpadDebugSession {
             file_map: self.file_map(),
             lines: Lines::new(self.data),
+            max_inline_depth: self.max_inline_depth,
         })
     }
 
@@ -1140,6 +1143,14 @@ impl<'data> BreakpadObject<'data> {
     pub fn data(&self) -> &'data [u8] {
         self.data
     }
+
+    /// Sets the maximum inline nesting depth to process.
+    ///
+    /// Inline records nested deeper than this are dropped.
+    pub fn max_inline_depth(mut self, max_inline_depth: Option<u32>) -> Self {
+        self.max_inline_depth = max_inline_depth;
+        self
+    }
 }
 
 impl fmt::Debug for BreakpadObject<'_> {
@@ -1172,8 +1183,8 @@ impl<'data> Parse<'data> for BreakpadObject<'data> {
         Self::test(data)
     }
 
-    fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
-        Self::parse(data)
+    fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
+        Self::parse(data).map(|o| o.max_inline_depth(opts.max_inline_depth))
     }
 }
 
@@ -1262,12 +1273,13 @@ impl<'data> Iterator for BreakpadSymbolIterator<'data> {
 pub struct BreakpadDebugSession<'data> {
     file_map: BreakpadFileMap<'data>,
     lines: Lines<'data>,
+    max_inline_depth: Option<u32>,
 }
 
 impl BreakpadDebugSession<'_> {
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> BreakpadFunctionIterator<'_> {
-        BreakpadFunctionIterator::new(&self.file_map, self.lines.clone())
+        BreakpadFunctionIterator::new(&self.file_map, self.lines.clone(), self.max_inline_depth)
     }
 
     /// Returns an iterator over all source files in this debug file.
@@ -1327,16 +1339,22 @@ pub struct BreakpadFunctionIterator<'s> {
     next_line: Option<&'s [u8]>,
     inline_origin_map: BreakpadInlineOriginMap<'s>,
     lines: Lines<'s>,
+    max_inline_depth: Option<u32>,
 }
 
 impl<'s> BreakpadFunctionIterator<'s> {
-    fn new(file_map: &'s BreakpadFileMap<'s>, mut lines: Lines<'s>) -> Self {
+    fn new(
+        file_map: &'s BreakpadFileMap<'s>,
+        mut lines: Lines<'s>,
+        max_inline_depth: Option<u32>,
+    ) -> Self {
         let next_line = lines.next();
         Self {
             file_map,
             next_line,
             inline_origin_map: Default::default(),
             lines,
+            max_inline_depth,
         }
     }
 }
@@ -1380,7 +1398,8 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
             b"",
             fun_record.address,
             fun_record.size,
-        );
+        )
+        .max_inline_depth(self.max_inline_depth);
 
         for line in self.lines.by_ref() {
             // Stop parsing LINE records once other expected records are encountered.

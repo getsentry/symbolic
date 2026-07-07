@@ -144,3 +144,21 @@ FUNC b3c 10 0 second()"#;
     let lookup_result: Vec<_> = symcache.lookup(0xb40).collect();
     assert_eq!(lookup_result[0].function().name(), "second()");
 }
+
+#[test]
+fn test_breakpad_deep_inline_functions() {
+    let limit = 512;
+    let buffer = ByteView::open(fixture("regression/breakpad_deep_inline.sym")).unwrap();
+    let breakpad = BreakpadObject::parse(&buffer)
+        .unwrap()
+        .max_inline_depth(Some(limit));
+
+    let mut buffer = Vec::new();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&breakpad).unwrap();
+    converter.serialize(&mut Cursor::new(&mut buffer)).unwrap();
+    let symcache = SymCache::parse(&buffer).unwrap();
+
+    let lookup_result: Vec<_> = symcache.lookup(0x1000).collect();
+    assert_eq!(lookup_result.len(), limit as usize + 2);
+}

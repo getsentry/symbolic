@@ -137,6 +137,11 @@ pub struct ParseObjectOptions {
     ///
     /// This is only relevant for source bundles and PPDB objects.
     pub max_decompressed_embedded_source_size: Option<usize>,
+
+    /// The maximum inline nesting depth to process.
+    ///
+    /// This is only relevant for Breakpad objects.
+    pub max_inline_depth: Option<u32>,
 }
 
 /// Tries to infer the object type from the start of the given buffer.
