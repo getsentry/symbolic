@@ -2,7 +2,7 @@ use quick_xml::{escape::resolve_xml_entity, events::BytesStart};
 
 enum NodeState {
     None,
-    Opened { node_depth: i32 },
+    Opened { node_depth: i32, consumed: bool },
     Empty,
 }
 
@@ -47,13 +47,21 @@ impl<'a> XMLReader<'a> {
     }
 
     /// Returns the text value, parsed, from the node at which the reader is
-    /// located.  If there is no such node or value, or the parse fails, this will
-    /// return None.  A best-effort is made to deal with text spread between xml nodes.
+    /// located.  If there is no such node or value, this will return None.
+    /// A best-effort is made to deal with text spread between xml nodes.
     /// XML entities are resolved (so '&qout;' is resolved to '"', and the like.)
     fn value<T: std::str::FromStr>(&mut self) -> Result<Option<T>, quick_xml::Error> {
-        let NodeState::Opened { node_depth } = &mut self.node_state else {
+        let NodeState::Opened {
+            node_depth,
+            consumed,
+        } = &mut self.node_state
+        else {
             return Ok(None);
         };
+
+        if *consumed {
+            return Ok(None);
+        }
         let mut val = String::new();
         let start_depth = *node_depth;
         loop {
@@ -85,17 +93,33 @@ impl<'a> XMLReader<'a> {
                 quick_xml::events::Event::Start(_) => {
                     *node_depth += 1;
                 }
+
+                quick_xml::events::Event::CData(data) => {
+                    if start_depth == *node_depth {
+                        if let Ok(decoded) = data.decode() {
+                            val += &decoded;
+                        }
+                    }
+                }
+
                 quick_xml::events::Event::Eof => {
                     break;
                 }
-
-                _ => {}
+                quick_xml::events::Event::Empty(_)
+                | quick_xml::events::Event::Comment(_)
+                | quick_xml::events::Event::Decl(_)
+                | quick_xml::events::Event::PI(_)
+                | quick_xml::events::Event::DocType(_) => {
+                    // Explicitly skip these.
+                }
             };
 
             if *node_depth < start_depth {
                 break;
             }
         }
+
+        *consumed = true;
 
         if val.is_empty() {
             Ok(None)
@@ -108,13 +132,18 @@ impl<'a> XMLReader<'a> {
     /// to the current position of the reader. Returns true iff the tag exists.
     pub fn next_instance_of_tag(&mut self, name: &str) -> Result<bool, quick_xml::Error> {
         loop {
-            match self.reader.read_event()? {
+            let e = self.reader.read_event()?;
+
+            match e {
                 quick_xml::events::Event::Eof => break,
 
                 quick_xml::events::Event::Start(bytes_start)
                     if bytes_start.name().as_ref() == name.as_bytes() =>
                 {
-                    self.node_state = NodeState::Opened { node_depth: 0 };
+                    self.node_state = NodeState::Opened {
+                        node_depth: 0,
+                        consumed: false,
+                    };
                     return Ok(true);
                 }
                 quick_xml::events::Event::Empty(bytes_start)
@@ -135,9 +164,15 @@ impl<'a> XMLReader<'a> {
     /// Moves to the next child of this node, returning None if we exhaust the children,
     /// or an instance of ChildNode.
     pub fn next_child<'t>(&'t mut self) -> Result<Option<ChildNode<'t, 'a>>, quick_xml::Error> {
-        let NodeState::Opened { node_depth } = &mut self.node_state else {
+        let NodeState::Opened {
+            node_depth,
+            consumed,
+        } = &mut self.node_state
+        else {
             return Ok(None);
         };
+
+        *consumed = false;
 
         let maybe_bytes = loop {
             let maybe_bytes = match self.reader.read_event()? {
@@ -180,7 +215,11 @@ impl<'a> XMLReader<'a> {
         };
 
         if let Some(bytes) = maybe_bytes {
-            let is_empty = if let NodeState::Opened { node_depth } = self.node_state {
+            let is_empty = if let NodeState::Opened {
+                node_depth,
+                consumed: _,
+            } = self.node_state
+            {
                 node_depth == 0
             } else {
                 false
@@ -193,5 +232,44 @@ impl<'a> XMLReader<'a> {
         }
 
         Ok(None)
+    }
+}
+#[cfg(test)]
+mod tests {
+    // cdata?
+    // get value a few times
+    // missing tags
+
+    use crate::xml::XMLReader;
+    use std::assert_eq;
+    use std::assert_matches;
+
+    #[test]
+    fn test_empty_tag() {
+        let data = r#"<t1><t2></t2><t3></t3></t1>"#;
+        let r = quick_xml::Reader::from_reader(data.as_bytes());
+        let mut x = XMLReader::new(r);
+        x.next_instance_of_tag("t3").unwrap();
+        assert_eq!(x.value::<String>().unwrap(), None);
+    }
+
+    #[test]
+    fn test_get_value_twice() {
+        let data = r#"<t1><t2></t2><t3>hello</t3></t1>"#;
+        let r = quick_xml::Reader::from_reader(data.as_bytes());
+        let mut x = XMLReader::new(r);
+        x.next_instance_of_tag("t3").unwrap();
+
+        assert_eq!(x.value::<String>().unwrap(), Some("hello".to_owned()));
+        assert_eq!(x.value::<String>().unwrap(), None);
+    }
+
+    #[test]
+    fn test_missing_close() {
+        let data = r#"<t1><t2></t2><t3></t1>"#;
+        let r = quick_xml::Reader::from_reader(data.as_bytes());
+        let mut x = XMLReader::new(r);
+        x.next_instance_of_tag("t3").unwrap();
+        assert_matches!(x.value::<String>(), Err(_));
     }
 }
