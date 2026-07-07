@@ -671,7 +671,10 @@ impl<'data> ElfObject<'data> {
                 // Support this as an override to the flag.
                 let (compressed, section_name) = match section_name.strip_prefix(".z") {
                     Some(name) => (true, name),
-                    None => (header.sh_flags & SHF_COMPRESSED != 0, &section_name[1..]),
+                    None => (
+                        header.sh_flags & SHF_COMPRESSED != 0,
+                        section_name.strip_prefix('.').unwrap_or(section_name),
+                    ),
                 };
 
                 if section_name != name {
