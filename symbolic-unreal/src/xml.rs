@@ -1,4 +1,7 @@
-use quick_xml::{escape::resolve_xml_entity, events::BytesStart};
+use quick_xml::{
+    escape::{resolve_xml_entity, unescape},
+    events::BytesStart,
+};
 
 enum NodeState {
     None,
@@ -62,24 +65,32 @@ impl<'a> XMLReader<'a> {
         if *consumed {
             return Ok(None);
         }
+
         let mut val = String::new();
         let start_depth = *node_depth;
         loop {
-            match self.reader.read_event()? {
+            let v = self.reader.read_event()?;
+            match v {
                 quick_xml::events::Event::Text(bytes_text) => {
-                    if start_depth == *node_depth {
-                        if let Ok(decoded) = bytes_text.decode() {
-                            val += &decoded;
-                        }
+                    if start_depth != *node_depth {
+                        continue;
+                    }
+
+                    if let Ok(decoded) = bytes_text.decode() {
+                        val += &decoded;
                     }
                 }
 
                 quick_xml::events::Event::GeneralRef(bytes_text) => {
-                    if start_depth == *node_depth {
-                        if let Ok(decoded) = bytes_text.decode() {
-                            if let Some(resolved) = resolve_xml_entity(&decoded) {
-                                val += resolved;
-                            }
+                    if start_depth != *node_depth {
+                        continue;
+                    }
+
+                    if let Ok(Some(ch)) = bytes_text.resolve_char_ref() {
+                        val.push(ch);
+                    } else if let Ok(decoded) = bytes_text.decode() {
+                        if let Some(resolved) = resolve_xml_entity(&decoded) {
+                            val += resolved;
                         }
                     }
                 }
@@ -95,10 +106,12 @@ impl<'a> XMLReader<'a> {
                 }
 
                 quick_xml::events::Event::CData(data) => {
-                    if start_depth == *node_depth {
-                        if let Ok(decoded) = data.decode() {
-                            val += &decoded;
-                        }
+                    if start_depth != *node_depth {
+                        continue;
+                    }
+
+                    if let Ok(decoded) = data.decode() {
+                        val += &decoded;
                     }
                 }
 
