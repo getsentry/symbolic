@@ -140,7 +140,7 @@ pub struct ParseObjectOptions {
 
     /// The maximum inline nesting depth to process.
     ///
-    /// This is only applies for Breakpad objects (for the time being).
+    /// This is only relevant for Breakpad objects (for the time being).
     pub max_inline_depth: Option<u32>,
 }
 
