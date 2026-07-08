@@ -1,7 +1,4 @@
-use quick_xml::{
-    escape::{resolve_xml_entity, unescape},
-    events::BytesStart,
-};
+use quick_xml::{escape::resolve_xml_entity, events::BytesStart};
 
 enum NodeState {
     None,
