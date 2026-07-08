@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- Add limit on inline nesting depth when parsing Breakpad objects. ([#1014](https://github.com/getsentry/symbolic/pull/1014))
+
 ## 13.8.0
 
 **Features**
