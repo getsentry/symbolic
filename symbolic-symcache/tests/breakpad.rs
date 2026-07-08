@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::io::Cursor;
 
 use symbolic_common::{clean_path, ByteView};
-use symbolic_debuginfo::breakpad::BreakpadObject;
+use symbolic_debuginfo::{breakpad::BreakpadObject, Object, ParseObjectOptions};
 use symbolic_symcache::{SymCache, SymCacheConverter};
 use symbolic_testutils::fixture;
 
@@ -149,9 +149,9 @@ FUNC b3c 10 0 second()"#;
 fn test_breakpad_deep_inline_functions() {
     let limit = 512;
     let buffer = ByteView::open(fixture("regression/breakpad_deep_inline.sym")).unwrap();
-    let breakpad = BreakpadObject::parse(&buffer)
-        .unwrap()
-        .max_inline_depth(Some(limit));
+    let mut opts = ParseObjectOptions::default();
+    opts.max_inline_depth = Some(limit);
+    let breakpad = Object::parse_with_opts(&buffer, opts).unwrap();
 
     let mut buffer = Vec::new();
     let mut converter = SymCacheConverter::new();
