@@ -147,11 +147,22 @@ FUNC b3c 10 0 second()"#;
 
 #[test]
 fn test_breakpad_deep_inline_functions() {
+    let mut sym = String::from(
+        r#"MODULE mac x86_64 000000000000000000000000000000000 test
+FILE 0 test.c
+INLINE_ORIGIN 0 inlined
+FUNC 1000 2000 0 outer
+1000 2000 1 0
+"#,
+    );
+    for depth in 0..1000 {
+        sym.push_str(&format!("INLINE {depth} 1 0 0 1000 2000\n"));
+    }
+
     let limit = 512;
-    let buffer = ByteView::open(fixture("regression/breakpad_deep_inline.sym")).unwrap();
     let mut opts = ParseObjectOptions::default();
     opts.max_inline_depth = Some(limit);
-    let breakpad = Object::parse_with_opts(&buffer, opts).unwrap();
+    let breakpad = Object::parse_with_opts(sym.as_bytes(), opts).unwrap();
 
     let mut buffer = Vec::new();
     let mut converter = SymCacheConverter::new();
