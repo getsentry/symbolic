@@ -574,7 +574,7 @@ impl<'d> UnitRef<'d, '_> {
         entry: &Die<'d>,
         language: Language,
         bcsymbolmap: Option<&'d BcSymbolMap<'d>>,
-        prior_offset: Option<UnitOffset>,
+        depth: u8,
     ) -> Result<Option<Name<'d>>, DwarfError> {
         let mut fallback_name = None;
         let mut reference_target = None;
@@ -607,21 +607,16 @@ impl<'d> UnitRef<'d, '_> {
 
         if let Some(attr) = reference_target {
             return self.resolve_reference(*attr, |ref_unit, ref_entry| {
-                // Self-references may have a layer of indirection. Avoid infinite recursion
-                // in this scenario.
-                if let Some(prior) = prior_offset {
-                    if self.offset() == ref_unit.offset() && prior == ref_entry.offset() {
-                        return Ok(None);
-                    }
+                // Avoid infinite recursion.
+                if depth == 0 {
+                    return Err(DwarfError::new(
+                        DwarfErrorKind::CorruptedData,
+                        "Exceeded maximum resolve_function_name depth",
+                    ));
                 }
 
                 if self.offset() != ref_unit.offset() || entry.offset() != ref_entry.offset() {
-                    ref_unit.resolve_function_name(
-                        ref_entry,
-                        language,
-                        bcsymbolmap,
-                        Some(entry.offset()),
-                    )
+                    ref_unit.resolve_function_name(ref_entry, language, bcsymbolmap, depth - 1)
                 } else {
                     Ok(None)
                 }
@@ -643,6 +638,12 @@ struct DwarfUnit<'d, 'a> {
 }
 
 impl<'d, 'a> DwarfUnit<'d, 'a> {
+    /// The maximum depth to recurse to in order to resolve a function name.
+    const MAX_RESOLVE_FUNCTION_DEPTH: u8 = 32;
+
+    /// The maximum depth to recurse to when parsing inlined functions.
+    const MAX_PARSE_INLINEE_DEPTH: u32 = 256;
+
     /// Creates a DWARF unit from the gimli `Unit` type.
     fn from_unit(
         unit: &'a Unit<'d>,
@@ -1010,7 +1011,12 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         let name = symbol_name
             .or_else(|| {
                 self.inner
-                    .resolve_function_name(&entry, language, self.bcsymbolmap, None)
+                    .resolve_function_name(
+                        &entry,
+                        language,
+                        self.bcsymbolmap,
+                        DwarfUnit::MAX_RESOLVE_FUNCTION_DEPTH,
+                    )
                     .ok()
                     .flatten()
             })
@@ -1140,6 +1146,13 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         output: &mut FunctionsOutput<'_, 'd>,
         language: Language,
     ) -> Result<(), DwarfError> {
+        if inline_depth == DwarfUnit::MAX_PARSE_INLINEE_DEPTH {
+            return Err(DwarfError::new(
+                DwarfErrorKind::CorruptedData,
+                "Exceeded max parse inlinee depth",
+            ));
+        }
+
         let (ranges, call_location) = self.parse_ranges(entries, abbrev, &mut output.range_buf)?;
 
         // Ranges can be empty for three reasons: (1) the function is a no-op and does not
@@ -1162,7 +1175,12 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         // which carries the wrong language (e.g. a C++ LTO partial unit for C code).
         let name = self
             .inner
-            .resolve_function_name(&entry, language, self.bcsymbolmap, None)
+            .resolve_function_name(
+                &entry,
+                language,
+                self.bcsymbolmap,
+                DwarfUnit::MAX_RESOLVE_FUNCTION_DEPTH,
+            )
             .ok()
             .flatten()
             .unwrap_or_else(|| Name::new("", NameMangling::Unmangled, language));
