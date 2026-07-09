@@ -17,6 +17,8 @@
 //! [processor]: ../processor/index.html
 //! [`CfiCache`]: struct.CfiCache.html
 
+mod arm_exidx;
+
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{self, Display};
@@ -401,7 +403,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         match object {
             Object::Breakpad(o) => self.process_breakpad(o),
             Object::MachO(o) => self.process_macho(o),
-            Object::Elf(o) => self.process_dwarf(o, false),
+            Object::Elf(o) => self.process_elf(o),
             Object::Pdb(o) => self.process_pdb(o),
             Object::Pe(o) => {
                 if o.arch() == Arch::Arm64 {
@@ -483,6 +485,22 @@ impl<W: Write> AsciiCfiWriter<W> {
             self.read_compact_unwind_info(compact_unwind_info, eh_frame_info.as_ref(), object)?;
         }
         result
+    }
+
+    fn process_elf<'d: 'o, 'o, O>(&mut self, object: &O) -> Result<(), CfiError>
+    where
+        O: ObjectLike<'d, 'o> + Dwarf<'o>,
+    {
+        let dwarf_result = self.process_dwarf(object, false);
+        // `.ARM.exidx`/`.ARM.extab` (ARM EHABI) is a separate, ARM32-only unwind
+        // table format independent of DWARF CFI; some ARM32 binaries have no
+        // `.eh_frame`/`.debug_frame` at all and rely on it exclusively (see
+        // `arm_exidx` module docs). Emit its records in addition to whatever
+        // DWARF CFI was found, same "don't let one source's failure hide the
+        // other's data" spirit as `process_dwarf` already has for
+        // `debug_frame` vs. `eh_frame`.
+        arm_exidx::write_arm_exidx_cfi(&mut self.inner, object)?;
+        dwarf_result
     }
 
     fn process_dwarf<'d: 'o, 'o, O>(
