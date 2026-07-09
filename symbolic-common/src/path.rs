@@ -147,7 +147,7 @@ fn pop_path(path: &mut String) -> bool {
         path.truncate(idx);
         true
     } else if !path.is_empty() {
-        path.truncate(0);
+        path.clear();
         true
     } else {
         false
