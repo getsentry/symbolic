@@ -23,8 +23,8 @@ impl fmt::Debug for SymbolsDebug<'_> {
             writeln!(
                 f,
                 "{:>16x} {}",
-                &symbol.address,
-                &symbol.name().unwrap_or("<unknown>")
+                symbol.address,
+                symbol.name().unwrap_or("<unknown>")
             )?;
         }
 

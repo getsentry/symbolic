@@ -441,10 +441,7 @@ fn symbolize<'a>(
     arch: Arch,
     crashing: bool,
 ) -> Option<Vec<SourceLocation<'a, 'a>>> {
-    let module = match &frame.module {
-        Some(module) => module,
-        None => return None,
-    };
+    let module = frame.module.as_ref()?;
 
     let id = (
         module.code_identifier(),

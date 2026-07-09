@@ -782,10 +782,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
     /// Resolves a file entry by its index.
     fn resolve_file(&self, file_id: u64) -> Option<FileInfo<'d>> {
-        let line_program = match self.line_program {
-            Some(ref program) => &program.header,
-            None => return None,
-        };
+        let line_program = &self.line_program.as_ref()?.header;
 
         line_program
             .file(file_id)

@@ -314,7 +314,7 @@ impl fmt::Debug for FunctionsDebug<'_> {
 
         vec.sort_by_key(|f| (f.entry_pc, f.name));
         for function in vec {
-            writeln!(f, "{:>16x} {}", &function.entry_pc, &function.name)?;
+            writeln!(f, "{:>16x} {}", &function.entry_pc, function.name)?;
         }
 
         Ok(())

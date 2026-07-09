@@ -114,7 +114,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
     // report
     if *matches.get_one("report").unwrap() {
         println!("Cache info:");
-        println!("{:#?}", &symcache);
+        println!("{:#?}", symcache);
     }
 
     // lookup mode
