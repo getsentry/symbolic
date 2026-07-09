@@ -49,7 +49,6 @@
 - `symbolic-debuginfo`: Add a new option `max_decompressed_embedded_source_size` to `ParseObjectOptions`. This option limits the sizes of compressed embedded source files
   when they are returned from methods like `source_by_path`. ([#999](https://github.com/getsentry/symbolic/pull/999))
 
-
 ## 13.5.0
 
 **Features**

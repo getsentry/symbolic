@@ -246,10 +246,6 @@ impl<'a> XMLReader<'a> {
 }
 #[cfg(test)]
 mod tests {
-    // cdata?
-    // get value a few times
-    // missing tags
-
     use crate::xml::XMLReader;
     use std::assert_eq;
     use std::assert_matches;
@@ -281,5 +277,17 @@ mod tests {
         let mut x = XMLReader::new(r);
         x.next_instance_of_tag("t3").unwrap();
         assert_matches!(x.value::<String>(), Err(_));
+    }
+
+    #[test]
+    fn test_cdata() {
+        let data = r#"<t1><![CDATA[some text]]></t1>"#;
+        let r = quick_xml::Reader::from_reader(data.as_bytes());
+        let mut x = XMLReader::new(r);
+        x.next_instance_of_tag("t1").unwrap();
+        assert_eq!(
+            x.value::<String>().unwrap().unwrap(),
+            "some text".to_owned()
+        );
     }
 }

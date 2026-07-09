@@ -35,6 +35,7 @@ scroll = { workspace = true, features = ["derive"] }
 serde = { workspace = true, optional = true }
 thiserror = { workspace = true }
 time = { workspace = true }
+
 [dev-dependencies]
 insta = { workspace = true }
 similar-asserts = { workspace = true }
