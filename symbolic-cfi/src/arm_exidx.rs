@@ -92,10 +92,37 @@ fn opcodes_for_entry(exidx: &[u8], extab: &[u8], exidx_addr: u64, extab_addr: u6
     let first = read_u32le(extab, extab_off)?;
 
     if first & 0x8000_0000 == 0 {
-        // Not a compact description: this is itself a `prel31` pointer to a
-        // custom personality routine's code (personality 2). We don't
-        // execute arbitrary personality code.
-        return None;
+        // "Generic model" (EHABI §6.2): `first` is itself a `prel31` pointer
+        // to a personality routine's code (e.g. `__gxx_personality_v0`,
+        // GCC's C++ exception personality — personality index 2, or any
+        // other custom routine). We never execute that code; instead, we
+        // rely on the fact that every personality routine GCC/Clang emit for
+        // ARM (including `__gxx_personality_v0`) is built on
+        // `__gnu_unwind_frame`/`__gnu_unwind_execute`, which reads the SAME
+        // compact opcode stream from the word immediately following the
+        // personality pointer, length-prefixed by a single size byte
+        // (`total_words = size_byte + 1`) rather than compact model 1's
+        // 2-byte marker+count header. This matches LLVM libunwind's own
+        // `decode_eht_entry` (`Unwind-EHABI.cpp`), which applies this
+        // unconditionally for any generic-model entry regardless of which
+        // specific personality routine is at `first`.
+        let header = read_u32le(extab, extab_off + 4)?;
+        let extra_words = ((header >> 24) & 0xff) as usize;
+        let mut opcodes = vec![
+            ((header >> 16) & 0xff) as u8,
+            ((header >> 8) & 0xff) as u8,
+            (header & 0xff) as u8,
+        ];
+        for i in 0..extra_words {
+            let w = read_u32le(extab, extab_off + 8 + i * 4)?;
+            opcodes.extend_from_slice(&[
+                ((w >> 24) & 0xff) as u8,
+                ((w >> 16) & 0xff) as u8,
+                ((w >> 8) & 0xff) as u8,
+                (w & 0xff) as u8,
+            ]);
+        }
+        return Some(opcodes);
     }
 
     let extra_words = ((first >> 16) & 0xff) as usize;
@@ -489,12 +516,65 @@ mod tests {
     }
 
     #[test]
-    fn opcodes_for_entry_bails_on_custom_personality() {
+    fn opcodes_for_entry_bails_when_personality_pointer_is_unresolvable() {
+        // Generic-model entry whose personality-pointer word resolves
+        // out-of-bounds of the (tiny, test-only) extab buffer: there's no
+        // header word to read opcodes from, so this must fail closed.
         let mut exidx = [0u8; 8];
         exidx[4..8].copy_from_slice(&0x7fff_fffcu32.to_le_bytes()); // bit31 clear -> extab pointer
-        let mut extab = [0u8; 4];
-        extab[0..4].copy_from_slice(&0x0000_0000u32.to_le_bytes()); // bit31 clear -> custom personality
+        let extab = [0u8; 4]; // too short to contain a header word at +4
         assert!(opcodes_for_entry(&exidx, &extab, 0, 0, 0).is_none());
+    }
+
+    // Verified against the real `doActivate<true>` entry in `libQt6Core.so.6`
+    // (a `__gxx_personality_v0`/generic-model entry): `readelf --unwind`
+    // reports `Personality routine: 0x95df8` for it, which
+    // `prel31_to_addr(word0, word0_addr)` independently reproduces exactly.
+    // The header word immediately after it is `0x0018afb0`.
+    #[test]
+    fn opcodes_for_entry_reads_generic_model_via_personality_pointer() {
+        let exidx_addr: u64 = 0x9c000; // arbitrary base, only relative offsets matter
+        let extab_addr: u64 = 0x481e14;
+        let word0_addr = exidx_addr + 4;
+        let byte_offset = extab_addr.wrapping_sub(word0_addr) as i64 as i32;
+        let word0 = (byte_offset as u32) & 0x7fff_ffff; // bit31 clear -> personality pointer
+
+        let mut exidx = [0u8; 8];
+        exidx[4..8].copy_from_slice(&word0.to_le_bytes());
+
+        let mut extab = [0u8; 8];
+        extab[0..4].copy_from_slice(&0x1234_5678u32.to_le_bytes()); // personality routine addr, unused
+        extab[4..8].copy_from_slice(&0x0018_afb0u32.to_le_bytes()); // header: size_byte=0, ops=18 af b0
+
+        let opcodes = opcodes_for_entry(&exidx, &extab, exidx_addr, extab_addr, 0).unwrap();
+        assert_eq!(opcodes, vec![0x18, 0xaf, 0xb0]);
+
+        let unwind = interpret(&opcodes).unwrap();
+        assert_eq!(cfi_text(&unwind), "STACK CFI INIT 0 0 .cfa: sp 136 + .ra: .cfa -4 + ^ r4: .cfa -36 + ^ r5: .cfa -32 + ^ r6: .cfa -28 + ^ r7: .cfa -24 + ^ r8: .cfa -20 + ^ r9: .cfa -16 + ^ r10: .cfa -12 + ^ r11: .cfa -8 + ^ lr: .cfa -4 + ^");
+    }
+
+    #[test]
+    fn opcodes_for_entry_reads_generic_model_continuation_words() {
+        // Synthetic: size_byte=1 means 2 total words of opcodes (this
+        // function's real-world counterpart above only needed 1), exercising
+        // the continuation-word loop the personality-1 path already covers
+        // but the generic-model path has its own copy of.
+        let exidx_addr: u64 = 0;
+        let extab_addr: u64 = 0x100;
+        let word0_addr = exidx_addr + 4;
+        let byte_offset = extab_addr.wrapping_sub(word0_addr) as i64 as i32;
+        let word0 = (byte_offset as u32) & 0x7fff_ffff;
+
+        let mut exidx = [0u8; 8];
+        exidx[4..8].copy_from_slice(&word0.to_le_bytes());
+
+        let mut extab = [0u8; 12];
+        extab[0..4].copy_from_slice(&0u32.to_le_bytes()); // personality routine addr, unused
+        extab[4..8].copy_from_slice(&0x01_b0_b0_b0u32.to_le_bytes()); // size_byte=1, ops b0 b0 b0
+        extab[8..12].copy_from_slice(&0xb0_b0_b0_b0u32.to_le_bytes()); // continuation word
+
+        let opcodes = opcodes_for_entry(&exidx, &extab, exidx_addr, extab_addr, 0).unwrap();
+        assert_eq!(opcodes, vec![0xb0, 0xb0, 0xb0, 0xb0, 0xb0, 0xb0, 0xb0]);
     }
 
     #[test]
