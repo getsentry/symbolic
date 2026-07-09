@@ -954,9 +954,42 @@ impl<'data> BreakpadObject<'data> {
         data.starts_with(b"MODULE ")
     }
 
-    /// Tries to parse a Breakpad object from the given slice.
+    /// Tries to parse a Breakpad object from the given slice, with default options.
     pub fn parse(data: &'data [u8]) -> Result<Self, BreakpadError> {
         Self::parse_with_opts(data, Default::default())
+    }
+
+    /// Tries to parse a Breakpad object from the given slice.
+    fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, BreakpadError> {
+        // Ensure that we do not read the entire file at once.
+        let header = if data.len() > BREAKPAD_HEADER_CAP {
+            match str::from_utf8(&data[..BREAKPAD_HEADER_CAP]) {
+                Ok(_) => &data[..BREAKPAD_HEADER_CAP],
+                Err(e) => match e.error_len() {
+                    None => &data[..e.valid_up_to()],
+                    Some(_) => return Err(e.into()),
+                },
+            }
+        } else {
+            data
+        };
+
+        let first_line = header.split(|b| *b == b'\n').next().unwrap_or_default();
+        let module = BreakpadModuleRecord::parse(first_line)?;
+
+        Ok(BreakpadObject {
+            id: module
+                .id
+                .parse()
+                .map_err(|_| BreakpadErrorKind::InvalidModuleId)?,
+            arch: module
+                .arch
+                .parse()
+                .map_err(|_| BreakpadErrorKind::InvalidArchitecture)?,
+            module,
+            data,
+            max_inline_depth: opts.max_inline_depth,
+        })
     }
 
     /// The container file format, which is always `FileFormat::Breakpad`.
@@ -1148,35 +1181,7 @@ impl<'data> Parse<'data> for BreakpadObject<'data> {
     }
 
     fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
-        // Ensure that we do not read the entire file at once.
-        let header = if data.len() > BREAKPAD_HEADER_CAP {
-            match str::from_utf8(&data[..BREAKPAD_HEADER_CAP]) {
-                Ok(_) => &data[..BREAKPAD_HEADER_CAP],
-                Err(e) => match e.error_len() {
-                    None => &data[..e.valid_up_to()],
-                    Some(_) => return Err(e.into()),
-                },
-            }
-        } else {
-            data
-        };
-
-        let first_line = header.split(|b| *b == b'\n').next().unwrap_or_default();
-        let module = BreakpadModuleRecord::parse(first_line)?;
-
-        Ok(BreakpadObject {
-            id: module
-                .id
-                .parse()
-                .map_err(|_| BreakpadErrorKind::InvalidModuleId)?,
-            arch: module
-                .arch
-                .parse()
-                .map_err(|_| BreakpadErrorKind::InvalidArchitecture)?,
-            module,
-            data,
-            max_inline_depth: opts.max_inline_depth,
-        })
+        Self::parse_with_opts(data, opts)
     }
 }
 
