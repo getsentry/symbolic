@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::io::Cursor;
 
 use symbolic_common::{clean_path, ByteView};
-use symbolic_debuginfo::breakpad::BreakpadObject;
+use symbolic_debuginfo::{breakpad::BreakpadObject, Object, ParseObjectOptions};
 use symbolic_symcache::{SymCache, SymCacheConverter};
 use symbolic_testutils::fixture;
 
@@ -143,4 +143,33 @@ FUNC b3c 10 0 second()"#;
 
     let lookup_result: Vec<_> = symcache.lookup(0xb40).collect();
     assert_eq!(lookup_result[0].function().name(), "second()");
+}
+
+#[test]
+fn test_breakpad_deep_inline_functions() {
+    let mut sym = String::from(
+        r#"MODULE mac x86_64 000000000000000000000000000000000 test
+FILE 0 test.c
+INLINE_ORIGIN 0 inlined
+FUNC 1000 2000 0 outer
+1000 2000 1 0
+"#,
+    );
+    for depth in 0..1000 {
+        sym.push_str(&format!("INLINE {depth} 1 0 0 1000 2000\n"));
+    }
+
+    let limit = 512;
+    let mut opts = ParseObjectOptions::default();
+    opts.max_inline_depth = Some(limit);
+    let breakpad = Object::parse_with_opts(sym.as_bytes(), opts).unwrap();
+
+    let mut buffer = Vec::new();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&breakpad).unwrap();
+    converter.serialize(&mut Cursor::new(&mut buffer)).unwrap();
+    let symcache = SymCache::parse(&buffer).unwrap();
+
+    let lookup_result: Vec<_> = symcache.lookup(0x1000).collect();
+    assert_eq!(lookup_result.len(), limit as usize + 2);
 }
