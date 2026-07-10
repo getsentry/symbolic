@@ -979,6 +979,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Traverses a subtree during function parsing.
+    #[allow(clippy::too_many_arguments)]
     fn parse_function_children(
         &self,
         depth: isize,
