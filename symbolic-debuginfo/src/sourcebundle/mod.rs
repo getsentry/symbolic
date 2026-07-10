@@ -1514,18 +1514,13 @@ where
         }
 
         let is_empty = self.is_empty();
-        let writer = self.do_finish()?;
+        let writer = self.finish()?;
 
         Ok((!is_empty, writer))
     }
 
     /// Writes the manifest to the bundle and flushes the underlying file handle.
-    pub fn finish(self) -> Result<(), SourceBundleError> {
-        self.do_finish().map(drop)
-    }
-
-    /// Writes the manifest to the bundle and flushes the underlying file handle.
-    fn do_finish(mut self) -> Result<W, SourceBundleError> {
+    pub fn finish(mut self) -> Result<W, SourceBundleError> {
         self.write_manifest()?;
         let writer = self
             .writer

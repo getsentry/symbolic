@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+**Breaking Changes**
+
+- `SourceBundleWriter::finish` now returns the underlying writer. ([#1016](https://github.com/getsentry/symbolic/pull/1016))
+- `FormatErrorKind::InvalidBlobFormat` is changed from `u32` to `i32`. ([#1016](https://github.com/getsentry/symbolic/pull/1016))
+- `EmbeddedSource::get_contents_bounded` now replaces `EmbeddedSource::get_contents`. ([#1016](https://github.com/getsentry/symbolic/pull/1016))
+
 ## 14.0.0-alpha.1
 
 - No documented changes.
