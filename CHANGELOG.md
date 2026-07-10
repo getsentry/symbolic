@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**
+
+- `symbolic-cfi`: decode ARM EHABI (`.ARM.exidx`/`.ARM.extab`) unwind tables on ELF, covering both the compact model (personality 0/1) and the generic model (personality 2+, e.g. `__gxx_personality_v0`). Many ARM32 Linux binaries have no (or an empty) `.eh_frame`/`.debug_frame` and rely on EHABI exclusively, so this fills in CFI that was previously entirely missing for them. ([#XXXX](https://github.com/getsentry/symbolic/pull/XXXX))
+
 ## 14.0.0-alpha.1
 
 - No documented changes.
