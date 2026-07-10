@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::io::Cursor;
 
 use symbolic_common::{clean_path, ByteView};
-use symbolic_debuginfo::{breakpad::BreakpadObject, Object, Parse, ParseObjectOptions};
+use symbolic_debuginfo::{breakpad::BreakpadObject, Object, ParseObjectOptions};
 use symbolic_symcache::{SymCache, SymCacheConverter};
 use symbolic_testutils::fixture;
 
