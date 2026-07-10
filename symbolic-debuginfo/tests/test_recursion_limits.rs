@@ -19,7 +19,6 @@ fn test_resolve_function() {
 #[test]
 fn test_function_inlining() {
     let data = std::fs::read("tests/fixtures/deep_inline.elf").unwrap();
-
     let object = Object::parse(&data).unwrap();
 
     let session = object.debug_session().unwrap();

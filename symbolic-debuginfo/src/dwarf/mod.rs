@@ -641,9 +641,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     /// The maximum depth to recurse to in order to resolve a function name.
     const MAX_RESOLVE_FUNCTION_DEPTH: u8 = 32;
 
-    /// The maximum depth to recurse to when parsing inlined functions.
-    const MAX_PARSE_INLINEE_DEPTH: u32 = 256;
-
     /// Creates a DWARF unit from the gimli `Unit` type.
     fn from_unit(
         unit: &'a Unit<'d>,
@@ -921,6 +918,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     fn parse_functions(
         &self,
         depth: isize,
+        remaining_inline_depth: u32,
         entries: &mut EntriesRaw<'d, '_>,
         output: &mut FunctionsOutput<'_, 'd>,
     ) -> Result<(), DwarfError> {
@@ -930,9 +928,17 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             if next_depth <= depth {
                 return Ok(());
             }
+
             if let Some(abbrev) = entries.read_abbreviation()? {
                 if abbrev.tag() == constants::DW_TAG_subprogram {
-                    self.parse_function(dw_die_offset, next_depth, entries, abbrev, output)?;
+                    self.parse_function(
+                        dw_die_offset,
+                        next_depth,
+                        remaining_inline_depth,
+                        entries,
+                        abbrev,
+                        output,
+                    )?;
                 } else {
                     entries.skip_attributes(abbrev.attributes())?;
                 }
@@ -954,6 +960,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         &self,
         dw_die_offset: gimli::UnitOffset<usize>,
         depth: isize,
+        remaining_inline_depth: u32,
         entries: &mut EntriesRaw<'d, '_>,
         abbrev: &gimli::Abbreviation,
         output: &mut FunctionsOutput<'_, 'd>,
@@ -984,7 +991,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         // However, non-inlined functions may be present in this subtree, so we must still descend
         // into it.
         if ranges.is_empty() {
-            return self.parse_functions(depth, entries, output);
+            return self.parse_functions(depth, remaining_inline_depth, entries, output);
         }
 
         // Resolve functions in the symbol table first. Only if there is no entry, fall back
@@ -1031,7 +1038,13 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 let size = range.end - range.begin;
                 (
                     *range,
-                    FunctionBuilder::new(name.clone(), self.compilation_dir(), address, size),
+                    FunctionBuilder::new(
+                        name.clone(),
+                        self.compilation_dir(),
+                        address,
+                        size,
+                        remaining_inline_depth,
+                    ),
                 )
             })
             .collect();
@@ -1040,6 +1053,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         self.parse_function_children(
             depth,
             0,
+            remaining_inline_depth,
             entries,
             &mut builders,
             output,
@@ -1080,6 +1094,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         &self,
         depth: isize,
         inline_depth: u32,
+        remaining_inline_depth: u32,
         entries: &mut EntriesRaw<'d, '_>,
         builders: &mut [(Range, FunctionBuilder<'d>)],
         output: &mut FunctionsOutput<'_, 'd>,
@@ -1099,13 +1114,21 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             match abbrev.tag() {
                 constants::DW_TAG_subprogram => {
                     // Nested subprograms resolve their own language independently.
-                    self.parse_function(dw_die_offset, next_depth, entries, abbrev, output)?;
+                    self.parse_function(
+                        dw_die_offset,
+                        next_depth,
+                        remaining_inline_depth,
+                        entries,
+                        abbrev,
+                        output,
+                    )?;
                 }
                 constants::DW_TAG_inlined_subroutine => {
                     self.parse_inlinee(
                         dw_die_offset,
                         next_depth,
                         inline_depth,
+                        remaining_inline_depth,
                         entries,
                         abbrev,
                         builders,
@@ -1140,13 +1163,14 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         dw_die_offset: gimli::UnitOffset<usize>,
         depth: isize,
         inline_depth: u32,
+        remaining_inline_depth: u32,
         entries: &mut EntriesRaw<'d, '_>,
         abbrev: &gimli::Abbreviation,
         builders: &mut [(Range, FunctionBuilder<'d>)],
         output: &mut FunctionsOutput<'_, 'd>,
         language: Language,
     ) -> Result<(), DwarfError> {
-        if inline_depth == DwarfUnit::MAX_PARSE_INLINEE_DEPTH {
+        if remaining_inline_depth == 0 {
             return Err(DwarfError::new(
                 DwarfErrorKind::CorruptedData,
                 "Exceeded max parse inlinee depth",
@@ -1163,7 +1187,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         // However, non-inlined functions may be present in this subtree, so we must still descend
         // into it.
         if ranges.is_empty() {
-            return self.parse_functions(depth, entries, output);
+            return self.parse_functions(depth, remaining_inline_depth, entries, output);
         }
         let ranges = ranges.clone();
 
@@ -1195,6 +1219,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         self.parse_function_children(
             depth,
             inline_depth + 1,
+            remaining_inline_depth - 1,
             entries,
             builders,
             output,
@@ -1402,10 +1427,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     fn functions(
         &self,
         seen_ranges: &mut BTreeSet<(u64, u64)>,
+        max_inline_depth: u32,
     ) -> Result<Vec<Function<'d>>, DwarfError> {
         let mut entries = self.inner.unit.entries_raw(None)?;
         let mut output = FunctionsOutput::with_seen_ranges(seen_ranges);
-        self.parse_functions(-1, &mut entries, &mut output)?;
+        self.parse_functions(-1, max_inline_depth, &mut entries, &mut output)?;
         Ok(output.functions)
     }
 }
@@ -1849,6 +1875,7 @@ impl std::iter::FusedIterator for DwarfUnitIterator<'_> {}
 pub struct DwarfDebugSession<'data> {
     cell: SelfCell<Box<DwarfSections<'data>>, DwarfInfo<'data>>,
     bcsymbolmap: Option<Arc<BcSymbolMap<'data>>>,
+    max_inline_depth: u32,
 }
 
 impl<'data> DwarfDebugSession<'data> {
@@ -1858,6 +1885,7 @@ impl<'data> DwarfDebugSession<'data> {
         symbol_map: SymbolMap<'data>,
         address_offset: i64,
         kind: ObjectKind,
+        max_inline_depth: u32,
     ) -> Result<Self, DwarfError>
     where
         D: Dwarf<'data>,
@@ -1870,6 +1898,7 @@ impl<'data> DwarfDebugSession<'data> {
         Ok(DwarfDebugSession {
             cell,
             bcsymbolmap: None,
+            max_inline_depth,
         })
     }
 
@@ -1898,6 +1927,7 @@ impl<'data> DwarfDebugSession<'data> {
             functions: Vec::new().into_iter(),
             seen_ranges: BTreeSet::new(),
             finished: false,
+            max_inline_depth: self.max_inline_depth,
         }
     }
 
@@ -2044,6 +2074,7 @@ pub struct DwarfFunctionIterator<'s> {
     functions: std::vec::IntoIter<Function<'s>>,
     seen_ranges: BTreeSet<(u64, u64)>,
     finished: bool,
+    max_inline_depth: u32,
 }
 
 impl<'s> Iterator for DwarfFunctionIterator<'s> {
@@ -2065,7 +2096,7 @@ impl<'s> Iterator for DwarfFunctionIterator<'s> {
                 None => break,
             };
 
-            self.functions = match unit.functions(&mut self.seen_ranges) {
+            self.functions = match unit.functions(&mut self.seen_ranges, self.max_inline_depth) {
                 Ok(functions) => functions.into_iter(),
                 Err(error) => return Some(Err(error)),
             };
