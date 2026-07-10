@@ -930,7 +930,7 @@ impl<W: Write> AsciiCfiWriter<W> {
     }
 
     fn process_pdb(&mut self, pdb: &PdbObject<'_>) -> Result<(), CfiError> {
-        let mut pdb = pdb.inner().write();
+        let mut pdb = pdb.inner().lock();
         let frame_table = pdb.frame_table()?;
         let address_map = pdb.address_map()?;
 

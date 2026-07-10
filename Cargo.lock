@@ -240,12 +240,6 @@ checksum = "5e764a1d40d510daf35e07be9eb06e75770908c27d411ee6c92109c9840eaaf7"
 
 [[package]]
 name = "bitflags"
-version = "1.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
-
-[[package]]
-name = "bitflags"
 version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1be3f42a67d6d345ecd59f675f3f012d6974981560836e938c22b424b85ce1be"
@@ -276,7 +270,7 @@ dependencies = [
  "minidump-common",
  "nom",
  "range-map",
- "thiserror 2.0.18",
+ "thiserror",
  "tracing",
 ]
 
@@ -538,7 +532,7 @@ version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f476fe445d41c9e991fd07515a6f463074b782242ccf4a5b7b1d1012e70824df"
 dependencies = [
- "bitflags 2.7.0",
+ "bitflags",
  "crossterm_winapi",
  "libc",
  "mio",
@@ -682,12 +676,6 @@ dependencies = [
 
 [[package]]
 name = "fallible-iterator"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
-
-[[package]]
-name = "fallible-iterator"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
@@ -806,7 +794,7 @@ version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0bf7f043f89559805f8c7cacc432749b2fa0d0a0a9ee46ce47164ed5ba7f126c"
 dependencies = [
- "fallible-iterator 0.3.0",
+ "fallible-iterator",
  "stable_deref_trait",
 ]
 
@@ -1154,7 +1142,7 @@ dependencies = [
  "swc_common",
  "swc_ecma_parser",
  "swc_ecma_visit",
- "thiserror 2.0.18",
+ "thiserror",
  "tracing",
 ]
 
@@ -1288,7 +1276,7 @@ dependencies = [
  "prost",
  "range-map",
  "scroll 0.12.0",
- "thiserror 2.0.18",
+ "thiserror",
  "time",
  "tracing",
  "uuid",
@@ -1300,7 +1288,7 @@ version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e16d10087ae9e375bad7a40e8ef5504bc08e808ccc6019067ff9de42a84570f"
 dependencies = [
- "bitflags 2.7.0",
+ "bitflags",
  "debugid",
  "num-derive",
  "num-traits",
@@ -1325,7 +1313,7 @@ dependencies = [
  "scroll 0.12.0",
  "serde",
  "serde_json",
- "thiserror 2.0.18",
+ "thiserror",
  "tracing",
  "yaxpeax-x86",
 ]
@@ -1354,7 +1342,7 @@ dependencies = [
  "minidump-processor",
  "minidump-unwind",
  "symbolic",
- "thiserror 2.0.18",
+ "thiserror",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -1559,28 +1547,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "pdb"
-version = "0.8.0"
+name = "pdb-addr2line"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82040a392923abe6279c00ab4aff62d5250d1c8555dc780e4b02783a7aa74863"
+checksum = "d37ea3b284071f1c03aba6b97fd2c8d884348ef8fd0a9f2c2e0f66c2f451ba17"
 dependencies = [
- "fallible-iterator 0.2.0",
- "scroll 0.11.0",
- "uuid",
+ "bitflags",
+ "elsa",
+ "maybe-owned",
+ "pdb2",
+ "range-collections",
+ "thiserror",
 ]
 
 [[package]]
-name = "pdb-addr2line"
-version = "0.10.4"
+name = "pdb2"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4e89a9f2f40b2389ba6da0814c8044bf942bece03dffa1514f84e3b525f4f9a"
+checksum = "408d6fa13d943ee4b76ffda52cc28e817df9c2c4b2c46bd9aec8bff574377e1a"
 dependencies = [
- "bitflags 1.3.2",
- "elsa",
- "maybe-owned",
- "pdb",
- "range-collections",
- "thiserror 1.0.69",
+ "fallible-iterator",
+ "scroll 0.12.0",
+ "uuid",
 ]
 
 [[package]]
@@ -1728,7 +1716,7 @@ version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "239df02d8349b06fc07398a3a1697b06418223b1c7725085e801e7c0fc6a12ec"
 dependencies = [
- "bitflags 2.7.0",
+ "bitflags",
  "hex",
 ]
 
@@ -1740,7 +1728,7 @@ checksum = "485ce6a0eaff8ca5566dde882ee2ef65dc25ba9f3ef1dba1129a8dd78a181952"
 dependencies = [
  "serde",
  "serde_json",
- "thiserror 2.0.18",
+ "thiserror",
  "uuid",
  "watto",
 ]
@@ -1753,7 +1741,7 @@ checksum = "14cae93065090804185d3b75f0bf93b8eeda30c7a9b4a33d3bdb3988d6229e50"
 dependencies = [
  "bit-set",
  "bit-vec",
- "bitflags 2.7.0",
+ "bitflags",
  "lazy_static",
  "num-traits",
  "rand",
@@ -1868,12 +1856,13 @@ dependencies = [
 
 [[package]]
 name = "range-collections"
-version = "0.2.4"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61fdfd79629e2b44a1d34b4d227957174cb858e6b86ee45fad114edbcfc903ab"
+checksum = "861706ea9c4aded7584c5cd1d241cec2ea7f5f50999f236c22b65409a1f1a0d0"
 dependencies = [
  "binary-merge",
  "inplace-vec-builder",
+ "ref-cast",
  "smallvec",
 ]
 
@@ -1912,7 +1901,27 @@ version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03a862b389f93e68874fbf580b9de08dd02facb9a788ebadaf4a3fd33cf58834"
 dependencies = [
- "bitflags 2.7.0",
+ "bitflags",
+]
+
+[[package]]
+name = "ref-cast"
+version = "1.0.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f354300ae66f76f1c85c5f84693f0ce81d747e2c3f21a45fef496d89c960bf7d"
+dependencies = [
+ "ref-cast-impl",
+]
+
+[[package]]
+name = "ref-cast-impl"
+version = "1.0.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7186006dcb21920990093f30e3dea63b7d6e977bf1256be20c3563a5db070da"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1977,7 +1986,7 @@ version = "0.38.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a78891ee6bf2340288408954ac787aa063d8e8817e9f53abb37c695c6d834ef6"
 dependencies = [
- "bitflags 2.7.0",
+ "bitflags",
  "errno",
  "libc",
  "linux-raw-sys",
@@ -2022,12 +2031,6 @@ name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
-
-[[package]]
-name = "scroll"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04c565b551bafbef4157586fa379538366e4385d42082f255bfd96e4fe8519da"
 
 [[package]]
 name = "scroll"
@@ -2296,7 +2299,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85cd3e3828fb4dd5ba0e7091777edb6c3db3cd2d6fc10547b29b40f6949a29be"
 dependencies = [
  "memchr",
- "thiserror 2.0.18",
+ "thiserror",
 ]
 
 [[package]]
@@ -2398,7 +2401,7 @@ version = "18.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a573a0c72850dec8d4d8085f152d5778af35a2520c3093b242d2d1d50776da7c"
 dependencies = [
- "bitflags 2.7.0",
+ "bitflags",
  "is-macro",
  "num-bigint",
  "once_cell",
@@ -2417,7 +2420,7 @@ version = "27.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f1a51af1a92cd4904c073b293e491bbc0918400a45d58227b34c961dd6f52d7"
 dependencies = [
- "bitflags 2.7.0",
+ "bitflags",
  "either",
  "num-bigint",
  "phf",
@@ -2513,7 +2516,7 @@ dependencies = [
  "symbolic-common",
  "symbolic-debuginfo",
  "symbolic-testutils",
- "thiserror 2.0.18",
+ "thiserror",
 ]
 
 [[package]]
@@ -2538,7 +2541,7 @@ dependencies = [
  "debugid",
  "elementtree",
  "elsa",
- "fallible-iterator 0.3.0",
+ "fallible-iterator",
  "flate2",
  "gimli 0.33.0",
  "goblin",
@@ -2561,7 +2564,7 @@ dependencies = [
  "symbolic-ppdb",
  "symbolic-testutils",
  "tempfile",
- "thiserror 2.0.18",
+ "thiserror",
  "wasmparser",
  "zip",
  "zstd",
@@ -2571,7 +2574,7 @@ dependencies = [
 name = "symbolic-demangle"
 version = "14.0.0-alpha.2"
 dependencies = [
- "bitflags 2.7.0",
+ "bitflags",
  "cc",
  "cpp_demangle",
  "itoa",
@@ -2603,7 +2606,7 @@ dependencies = [
  "symbolic-common",
  "symbolic-debuginfo",
  "symbolic-testutils",
- "thiserror 2.0.18",
+ "thiserror",
  "uuid",
  "watto",
 ]
@@ -2617,7 +2620,7 @@ dependencies = [
  "sourcemap",
  "symbolic-common",
  "symbolic-testutils",
- "thiserror 2.0.18",
+ "thiserror",
  "tracing",
  "watto",
 ]
@@ -2633,7 +2636,7 @@ dependencies = [
  "symbolic-debuginfo",
  "symbolic-il2cpp",
  "symbolic-testutils",
- "thiserror 2.0.18",
+ "thiserror",
  "tracing",
  "watto",
 ]
@@ -2657,7 +2660,7 @@ dependencies = [
  "serde",
  "similar-asserts",
  "symbolic-testutils",
- "thiserror 2.0.18",
+ "thiserror",
  "time",
 ]
 
@@ -2671,7 +2674,7 @@ dependencies = [
  "symbolic-common",
  "symbolic-debuginfo",
  "symbolic-il2cpp",
- "thiserror 2.0.18",
+ "thiserror",
  "wasm-bindgen",
  "wasm-bindgen-test",
 ]
@@ -2729,31 +2732,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.69"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
-dependencies = [
- "thiserror-impl 1.0.69",
-]
-
-[[package]]
-name = "thiserror"
 version = "2.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4288b5bcbc7920c07a1149a35cf9590a2aa808e0bc1eafaade0b80947865fbc4"
 dependencies = [
- "thiserror-impl 2.0.18",
-]
-
-[[package]]
-name = "thiserror-impl"
-version = "1.0.69"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
+ "thiserror-impl",
 ]
 
 [[package]]
@@ -3149,7 +3132,7 @@ version = "0.243.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6d8db401b0528ec316dfbe579e6ab4152d61739cfe076706d2009127970159d"
 dependencies = [
- "bitflags 2.7.0",
+ "bitflags",
  "hashbrown 0.15.2",
  "indexmap",
  "semver",
@@ -3164,7 +3147,7 @@ checksum = "bfbc1480663d640f8c9f7a1ac70922eea60ac16fea79df883177df3bc7bb8b49"
 dependencies = [
  "hashbrown 0.15.2",
  "leb128",
- "thiserror 2.0.18",
+ "thiserror",
 ]
 
 [[package]]
