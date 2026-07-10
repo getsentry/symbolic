@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- Handle XML parsing without recursion. ([#1003](https://github.com/getsentry/symbolic/pull/1003))
+
 ## 14.0.0-alpha.1
 
 - No documented changes.
@@ -11,7 +17,6 @@
 - Add limit on inline nesting depth when parsing Breakpad objects. ([#1014](https://github.com/getsentry/symbolic/pull/1014))
 - Fix potential out of bounds panic on invalid section offsets ([#1013](https://github.com/getsentry/symbolic/pull/1013))
 - Fix a potential panic when locating sections in an elf file. ([#1012](https://github.com/getsentry/symbolic/pull/1012))
-- Handle XML parsing without recursion. ([#1003](https://github.com/getsentry/symbolic/pull/1003))
 
 ## 13.8.0
 
