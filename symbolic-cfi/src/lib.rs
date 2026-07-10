@@ -499,8 +499,8 @@ impl<W: Write> AsciiCfiWriter<W> {
         // DWARF CFI was found, same "don't let one source's failure hide the
         // other's data" spirit as `process_dwarf` already has for
         // `debug_frame` vs. `eh_frame`.
-        arm_exidx::write_arm_exidx_cfi(&mut self.inner, object)?;
-        dwarf_result
+        let exidx_result = arm_exidx::write_arm_exidx_cfi(&mut self.inner, object);
+        combine_elf_cfi_results(dwarf_result, exidx_result)
     }
 
     fn process_dwarf<'d: 'o, 'o, O>(
@@ -1671,6 +1671,23 @@ impl<W: Write> AsciiCfiWriter<W> {
     }
 }
 
+/// Combines `process_elf`'s two independent CFI sources (DWARF and ARM
+/// EHABI) into a single result, without letting either source's failure
+/// discard data the other one already wrote -- `CfiCache::from_object_with_opts`
+/// aborts and drops the *entire* output buffer on `Err`, so as long as at
+/// least one side produced something usable, that's not an error.
+fn combine_elf_cfi_results(
+    dwarf_result: Result<(), CfiError>,
+    exidx_result: Result<bool, CfiError>,
+) -> Result<(), CfiError> {
+    match (dwarf_result, exidx_result) {
+        (Ok(()), _) => Ok(()),
+        (Err(_), Ok(true)) => Ok(()),
+        (Err(dwarf_err), Ok(false)) => Err(dwarf_err),
+        (Err(dwarf_err), Err(_)) => Err(dwarf_err),
+    }
+}
+
 impl<W: Write + Default> AsciiCfiWriter<W> {
     /// Extracts CFI from the given object and pipes it to a new writer instance.
     pub fn transform(object: &Object<'_>) -> Result<W, CfiError> {
@@ -1844,5 +1861,47 @@ mod tests {
     fn test_cfi_register_name_ppc_lr() {
         assert_eq!(cfi_register_name(CpuFamily::Ppc32, 65), Some("lr"));
         assert_eq!(cfi_register_name(CpuFamily::Ppc64, 65), Some("lr"));
+    }
+
+    #[test]
+    fn combine_elf_cfi_results_prefers_dwarf_success() {
+        // DWARF succeeded: whatever EHABI did (or didn't) shouldn't matter,
+        // since the DWARF data written to `self.inner` is already valid.
+        assert!(combine_elf_cfi_results(Ok(()), Ok(true)).is_ok());
+        assert!(combine_elf_cfi_results(Ok(()), Ok(false)).is_ok());
+        assert!(combine_elf_cfi_results(Ok(()), Err(CfiErrorKind::BadDebugInfo.into())).is_ok());
+    }
+
+    #[test]
+    fn combine_elf_cfi_results_keeps_exidx_data_on_dwarf_failure() {
+        // Regression test: a DWARF-side error must not discard usable EHABI
+        // records that were already written to the output buffer.
+        let result = combine_elf_cfi_results(Err(CfiErrorKind::BadDebugInfo.into()), Ok(true));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn combine_elf_cfi_results_keeps_dwarf_data_on_exidx_failure() {
+        // Regression test: an EHABI-side error (e.g. a write failure) must
+        // not discard already-written, valid DWARF CFI.
+        let result = combine_elf_cfi_results(Ok(()), Err(CfiErrorKind::WriteFailed.into()));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn combine_elf_cfi_results_errors_when_neither_side_wrote_anything() {
+        // Original behavior must be preserved for objects where EHABI
+        // genuinely contributed nothing (wrong arch, no `.ARM.exidx`, all
+        // entries skipped) and DWARF also failed.
+        let result = combine_elf_cfi_results(Err(CfiErrorKind::BadDebugInfo.into()), Ok(false));
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), CfiErrorKind::BadDebugInfo);
+
+        let result = combine_elf_cfi_results(
+            Err(CfiErrorKind::BadDebugInfo.into()),
+            Err(CfiErrorKind::WriteFailed.into()),
+        );
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), CfiErrorKind::BadDebugInfo);
     }
 }

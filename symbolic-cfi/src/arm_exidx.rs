@@ -321,6 +321,18 @@ fn location_expr(loc: &Location, cfa: &Location, deref: bool) -> String {
     if deref { format!("{expr} ^") } else { expr }
 }
 
+/// Returns the address bounding the end of the function whose `.ARM.exidx`
+/// entry starts at `starts[idx]`: the next entry's (Thumb-bit-cleared)
+/// start address if one exists, otherwise `text_end` as a fallback for the
+/// last entry in the table. Returns `None` when neither is available,
+/// meaning the caller should skip this entry rather than guess a size.
+fn next_boundary(starts: &[u64], idx: usize, text_end: Option<u64>) -> Option<u64> {
+    match starts.get(idx + 1) {
+        Some(&next) => Some(next & !1),
+        None => text_end,
+    }
+}
+
 /// Reads `.ARM.exidx`/`.ARM.extab` from `object` (if present) and writes
 /// breakpad `STACK CFI INIT` records for every entry this decoder supports.
 ///
@@ -328,17 +340,22 @@ fn location_expr(loc: &Location, cfa: &Location, deref: bool) -> String {
 /// interpret, are silently skipped rather than erroring, since `.ARM.exidx`
 /// commonly contains many such entries (e.g. non-unwindable veneers) even in
 /// otherwise well-formed binaries.
-pub(crate) fn write_arm_exidx_cfi<'d, 'o, O, W>(out: &mut W, object: &O) -> Result<(), CfiError>
+///
+/// Returns whether at least one `STACK CFI INIT` record was written, so
+/// callers can tell genuinely-useful output apart from a no-op (wrong
+/// architecture, no `.ARM.exidx` section, or every entry skipped) without
+/// inspecting `out` themselves.
+pub(crate) fn write_arm_exidx_cfi<'d, 'o, O, W>(out: &mut W, object: &O) -> Result<bool, CfiError>
 where
     O: symbolic_debuginfo::dwarf::Dwarf<'o> + symbolic_debuginfo::ObjectLike<'d, 'o>,
     W: Write,
 {
     if object.arch().cpu_family() != CpuFamily::Arm32 {
-        return Ok(());
+        return Ok(false);
     }
 
     let Some(exidx_section) = object.section("ARM.exidx") else {
-        return Ok(());
+        return Ok(false);
     };
     let extab_section = object.section("ARM.extab");
     let extab_data: &[u8] = extab_section.as_ref().map_or(&[], |s| s.data.as_ref());
@@ -363,10 +380,24 @@ where
         starts.push(fn_addr);
     }
 
-    for idx in 0..starts.len().saturating_sub(1) {
+    // The final `.ARM.exidx` entry has no successor to derive its size
+    // from. GNU ld.bfd conventionally appends an `EXIDX_CANTUNWIND`
+    // sentinel entry (which `opcodes_for_entry` already reads as `None`,
+    // skipping it below), but that's a linker convention, not something
+    // the EHABI spec guarantees -- other toolchains may not add one, in
+    // which case the last real entry needs an explicit upper bound. Fall
+    // back to the end of the `.text` section it's part of.
+    let text_end = object
+        .section("text")
+        .map(|s| s.address + s.data.len() as u64);
+
+    let mut wrote_any = false;
+    for idx in 0..starts.len() {
         let entry_off = idx * 8;
         let start_addr = starts[idx] & !1; // clear the Thumb bit
-        let next_addr = starts[idx + 1] & !1;
+        let Some(next_addr) = next_boundary(&starts, idx, text_end) else {
+            continue;
+        };
         if next_addr <= start_addr || start_addr < load_address {
             continue;
         }
@@ -380,9 +411,10 @@ where
         };
 
         write_record(out, start_addr - load_address, size, &unwind)?;
+        wrote_any = true;
     }
 
-    Ok(())
+    Ok(wrote_any)
 }
 
 #[cfg(test)]
@@ -393,6 +425,39 @@ mod tests {
         let mut buf = Vec::new();
         write_record(&mut buf, 0, 0, unwind).unwrap();
         String::from_utf8(buf).unwrap().trim().to_string()
+    }
+
+    #[test]
+    fn next_boundary_uses_next_entry_start_when_present() {
+        let starts = vec![0x1000, 0x1010, 0x1020];
+        assert_eq!(next_boundary(&starts, 0, None), Some(0x1010));
+        assert_eq!(next_boundary(&starts, 1, None), Some(0x1020));
+        // A `text_end` fallback shouldn't be consulted when a real
+        // successor entry exists.
+        assert_eq!(next_boundary(&starts, 0, Some(0x9999)), Some(0x1010));
+    }
+
+    #[test]
+    fn next_boundary_clears_thumb_bit_on_next_entry_start() {
+        let starts = vec![0x1000, 0x1011]; // 0x1011 = Thumb function at 0x1010
+        assert_eq!(next_boundary(&starts, 0, None), Some(0x1010));
+    }
+
+    #[test]
+    fn next_boundary_falls_back_to_text_end_for_last_entry() {
+        // Regression test: a binary whose linker doesn't append an
+        // `EXIDX_CANTUNWIND` sentinel entry (not guaranteed by the EHABI
+        // spec, just a GNU ld.bfd convention) must still get a usable size
+        // for its last real function, instead of that entry being silently
+        // dropped entirely.
+        let starts = vec![0x1000, 0x1010, 0x1020];
+        assert_eq!(next_boundary(&starts, 2, Some(0x1030)), Some(0x1030));
+    }
+
+    #[test]
+    fn next_boundary_is_none_without_a_successor_or_text_end() {
+        let starts = vec![0x1000];
+        assert_eq!(next_boundary(&starts, 0, None), None);
     }
 
     // The following opcode streams and their expected results were taken
