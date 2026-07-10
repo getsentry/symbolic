@@ -26,6 +26,8 @@
 use std::io::Write;
 
 use symbolic_common::CpuFamily;
+use symbolic_debuginfo::dwarf::gimli::Endianity;
+use symbolic_debuginfo::dwarf::Endian;
 
 use crate::CfiError;
 
@@ -44,9 +46,16 @@ fn core_reg_name(n: u8) -> &'static str {
     NAMES[n as usize]
 }
 
-fn read_u32le(data: &[u8], offset: usize) -> Option<u32> {
-    data.get(offset..offset + 4)
-        .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
+/// Reads a 32-bit word at `offset`, in `endian` byte order -- EHABI tables are encoded in the
+/// target's own byte order (ARM IHI 0038B), matching the rest of the object, not unconditionally
+/// little-endian; ARM32 has real (if rare in practice) big-endian (BE8/BE32) targets.
+fn read_u32(data: &[u8], offset: usize, endian: Endian) -> Option<u32> {
+    let bytes: [u8; 4] = data.get(offset..offset + 4)?.try_into().unwrap();
+    Some(if endian.is_little_endian() {
+        u32::from_le_bytes(bytes)
+    } else {
+        u32::from_be_bytes(bytes)
+    })
 }
 
 /// Decodes a `prel31` value (a 31-bit, sign-extended, PC-relative offset,
@@ -66,8 +75,15 @@ fn prel31_to_addr(word: u32, place_addr: u64) -> u64 {
 /// already extracted from either the inline (personality 0) or `.ARM.extab`
 /// (personality 1) encoding. `None` is returned by the caller instead of an
 /// empty vec for `EXIDX_CANTUNWIND` and for personality-2/custom entries.
-fn opcodes_for_entry(exidx: &[u8], extab: &[u8], exidx_addr: u64, extab_addr: u64, entry_off: usize) -> Option<Vec<u8>> {
-    let word1 = read_u32le(exidx, entry_off + 4)?;
+fn opcodes_for_entry(
+    exidx: &[u8],
+    extab: &[u8],
+    exidx_addr: u64,
+    extab_addr: u64,
+    entry_off: usize,
+    endian: Endian,
+) -> Option<Vec<u8>> {
+    let word1 = read_u32(exidx, entry_off + 4, endian)?;
     if word1 == EXIDX_CANTUNWIND {
         return None;
     }
@@ -89,7 +105,7 @@ fn opcodes_for_entry(exidx: &[u8], extab: &[u8], exidx_addr: u64, extab_addr: u6
     let word1_addr = exidx_addr + entry_off as u64 + 4;
     let extab_word_addr = prel31_to_addr(word1, word1_addr);
     let extab_off = extab_word_addr.checked_sub(extab_addr)? as usize;
-    let first = read_u32le(extab, extab_off)?;
+    let first = read_u32(extab, extab_off, endian)?;
 
     if first & 0x8000_0000 == 0 {
         // "Generic model" (EHABI §6.2): `first` is itself a `prel31` pointer
@@ -106,7 +122,7 @@ fn opcodes_for_entry(exidx: &[u8], extab: &[u8], exidx_addr: u64, extab_addr: u6
         // `decode_eht_entry` (`Unwind-EHABI.cpp`), which applies this
         // unconditionally for any generic-model entry regardless of which
         // specific personality routine is at `first`.
-        let header = read_u32le(extab, extab_off + 4)?;
+        let header = read_u32(extab, extab_off + 4, endian)?;
         let extra_words = ((header >> 24) & 0xff) as usize;
         let mut opcodes = vec![
             ((header >> 16) & 0xff) as u8,
@@ -114,7 +130,7 @@ fn opcodes_for_entry(exidx: &[u8], extab: &[u8], exidx_addr: u64, extab_addr: u6
             (header & 0xff) as u8,
         ];
         for i in 0..extra_words {
-            let w = read_u32le(extab, extab_off + 8 + i * 4)?;
+            let w = read_u32(extab, extab_off + 8 + i * 4, endian)?;
             opcodes.extend_from_slice(&[
                 ((w >> 24) & 0xff) as u8,
                 ((w >> 16) & 0xff) as u8,
@@ -128,7 +144,7 @@ fn opcodes_for_entry(exidx: &[u8], extab: &[u8], exidx_addr: u64, extab_addr: u6
     let extra_words = ((first >> 16) & 0xff) as usize;
     let mut opcodes = vec![((first >> 8) & 0xff) as u8, (first & 0xff) as u8];
     for i in 0..extra_words {
-        let w = read_u32le(extab, extab_off + 4 + i * 4)?;
+        let w = read_u32(extab, extab_off + 4 + i * 4, endian)?;
         opcodes.extend_from_slice(&[
             ((w >> 24) & 0xff) as u8,
             ((w >> 16) & 0xff) as u8,
@@ -364,6 +380,7 @@ where
     let exidx = &exidx_section.data;
     let exidx_addr = exidx_section.address;
     let load_address = object.load_address();
+    let endian = object.endianity();
 
     let entry_count = exidx.len() / 8;
     // Precompute every entry's start address up front, since each record's
@@ -372,7 +389,7 @@ where
     let mut starts = Vec::with_capacity(entry_count);
     for idx in 0..entry_count {
         let entry_off = idx * 8;
-        let Some(word0) = read_u32le(exidx, entry_off) else {
+        let Some(word0) = read_u32(exidx, entry_off, endian) else {
             break;
         };
         let word0_addr = exidx_addr + entry_off as u64;
@@ -403,7 +420,7 @@ where
         }
         let size = next_addr - start_addr;
 
-        let Some(opcodes) = opcodes_for_entry(exidx, extab_data, exidx_addr, extab_addr, entry_off) else {
+        let Some(opcodes) = opcodes_for_entry(exidx, extab_data, exidx_addr, extab_addr, entry_off, endian) else {
             continue;
         };
         let Some(unwind) = interpret(&opcodes) else {
@@ -543,7 +560,7 @@ mod tests {
     fn opcodes_for_entry_reads_cantunwind_as_none() {
         let mut exidx = [0u8; 8];
         exidx[4..8].copy_from_slice(&EXIDX_CANTUNWIND.to_le_bytes());
-        assert!(opcodes_for_entry(&exidx, &[], 0x1000, 0x2000, 0).is_none());
+        assert!(opcodes_for_entry(&exidx, &[], 0x1000, 0x2000, 0, Endian::Little).is_none());
     }
 
     #[test]
@@ -551,8 +568,27 @@ mod tests {
         let mut exidx = [0u8; 8];
         // Personality 0, inline: bit31 set, opcode bytes 0x01, 0xa8, 0xb0.
         exidx[4..8].copy_from_slice(&0x8001a8b0u32.to_le_bytes());
-        let opcodes = opcodes_for_entry(&exidx, &[], 0x9c000, 0xd0000, 0).unwrap();
+        let opcodes = opcodes_for_entry(&exidx, &[], 0x9c000, 0xd0000, 0, Endian::Little).unwrap();
         assert_eq!(opcodes, vec![0x01, 0xa8, 0xb0]);
+    }
+
+    #[test]
+    fn opcodes_for_entry_reads_inline_compact_big_endian() {
+        // Regression test: EHABI tables are encoded in the target's own byte order (ARM IHI
+        // 0038B), not unconditionally little-endian. ARM32 has real (if rare) big-endian
+        // (BE8/BE32) targets; without threading `Endian` through, this silently produced
+        // garbage CFI for them instead of either working correctly or erroring loudly. Same
+        // word/expected opcodes as `opcodes_for_entry_reads_inline_compact`, just BE-encoded
+        // and decoded with `Endian::Big`.
+        let mut exidx = [0u8; 8];
+        exidx[4..8].copy_from_slice(&0x8001a8b0u32.to_be_bytes());
+        let opcodes = opcodes_for_entry(&exidx, &[], 0x9c000, 0xd0000, 0, Endian::Big).unwrap();
+        assert_eq!(opcodes, vec![0x01, 0xa8, 0xb0]);
+
+        // Decoding the same big-endian bytes as little-endian must NOT coincidentally produce
+        // the same (or any valid) result -- otherwise this test wouldn't actually be exercising
+        // the endian-sensitive path.
+        assert_ne!(opcodes_for_entry(&exidx, &[], 0x9c000, 0xd0000, 0, Endian::Little), Some(vec![0x01, 0xa8, 0xb0]));
     }
 
     #[test]
@@ -576,7 +612,7 @@ mod tests {
         extab[0..4].copy_from_slice(&0x81_00_b1_08u32.to_le_bytes());
 
         let opcodes =
-            opcodes_for_entry(&exidx, &extab, exidx_addr, extab_addr, 0).unwrap();
+            opcodes_for_entry(&exidx, &extab, exidx_addr, extab_addr, 0, Endian::Little).unwrap();
         assert_eq!(opcodes, vec![0xb1, 0x08]);
     }
 
@@ -588,7 +624,7 @@ mod tests {
         let mut exidx = [0u8; 8];
         exidx[4..8].copy_from_slice(&0x7fff_fffcu32.to_le_bytes()); // bit31 clear -> extab pointer
         let extab = [0u8; 4]; // too short to contain a header word at +4
-        assert!(opcodes_for_entry(&exidx, &extab, 0, 0, 0).is_none());
+        assert!(opcodes_for_entry(&exidx, &extab, 0, 0, 0, Endian::Little).is_none());
     }
 
     // Verified against the real `doActivate<true>` entry in `libQt6Core.so.6`
@@ -611,7 +647,7 @@ mod tests {
         extab[0..4].copy_from_slice(&0x1234_5678u32.to_le_bytes()); // personality routine addr, unused
         extab[4..8].copy_from_slice(&0x0018_afb0u32.to_le_bytes()); // header: size_byte=0, ops=18 af b0
 
-        let opcodes = opcodes_for_entry(&exidx, &extab, exidx_addr, extab_addr, 0).unwrap();
+        let opcodes = opcodes_for_entry(&exidx, &extab, exidx_addr, extab_addr, 0, Endian::Little).unwrap();
         assert_eq!(opcodes, vec![0x18, 0xaf, 0xb0]);
 
         let unwind = interpret(&opcodes).unwrap();
@@ -638,7 +674,7 @@ mod tests {
         extab[4..8].copy_from_slice(&0x01_b0_b0_b0u32.to_le_bytes()); // size_byte=1, ops b0 b0 b0
         extab[8..12].copy_from_slice(&0xb0_b0_b0_b0u32.to_le_bytes()); // continuation word
 
-        let opcodes = opcodes_for_entry(&exidx, &extab, exidx_addr, extab_addr, 0).unwrap();
+        let opcodes = opcodes_for_entry(&exidx, &extab, exidx_addr, extab_addr, 0, Endian::Little).unwrap();
         assert_eq!(opcodes, vec![0xb0, 0xb0, 0xb0, 0xb0, 0xb0, 0xb0, 0xb0]);
     }
 
