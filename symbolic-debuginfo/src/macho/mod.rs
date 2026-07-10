@@ -62,23 +62,13 @@ pub struct MachObject<'d> {
     macho: mach::MachO<'d>,
     data: &'d [u8],
     bcsymbolmap: Option<Arc<BcSymbolMap<'d>>>,
+    max_inline_depth: u32,
 }
 
 impl<'d> MachObject<'d> {
     /// Tests whether the buffer could contain a MachO object.
     pub fn test(data: &[u8]) -> bool {
         matches!(MachArchive::is_fat(data), Some(false))
-    }
-
-    /// Tries to parse a MachO from the given slice.
-    pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
-        mach::MachO::parse(data, 0)
-            .map(|macho| MachObject {
-                macho,
-                data,
-                bcsymbolmap: None,
-            })
-            .map_err(MachError::new)
     }
 
     /// Parses and loads the [`BcSymbolMap`] into the object.
@@ -93,6 +83,7 @@ impl<'d> MachObject<'d> {
     ///
     /// ```
     /// use symbolic_debuginfo::macho::{BcSymbolMap, MachObject};
+    /// use symbolic_debuginfo::Parse;
     ///
     /// // let object_data = std::fs::read("dSYMs/.../Resources/DWARF/object").unwrap();
     /// # let object_data =
@@ -318,8 +309,13 @@ impl<'d> MachObject<'d> {
     /// [`has_debug_info`](struct.MachObject.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
         let symbols = self.symbol_map();
-        let mut session =
-            DwarfDebugSession::parse(self, symbols, self.load_address() as i64, self.kind())?;
+        let mut session = DwarfDebugSession::parse(
+            self,
+            symbols,
+            self.load_address() as i64,
+            self.kind(),
+            self.max_inline_depth,
+        )?;
         session.load_symbolmap(self.bcsymbolmap.clone());
         Ok(session)
     }
@@ -386,8 +382,16 @@ impl<'d> Parse<'d> for MachObject<'d> {
         Self::test(data)
     }
 
-    fn parse_with_opts(data: &'d [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
-        Self::parse(data)
+    /// Tries to parse a MachO from the given slice.
+    fn parse_with_opts(data: &'d [u8], opts: ParseObjectOptions) -> Result<Self, MachError> {
+        mach::MachO::parse(data, 0)
+            .map(|macho| MachObject {
+                macho,
+                data,
+                bcsymbolmap: None,
+                max_inline_depth: opts.max_inline_depth,
+            })
+            .map_err(MachError::new)
     }
 }
 

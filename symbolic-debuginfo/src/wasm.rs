@@ -6,8 +6,8 @@ use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
+use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::{base::*, ParseObjectOptions};
 
 mod parser;
 
@@ -34,6 +34,7 @@ pub struct WasmObject<'data> {
     data: &'data [u8],
     code_offset: u64,
     kind: ObjectKind,
+    max_inline_depth: u32,
 }
 
 impl<'data> WasmObject<'data> {
@@ -118,7 +119,13 @@ impl<'data> WasmObject<'data> {
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'data>, DwarfError> {
         let symbols = self.symbol_map();
         // WASM is offset by the negative offset to the code section instead of the load address
-        DwarfDebugSession::parse(self, symbols, -(self.code_offset() as i64), self.kind())
+        DwarfDebugSession::parse(
+            self,
+            symbols,
+            -(self.code_offset() as i64),
+            self.kind(),
+            self.max_inline_depth,
+        )
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -171,18 +178,6 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for WasmObject<'d> {
 
     fn as_self(&'slf self) -> &'slf Self::Ref {
         self
-    }
-}
-
-impl<'d> Parse<'d> for WasmObject<'d> {
-    type Error = WasmError;
-
-    fn test(data: &[u8]) -> bool {
-        Self::test(data)
-    }
-
-    fn parse_with_opts(data: &'d [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
-        Self::parse(data)
     }
 }
 
