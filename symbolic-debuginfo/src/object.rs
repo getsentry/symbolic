@@ -124,6 +124,8 @@ impl Error for ObjectError {
     }
 }
 
+// For reference, macOS Chromium (around July 2026) has a max inlinee depth of around 60, so
+// let's double it; 128 ought to be enough for anybody.
 const MAX_INLINE_DEPTH_DEFAULT: u32 = 128;
 
 /// Options for parsing object files.
