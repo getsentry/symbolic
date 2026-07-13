@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- Handle XML parsing without recursion. ([#1003](https://github.com/getsentry/symbolic/pull/1003))
+
 ## 14.0.0-alpha.1
 
 - No documented changes.

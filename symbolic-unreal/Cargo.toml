@@ -28,7 +28,7 @@ serde = ["dep:serde", "chrono/serde"]
 anylog = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true }
-elementtree = { workspace = true }
+quick-xml = { workspace = true }
 flate2 = { workspace = true }
 regex = { workspace = true }
 scroll = { workspace = true, features = ["derive"] }
