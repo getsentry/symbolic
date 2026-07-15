@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-unreal"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -28,7 +28,7 @@ serde = ["dep:serde", "chrono/serde"]
 anylog = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true }
-elementtree = { workspace = true }
+quick-xml = { workspace = true }
 flate2 = { workspace = true }
 regex = { workspace = true }
 scroll = { workspace = true, features = ["derive"] }

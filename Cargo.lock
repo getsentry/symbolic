@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "addr2line"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -581,7 +581,7 @@ dependencies = [
 
 [[package]]
 name = "debuginfo_debug"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -610,7 +610,7 @@ dependencies = [
 
 [[package]]
 name = "dump_cfi"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -619,7 +619,7 @@ dependencies = [
 
 [[package]]
 name = "dump_sources"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "clap",
  "symbolic",
@@ -1346,7 +1346,7 @@ dependencies = [
 
 [[package]]
 name = "minidump_stackwalk"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "async-trait",
  "clap",
@@ -1495,7 +1495,7 @@ dependencies = [
 
 [[package]]
 name = "object_debug"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "clap",
  "symbolic",
@@ -1802,6 +1802,15 @@ name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
+
+[[package]]
+name = "quick-xml"
+version = "0.40.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2474bd2e5029e7ccb6abb2ba48cf2383a333851dedf495901544281590c7da7f"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "quote"
@@ -2272,7 +2281,7 @@ dependencies = [
 
 [[package]]
 name = "sourcemapcache_debug"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -2472,7 +2481,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "symbolic-cfi",
  "symbolic-common",
@@ -2487,7 +2496,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-cabi"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "proguard",
  "sourcemap",
@@ -2497,7 +2506,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-cfi"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "insta",
  "similar-asserts",
@@ -2509,7 +2518,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-common"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "debugid",
  "memmap2",
@@ -2523,7 +2532,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-debuginfo"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "criterion",
  "debugid",
@@ -2560,7 +2569,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-demangle"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "bitflags 2.7.0",
  "cc",
@@ -2573,7 +2582,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-il2cpp"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "indexmap",
  "insta",
@@ -2585,7 +2594,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-ppdb"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "flate2",
  "indexmap",
@@ -2601,7 +2610,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-sourcemapcache"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "itertools 0.14.0",
  "js-source-scopes",
@@ -2615,7 +2624,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-symcache"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "criterion",
  "indexmap",
@@ -2631,18 +2640,18 @@ dependencies = [
 
 [[package]]
 name = "symbolic-testutils"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 
 [[package]]
 name = "symbolic-unreal"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "anylog",
  "bytes",
  "chrono",
- "elementtree",
  "flate2",
  "insta",
+ "quick-xml",
  "regex",
  "scroll 0.13.0",
  "serde",
@@ -2654,7 +2663,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-wasm"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "js-sys",
  "serde",
@@ -2669,7 +2678,7 @@ dependencies = [
 
 [[package]]
 name = "symcache_debug"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -2951,7 +2960,7 @@ checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
 
 [[package]]
 name = "unreal_engine_crash"
-version = "14.0.0-alpha.1"
+version = "14.0.0-alpha.2"
 dependencies = [
  "clap",
  "symbolic",

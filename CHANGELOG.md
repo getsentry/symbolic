@@ -8,6 +8,12 @@
 - `FormatErrorKind::InvalidBlobFormat` is changed from `u32` to `i32`. ([#1016](https://github.com/getsentry/symbolic/pull/1016))
 - `EmbeddedSource::get_contents_bounded` now replaces `EmbeddedSource::get_contents`. ([#1016](https://github.com/getsentry/symbolic/pull/1016))
 
+## 14.0.0-alpha.2
+
+**Fixes**
+
+- Handle XML parsing without recursion. ([#1003](https://github.com/getsentry/symbolic/pull/1003))
+
 ## 14.0.0-alpha.1
 
 - No documented changes.
