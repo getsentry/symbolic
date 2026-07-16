@@ -8,6 +8,9 @@
 - `FormatErrorKind::InvalidBlobFormat` is changed from `u32` to `i32`. ([#1016](https://github.com/getsentry/symbolic/pull/1016))
 - `EmbeddedSource::get_contents_bounded` now replaces `EmbeddedSource::get_contents`. ([#1016](https://github.com/getsentry/symbolic/pull/1016))
 
+**Dependencies**
+- Bump `pdb-addr2line` to 0.12.0. This includes a switch from `pdb` to `pdb2`. ([#1018](https://github.com/getsentry/symbolic/pull/1018))
+
 ## 14.0.0-alpha.2
 
 **Fixes**

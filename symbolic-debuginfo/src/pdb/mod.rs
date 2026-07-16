@@ -7,8 +7,8 @@ use std::fmt;
 use std::io::Cursor;
 use std::sync::Arc;
 
-use elsa::FrozenMap;
-use parking_lot::RwLock;
+use elsa::sync::FrozenMap;
+use parking_lot::Mutex;
 use pdb_addr2line::pdb::{
     AddressMap, FallibleIterator, ImageSectionHeader, InlineSiteSymbol, LineProgram, MachineType,
     Module, ModuleInfo, PdbInternalSectionOffset, ProcedureSymbol, RawString, SeparatedCodeSymbol,
@@ -120,7 +120,7 @@ impl From<pdb_addr2line::Error> for PdbError {
 ///
 /// This object is a sole debug companion to [`PeObject`](../pdb/struct.PdbObject.html).
 pub struct PdbObject<'data> {
-    pdb: Arc<RwLock<Pdb<'data>>>,
+    pdb: Arc<Mutex<Pdb<'data>>>,
     debug_info: Arc<pdb::DebugInformation<'data>>,
     pdb_info: pdb::PDBInformation<'data>,
     public_syms: pdb::SymbolTable<'data>,
@@ -153,7 +153,7 @@ impl<'data> PdbObject<'data> {
         let sections = pdb.sections()?;
 
         Ok(PdbObject {
-            pdb: Arc::new(RwLock::new(pdb)),
+            pdb: Arc::new(Mutex::new(pdb)),
             debug_info: Arc::new(dbi),
             pdb_info: pdbi,
             public_syms: pubi,
@@ -206,7 +206,7 @@ impl<'data> PdbObject<'data> {
 
     /// Returns true if this object contains source server information.
     pub fn has_source_server_data(&self) -> Result<bool, PdbError> {
-        let mut pdb = self.pdb.write();
+        let mut pdb = self.pdb.lock();
         match pdb.named_stream(b"srcsrv") {
             Ok(_) => Ok(true),
             Err(pdb::Error::StreamNameNotFound) => {
@@ -244,7 +244,7 @@ impl<'data> PdbObject<'data> {
     pub fn symbols(&self) -> PdbSymbolIterator<'data, '_> {
         PdbSymbolIterator {
             symbols: self.public_syms.iter(),
-            address_map: self.pdb.write().address_map().ok(),
+            address_map: self.pdb.lock().address_map().ok(),
             executable_sections: &self.executable_sections,
         }
     }
@@ -293,7 +293,7 @@ impl<'data> PdbObject<'data> {
     }
 
     #[doc(hidden)]
-    pub fn inner(&self) -> &RwLock<Pdb<'data>> {
+    pub fn inner(&self) -> &Mutex<Pdb<'data>> {
         &self.pdb
     }
 }
@@ -493,7 +493,7 @@ struct PdbStreams<'d> {
     string_table: Option<pdb::StringTable<'d>>,
     srcsrv: Option<Vec<u8>>,
 
-    pdb: Arc<RwLock<Pdb<'d>>>,
+    pdb: Arc<Mutex<Pdb<'d>>>,
 
     /// ModuleInfo objects are stored on this object (outside PdbDebugInfo) so that the
     /// PdbDebugInfo can store a TypeFormatter, which has a lifetime dependency on its
@@ -505,7 +505,7 @@ struct PdbStreams<'d> {
 
 impl<'d> PdbStreams<'d> {
     fn from_pdb(pdb: &PdbObject<'d>) -> Result<Self, PdbError> {
-        let mut p = pdb.pdb.write();
+        let mut p = pdb.pdb.lock();
 
         // PDB::string_table errors if the named stream for the string table is not present.
         // However, this occurs in certain PDBs and does not automatically indicate an error.
@@ -547,7 +547,7 @@ impl<'d> pdb_addr2line::ModuleProvider<'d> for PdbStreams<'d> {
             return Ok(Some(module_info));
         }
 
-        let mut pdb = self.pdb.write();
+        let mut pdb = self.pdb.lock();
         Ok(pdb.module_info(module)?.map(|module_info| {
             self.module_infos
                 .insert(module_index, Box::new(module_info))
@@ -573,7 +573,7 @@ impl<'d> PdbDebugInfo<'d> {
 
         // Avoid deadlocks by only covering the two access to the address map. For
         // instance, `pdb.symbol_map()` requires a mutable borrow of the PDB as well.
-        let mut p = pdb.pdb.write();
+        let mut p = pdb.pdb.lock();
         let address_map = p.address_map()?;
 
         drop(p);
