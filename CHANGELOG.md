@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**Fixes**
+
+- Use `xml10_content` instead of `decode` for EOL handling ([#1022](https://github.com/getsentry/symbolic/pull/1022))
+
 **Breaking Changes**
 
 - `SourceBundleWriter::finish` now returns the underlying writer. ([#1016](https://github.com/getsentry/symbolic/pull/1016))
