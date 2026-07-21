@@ -27,7 +27,8 @@ use thiserror::Error;
 
 use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
 
-use crate::function_builder::{FunctionBuilder, FunctionBuilderInlinee};
+use crate::base::*;
+use crate::function_builder::{FunctionBuilder, FunctionBuilderErrorKind};
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
 use crate::sourcebundle::SourceFileDescriptor;
@@ -988,7 +989,13 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         }
 
         for (_range, builder) in builders {
-            output.functions.push(builder.finish());
+            output
+                .functions
+                .push(builder.finish().map_err(|e| match e.kind {
+                    FunctionBuilderErrorKind::TooManyInlineeNestings => {
+                        DwarfErrorKind::CorruptedData
+                    }
+                })?);
         }
 
         Ok(())
