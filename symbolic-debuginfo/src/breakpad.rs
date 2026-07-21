@@ -12,7 +12,7 @@ use thiserror::Error;
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameMangling};
 
 use crate::base::*;
-use crate::function_builder::FunctionBuilder;
+use crate::function_builder::{FunctionBuilder, FunctionBuilderErrorKind};
 use crate::sourcebundle::SourceFileDescriptor;
 use crate::ParseObjectOptions;
 
@@ -144,6 +144,9 @@ pub enum BreakpadErrorKind {
 
     /// The architecture is invalid.
     InvalidArchitecture,
+
+    /// Too many inlinee nestings were generated.
+    TooManyInlineeNestings,
 }
 
 impl fmt::Display for BreakpadErrorKind {
@@ -1471,7 +1474,11 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
             );
         }
 
-        Some(Ok(builder.finish()))
+        Some(builder.finish().map_err(|e| match e.kind {
+            FunctionBuilderErrorKind::TooManyInlineeNestings => {
+                BreakpadErrorKind::TooManyInlineeNestings.into()
+            }
+        }))
     }
 }
 
@@ -2595,4 +2602,19 @@ mod tests {
         (7, b"world"),
         (13, b"yo")
     );
+
+    #[test]
+    fn test_inlinee_nesting_bounds() {
+        use symbolic_common::ByteView;
+
+        let buffer = ByteView::open("tests/fixtures/quadratic_inlinee.sym").unwrap();
+        let obj = BreakpadObject::parse(&buffer).expect("parse breakpad");
+
+        let session = obj.debug_session().expect("session");
+        let _ = session
+            .functions()
+            .next()
+            .unwrap()
+            .expect_err("should have seen an error");
+    }
 }
