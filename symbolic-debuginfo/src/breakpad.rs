@@ -12,7 +12,7 @@ use thiserror::Error;
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameMangling};
 
 use crate::base::*;
-use crate::function_builder::{FunctionBuilder, FunctionBuilderErrorKind};
+use crate::function_builder::FunctionBuilder;
 use crate::sourcebundle::SourceFileDescriptor;
 use crate::ParseObjectOptions;
 
@@ -1474,11 +1474,7 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
             );
         }
 
-        Some(builder.finish().map_err(|e| match e.kind {
-            FunctionBuilderErrorKind::TooManyInlineeNestings => {
-                BreakpadErrorKind::TooManyInlineeNestings.into()
-            }
-        }))
+        Some(builder.finish().map_err(Into::into))
     }
 }
 

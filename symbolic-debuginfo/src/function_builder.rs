@@ -3,7 +3,11 @@
 
 use std::{cmp::Reverse, collections::BinaryHeap, fmt};
 
-use crate::base::{FileInfo, Function, LineInfo};
+use crate::{
+    base::{FileInfo, Function, LineInfo},
+    breakpad::{BreakpadError, BreakpadErrorKind},
+    dwarf::{DwarfError, DwarfErrorKind},
+};
 use symbolic_common::Name;
 use thiserror::Error;
 
@@ -11,11 +15,10 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct FunctionBuilderError {
-    pub(crate) kind: FunctionBuilderErrorKind,
+    kind: FunctionBuilderErrorKind,
 }
 
 /// The kind of error origination in the FunctionBuilder.
-#[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum FunctionBuilderErrorKind {
     /// We generated too many nestings (address splits) for an inlinee.
@@ -33,6 +36,26 @@ impl fmt::Display for FunctionBuilderErrorKind {
 impl From<FunctionBuilderErrorKind> for FunctionBuilderError {
     fn from(kind: FunctionBuilderErrorKind) -> Self {
         Self { kind }
+    }
+}
+
+impl From<FunctionBuilderError> for DwarfError {
+    fn from(value: FunctionBuilderError) -> Self {
+        match value.kind {
+            FunctionBuilderErrorKind::TooManyInlineeNestings => {
+                DwarfErrorKind::CorruptedData.into()
+            }
+        }
+    }
+}
+
+impl From<FunctionBuilderError> for BreakpadError {
+    fn from(value: FunctionBuilderError) -> Self {
+        match value.kind {
+            FunctionBuilderErrorKind::TooManyInlineeNestings => {
+                BreakpadErrorKind::TooManyInlineeNestings.into()
+            }
+        }
     }
 }
 
