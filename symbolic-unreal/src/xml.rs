@@ -73,7 +73,7 @@ impl<'a> XMLReader<'a> {
                         continue;
                     }
 
-                    if let Ok(decoded) = bytes_text.decode() {
+                    if let Ok(decoded) = bytes_text.xml10_content() {
                         val += &decoded;
                     }
                 }
@@ -85,7 +85,7 @@ impl<'a> XMLReader<'a> {
 
                     if let Ok(Some(ch)) = bytes_text.resolve_char_ref() {
                         val.push(ch);
-                    } else if let Ok(decoded) = bytes_text.decode() {
+                    } else if let Ok(decoded) = bytes_text.xml10_content() {
                         if let Some(resolved) = resolve_xml_entity(&decoded) {
                             val += resolved;
                         }
@@ -107,7 +107,7 @@ impl<'a> XMLReader<'a> {
                         continue;
                     }
 
-                    if let Ok(decoded) = data.decode() {
+                    if let Ok(decoded) = data.xml10_content() {
                         val += &decoded;
                     }
                 }
