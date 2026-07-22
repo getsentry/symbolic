@@ -134,10 +134,6 @@ pub enum BreakpadErrorKind {
     /// A part of the file is not encoded in valid UTF-8.
     BadEncoding,
 
-    /// A record violates the Breakpad symbol syntax.
-    #[deprecated(note = "This is now covered by the Parse variant")]
-    BadSyntax,
-
     /// Parsing of a record failed.
     ///
     /// The field exists only for API compatibility reasons.
@@ -158,7 +154,6 @@ impl fmt::Display for BreakpadErrorKind {
             Self::Parse(_) => write!(f, "parsing error"),
             Self::InvalidModuleId => write!(f, "invalid module id"),
             Self::InvalidArchitecture => write!(f, "invalid architecture"),
-            _ => Ok(()),
         }
     }
 }
