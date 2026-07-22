@@ -1476,11 +1476,7 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
             );
         }
 
-        Some(builder.finish().map_err(|e| match e.kind {
-            FunctionBuilderErrorKind::TooManyInlineeNestings => {
-                BreakpadErrorKind::TooManyInlineeNestings.into()
-            }
-        }))
+        Some(builder.finish().map_err(Into::into))
     }
 }
 
