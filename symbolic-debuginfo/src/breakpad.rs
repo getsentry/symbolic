@@ -13,7 +13,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameManglin
 
 use crate::ParseObjectOptions;
 use crate::base::*;
-use crate::function_builder::FunctionBuilder;
+use crate::function_builder::{FunctionBuilder, FunctionBuilderInlinee};
 use crate::sourcebundle::SourceFileDescriptor;
 
 #[derive(Clone, Debug)]
@@ -1426,20 +1426,22 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
                     .unwrap_or_default();
 
                 for address_range in &inline_record.address_ranges {
-                    builder.add_inlinee(
-                        inline_record.inline_depth as u32,
-                        Name::new(name, NameMangling::Unmangled, Language::Unknown),
-                        address_range.address,
-                        address_range.size,
-                        FileInfo::from_path(
+                    let inlinee = FunctionBuilderInlinee {
+                        depth: inline_record.inline_depth as u32,
+                        address: address_range.address,
+                        size: address_range.size,
+                        name: Name::new(name, NameMangling::Unmangled, Language::Unknown),
+                        call_file: FileInfo::from_path(
                             self.file_map
                                 .get(&inline_record.call_site_file_id)
                                 .cloned()
                                 .unwrap_or_default()
                                 .as_bytes(),
                         ),
-                        inline_record.call_site_line,
-                    );
+                        call_line: inline_record.call_site_line,
+                        variables: Vec::new(),
+                    };
+                    builder.add_inlinee2(inlinee);
                 }
                 continue;
             }

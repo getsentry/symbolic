@@ -32,8 +32,8 @@ pub struct FunctionBuilder<'s> {
     /// The lines, in any order. They will be sorted in `finish()`. These record specify locations
     /// at the innermost level of the inline stack at the line record's address.
     lines: Vec<LineInfo<'s>>,
-    /// All variables found inside the function and its inlinees.
-    variables: Vec<FunctionBuilderVariable<'s>>,
+    /// All variables found inside the function.
+    variables: Vec<Variable<'s>>,
     max_inline_depth: Option<u32>,
 }
 
@@ -72,20 +72,28 @@ impl<'s> FunctionBuilder<'s> {
         call_file: FileInfo<'s>,
         call_line: u64,
     ) {
-        self.add_inlinee_with_scope(None, depth, name, address, size, call_file, call_line);
+        self.add_inlinee_with_variables(
+            depth,
+            name,
+            address,
+            size,
+            call_file,
+            call_line,
+            Vec::new(),
+        );
     }
 
-    /// Add an inlinee record associated with a specific debug information scope.
+    /// Add an inlinee record with its variables.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn add_inlinee_with_scope(
+    pub fn add_inlinee_with_variables(
         &mut self,
-        scope_id: Option<usize>,
         depth: u32,
         name: Name<'s>,
         address: u64,
         size: u64,
         call_file: FileInfo<'s>,
         call_line: u64,
+        variables: Vec<Variable<'s>>,
     ) {
         // An inlinee that starts before the function is obviously bogus same for an inlinee that
         // has a depth deeper than the limit.
@@ -94,29 +102,32 @@ impl<'s> FunctionBuilder<'s> {
         }
 
         self.inlinees.push(Reverse(FunctionBuilderInlinee {
-            scope_id,
             depth,
             address,
             size,
             name,
             call_file,
             call_line,
+            variables,
         }));
+    }
+
+    /// Add an inlinee record with its variables.
+    pub fn add_inlinee2(&mut self, inlinee: FunctionBuilderInlinee<'s>) {
+        // An inlinee that starts before the function is obviously bogus same for an inlinee that
+        // has a depth deeper than the limit.
+        if inlinee.address < self.address
+            || inlinee.depth > self.max_inline_depth.unwrap_or(u32::MAX)
+        {
+            return;
+        }
+
+        self.inlinees.push(Reverse(inlinee));
     }
 
     /// Add a variable to the function.
     pub fn add_variable(&mut self, variable: Variable<'s>) {
-        self.add_variable_for_scope(None, variable);
-    }
-
-    /// Add a variable associated with a specific debug information scope.
-    pub(crate) fn add_variable_for_scope(
-        &mut self,
-        scope_id: Option<usize>,
-        variable: Variable<'s>,
-    ) {
-        self.variables
-            .push(FunctionBuilderVariable { scope_id, variable });
+        self.variables.push(variable);
     }
 
     /// Add a line record, specifying the line at this address inside the innermost inlinee that
@@ -166,11 +177,6 @@ impl<'s> FunctionBuilder<'s> {
         // Sort the lines by address.
         lines.sort_by_key(|line| line.address);
 
-        let outer_variables = variables
-            .iter()
-            .filter(|variable| variable.scope_id.is_none())
-            .map(|variable| variable.variable.clone())
-            .collect();
         let outer_function = Function {
             address,
             size,
@@ -178,7 +184,7 @@ impl<'s> FunctionBuilder<'s> {
             compilation_dir,
             lines: Vec::new(),
             inlinees: Vec::new(),
-            variables: outer_variables,
+            variables,
             inline: false,
         };
         let outer_function_end = address + size;
@@ -214,20 +220,10 @@ impl<'s> FunctionBuilder<'s> {
                     line: inlinee.call_line,
                 });
                 let inline_variables = inlinee
-                    .scope_id
-                    .into_iter()
-                    .flat_map(|scope_id| {
-                        variables.iter().filter_map(move |variable| {
-                            (variable.scope_id == Some(scope_id))
-                                .then(|| {
-                                    variable_for_range(
-                                        &variable.variable,
-                                        inlinee.address,
-                                        inlinee.size,
-                                    )
-                                })
-                                .flatten()
-                        })
+                    .variables
+                    .iter()
+                    .filter_map(|variable| {
+                        variable_for_range(variable, inlinee.address, inlinee.size)
                     })
                     .collect();
                 stack.push(Function {
@@ -294,10 +290,8 @@ impl<'s> FunctionBuilder<'s> {
 }
 
 /// Represents a contiguous address range which is covered by an inlined function call.
-#[derive(PartialEq, Eq, Clone, Debug)]
-struct FunctionBuilderInlinee<'s> {
-    /// The debug information scope that produced this inline call.
-    pub scope_id: Option<usize>,
+#[derive(Clone, Debug)]
+pub struct FunctionBuilderInlinee<'s> {
     /// The inline nesting level of this inline call. Calls from the outer function have depth 0.
     pub depth: u32,
     /// The start address.
@@ -310,13 +304,17 @@ struct FunctionBuilderInlinee<'s> {
     pub call_file: FileInfo<'s>,
     /// The line number of the location of the call.
     pub call_line: u64,
+    /// Variables owned by this inline call.
+    pub variables: Vec<Variable<'s>>,
 }
 
-/// A variable and the debug information scope that owns it.
-struct FunctionBuilderVariable<'s> {
-    pub scope_id: Option<usize>,
-    pub variable: Variable<'s>,
+impl PartialEq for FunctionBuilderInlinee<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        (self.address, self.depth) == (other.address, other.depth)
+    }
 }
+
+impl Eq for FunctionBuilderInlinee<'_> {}
 
 fn variable_for_range<'s>(
     variable: &Variable<'s>,
@@ -571,14 +569,15 @@ mod tests {
         // 0x20 - 0x40: bar in bar.c on line 1
         // - inlined into: foo in foo.c on line 2
         let mut builder = FunctionBuilder::new(Name::from("foo"), &[], 0x10, 0x30);
-        builder.add_inlinee(
-            0,
-            Name::from("bar"),
-            0x20,
-            0x20,
-            FileInfo::from_filename(b"foo.c"),
-            2,
-        );
+        builder.add_inlinee2(FunctionBuilderInlinee {
+            depth: 0,
+            name: Name::from("bar"),
+            address: 0x20,
+            size: 0x20,
+            call_file: FileInfo::from_filename(b"foo.c"),
+            call_line: 2,
+            variables: Vec::new(),
+        });
         builder.add_leaf_line(0x10, Some(0x10), FileInfo::from_filename(b"foo.c"), 1);
         builder.add_leaf_line(0x20, Some(0x20), FileInfo::from_filename(b"bar.c"), 1);
         let func = builder.finish();
@@ -602,30 +601,28 @@ mod tests {
     }
 
     #[test]
-    fn test_inlinee_variables_are_assigned_by_scope() {
+    fn test_inlinee_variables_are_attached_structurally() {
         let mut builder = FunctionBuilder::new(Name::from("outer"), &[], 0x10, 0x40);
-        builder.add_inlinee_with_scope(
-            Some(1),
+        builder.add_inlinee_with_variables(
             0,
             Name::from("first"),
             0x20,
             0x10,
             FileInfo::default(),
             0,
+            vec![variable("first_var", 0x10, 0x40)],
         );
-        builder.add_inlinee_with_scope(
-            Some(2),
+        builder.add_inlinee_with_variables(
             0,
             Name::from("second"),
             0x30,
             0x10,
             FileInfo::default(),
             0,
+            vec![variable("second_var", 0x10, 0x40)],
         );
 
         builder.add_variable(variable("outer_var", 0x10, 0x40));
-        builder.add_variable_for_scope(Some(1), variable("first_var", 0x10, 0x40));
-        builder.add_variable_for_scope(Some(2), variable("second_var", 0x10, 0x40));
 
         let function = builder.finish();
 

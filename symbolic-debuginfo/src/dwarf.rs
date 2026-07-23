@@ -957,7 +957,24 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             })
             .collect();
 
-        self.parse_function_children(depth, 0, None, entries, &mut builders, output, language)?;
+        let mut variables = Vec::new();
+        self.parse_function_children(
+            depth,
+            0,
+            entries,
+            &mut builders,
+            output,
+            language,
+            &mut variables,
+        )?;
+
+        for (range, builder) in &mut builders {
+            for variable in &variables {
+                if let Some(variable) = self.variable_for_range(variable, *range) {
+                    builder.add_variable(variable);
+                }
+            }
+        }
 
         if let Some(line_program) = &self.line_program {
             for (range, builder) in &mut builders {
@@ -983,11 +1000,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         &self,
         depth: isize,
         inline_depth: u32,
-        inline_scope: Option<usize>,
         entries: &mut EntriesRaw<'d, '_>,
         builders: &mut [(Range, FunctionBuilder<'d>)],
         output: &mut FunctionsOutput<'_, 'd>,
         language: Language,
+        variables: &mut Vec<ParsedVariable<'d>>,
     ) -> Result<(), DwarfError> {
         while !entries.is_empty() {
             let dw_die_offset = entries.next_offset();
@@ -1016,8 +1033,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                         language,
                     )?;
                 }
-                constants::DW_TAG_variable => {
-                    self.parse_variable(entries, abbrev, inline_scope, builders)?;
+                constants::DW_TAG_variable | constants::DW_TAG_formal_parameter => {
+                    if let Some(variable) = self.parse_variable(entries, abbrev)? {
+                        variables.push(variable);
+                    }
                 }
                 _ => {
                     entries.skip_attributes(abbrev.attributes())?;
@@ -1061,6 +1080,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         if ranges.is_empty() {
             return self.parse_functions(depth, entries, output);
         }
+        let ranges = ranges.clone();
 
         let entry = self.inner.unit.entry(dw_die_offset)?;
         let language = self.resolve_function_language(&entry, language);
@@ -1081,6 +1101,17 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             .unwrap_or_default();
         let call_line = call_location.call_line.unwrap_or(0);
 
+        let mut variables = Vec::new();
+        self.parse_function_children(
+            depth,
+            inline_depth + 1,
+            entries,
+            builders,
+            output,
+            language,
+            &mut variables,
+        )?;
+
         // Create a separate inlinee for each range.
         for range in ranges.iter() {
             // Find the builder for the outer function that covers this range. Usually there's only
@@ -1094,35 +1125,30 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
             let address = offset(range.begin, self.inner.info.address_offset);
             let size = range.end - range.begin;
-            builder.add_inlinee_with_scope(
-                Some(dw_die_offset.0),
+            let variables = variables
+                .iter()
+                .filter_map(|variable| self.variable_for_range(variable, *range))
+                .collect();
+
+            builder.add_inlinee_with_variables(
                 inline_depth,
                 name.clone(),
                 address,
                 size,
                 call_file.clone(),
                 call_line,
+                variables,
             );
         }
 
-        self.parse_function_children(
-            depth,
-            inline_depth + 1,
-            Some(dw_die_offset.0),
-            entries,
-            builders,
-            output,
-            language,
-        )
+        Ok(())
     }
 
     fn parse_variable(
         &self,
         entries: &mut EntriesRaw<'d, '_>,
         abbrev: &gimli::Abbreviation,
-        inline_scope: Option<usize>,
-        builders: &mut [(Range, FunctionBuilder<'d>)],
-    ) -> Result<Option<()>, DwarfError> {
+    ) -> Result<Option<ParsedVariable<'d>>, DwarfError> {
         let mut ty = None;
         let mut name = None;
         let mut locations = None;
@@ -1154,8 +1180,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     ty = Some(variable::TypeRef::from(DwarfTypeRef(offset)));
                 }
 
-                // Location tells which builder this need to be added to.
-                // No Location means optimized out, we may not need to store it at all.
+                // No location means optimized out, so we do not store the variable for now.
                 _ => {}
             }
         }
@@ -1173,36 +1198,41 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             _ => Kind::Local,
         };
 
-        for (f_range, builder) in builders {
-            let mut locations = match &locations {
-                Locations::Single(location) => vec![LocationInfo {
-                    address: offset(f_range.begin, self.inner.info.address_offset),
-                    size: f_range.end - f_range.begin,
-                    location: location.clone(),
-                }],
-                Locations::Many(locations) => locations
-                    .iter()
-                    .filter(|(r, _)| r.begin < f_range.end && f_range.begin < r.end)
-                    .map(|(_, location)| location.clone())
-                    .collect(),
-            };
+        Ok(Some(ParsedVariable {
+            name,
+            ty,
+            kind,
+            locations,
+        }))
+    }
 
-            locations.sort_unstable_by_key(|location| location.address);
+    fn variable_for_range(
+        &self,
+        variable: &ParsedVariable<'d>,
+        range: Range,
+    ) -> Option<variable::Variable<'d>> {
+        let mut locations = match &variable.locations {
+            Locations::Single(location) => vec![LocationInfo {
+                address: offset(range.begin, self.inner.info.address_offset),
+                size: range.end - range.begin,
+                location: location.clone(),
+            }],
+            Locations::Many(locations) => locations
+                .iter()
+                .filter(|(location_range, _)| {
+                    location_range.begin < range.end && range.begin < location_range.end
+                })
+                .map(|(_, location)| location.clone())
+                .collect(),
+        };
 
-            if !locations.is_empty() {
-                builder.add_variable_for_scope(
-                    inline_scope,
-                    variable::Variable {
-                        name: name.clone(),
-                        ty: ty.clone(),
-                        kind,
-                        locations,
-                    },
-                );
-            }
-        }
-
-        Ok(None)
+        locations.sort_unstable_by_key(|location| location.address);
+        (!locations.is_empty()).then(|| variable::Variable {
+            name: variable.name.clone(),
+            ty: variable.ty.clone(),
+            kind: variable.kind,
+            locations,
+        })
     }
 
     fn parse_locations(
@@ -1275,6 +1305,14 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         self.parse_functions(-1, &mut entries, &mut output)?;
         Ok(output.functions)
     }
+}
+
+/// A variable before its locations are restricted to a concrete ranges.
+struct ParsedVariable<'data> {
+    name: Cow<'data, str>,
+    ty: Option<variable::TypeRef>,
+    kind: Kind,
+    locations: Locations,
 }
 
 /// Return value of [`DwarfUnit::parse_locations`].
