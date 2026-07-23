@@ -19,17 +19,20 @@ use std::sync::Arc;
 
 use fallible_iterator::FallibleIterator;
 use gimli::read::{AttributeValue, Error as GimliError, Range};
-use gimli::{AbbreviationsCacheStrategy, DwarfFileType, UnitSectionOffset, constants};
+use gimli::{
+    AbbreviationsCacheStrategy, DwarfFileType, Expression, LocListIter, Operation,
+    UnitSectionOffset, constants,
+};
 use once_cell::sync::OnceCell;
 use thiserror::Error;
 
 use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
 
-use crate::base::*;
 use crate::function_builder::FunctionBuilder;
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
 use crate::sourcebundle::SourceFileDescriptor;
+use crate::{Kind, Location, LocationInfo, base::*, variable};
 
 /// This is a fake BcSymbolMap used when macho support is turned off since they are unfortunately
 /// part of the dwarf interface
@@ -145,6 +148,10 @@ impl From<GimliError> for DwarfError {
         Self::new(DwarfErrorKind::CorruptedData, e)
     }
 }
+
+/// A reference to a type in the DWARF file.
+#[derive(Debug, Clone)]
+pub struct DwarfTypeRef(UnitSectionOffset);
 
 /// DWARF section information including its data.
 ///
@@ -413,6 +420,15 @@ impl<'d> UnitRef<'d, '_> {
         Some(String::from_utf8_lossy(slice))
     }
 
+    /// Try to return an attribute value as a location list entry iterator.
+    #[inline(always)]
+    fn attr_locations(
+        &self,
+        value: AttributeValue<Slice<'d>>,
+    ) -> Result<Option<LocListIter<Slice<'d>>>, DwarfError> {
+        Ok(self.info.attr_locations(self.unit, value)?)
+    }
+
     /// Resolves an entry and if found invokes a function to transform it.
     ///
     /// As this might resolve into cached information the data borrowed from
@@ -435,6 +451,17 @@ impl<'d> UnitRef<'d, '_> {
             f(unit, entry)
         } else {
             Ok(None)
+        }
+    }
+
+    /// Resolves a attribute unit ref or debug info ref to a [`UnitSectionOffset`].
+    ///
+    /// Returns `None` for attributes not containing a reference or unsupported references.
+    fn to_unit_section_offset(&self, attr: Attribute<'d>) -> Option<UnitSectionOffset> {
+        match attr.value() {
+            AttributeValue::UnitRef(offset) => Some(offset.to_unit_section_offset(self.unit)),
+            AttributeValue::DebugInfoRef(offset) => offset.to_unit_section_offset(self.unit),
+            _ => return None,
         }
     }
 
@@ -988,6 +1015,9 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                         language,
                     )?;
                 }
+                constants::DW_TAG_variable => {
+                    self.parse_variable(entries, abbrev, builders)?;
+                }
                 _ => {
                     entries.skip_attributes(abbrev.attributes())?;
                 }
@@ -1076,6 +1106,151 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         self.parse_function_children(depth, inline_depth + 1, entries, builders, output, language)
     }
 
+    fn parse_variable(
+        &self,
+        entries: &mut EntriesRaw<'d, '_>,
+        abbrev: &gimli::Abbreviation,
+        builders: &mut [(Range, FunctionBuilder<'d>)],
+    ) -> Result<Option<()>, DwarfError> {
+        let mut ty = None;
+        let mut name = None;
+        let mut locations = None;
+        let mut is_declaration = false;
+
+        for &spec in abbrev.attributes() {
+            let attr = entries.read_attribute(spec)?;
+            match attr.name() {
+                constants::DW_AT_name => {
+                    name = self.inner.string_value(attr.value());
+                }
+                constants::DW_AT_declaration if attr.value() == AttributeValue::Flag(true) => {
+                    // We don't care about declarations, we only care about actual definitions of
+                    // the variables.
+                    //
+                    // No early return possible, the attributes need to be consumed fully.
+                    is_declaration = true;
+                }
+                constants::DW_AT_location => {
+                    locations = self.parse_locations(attr.value())?;
+                }
+                // This will need some further refinement, `to_unit_section_offset` is only enough
+                // for unit and debug info references, it does not yet support debug types references,
+                // and references to supplementary object files. Supplementary object files are
+                // generally not supported, but type section references should be implemented.
+                constants::DW_AT_type
+                    if let Some(offset) = self.inner.to_unit_section_offset(attr) =>
+                {
+                    ty = Some(variable::TypeRef::from(DwarfTypeRef(offset)));
+                }
+
+                // Location tells which builder this need to be added to.
+                // No Location means optimized out, we may not need to store it at all.
+                _ => {}
+            }
+        }
+
+        if is_declaration {
+            return Ok(None);
+        }
+
+        let (Some(name), Some(locations)) = (name, locations) else {
+            return Ok(None);
+        };
+
+        let kind = match abbrev.tag() {
+            constants::DW_TAG_formal_parameter => Kind::Parameter,
+            _ => Kind::Local,
+        };
+
+        for (f_range, builder) in builders {
+            let mut locations = match &locations {
+                Locations::Single(location) => vec![LocationInfo {
+                    address: offset(f_range.begin, self.inner.info.address_offset),
+                    size: f_range.end - f_range.begin,
+                    location: location.clone(),
+                }],
+                Locations::Many(locations) => locations
+                    .iter()
+                    .filter(|(r, _)| r.begin < f_range.end && f_range.begin < r.end)
+                    .map(|(_, location)| location.clone())
+                    .collect(),
+            };
+
+            locations.sort_unstable_by_key(|location| location.address);
+
+            if !locations.is_empty() {
+                builder.add_variable(variable::Variable {
+                    name: name.clone(),
+                    ty: ty.clone(),
+                    kind,
+                    locations,
+                });
+            }
+        }
+
+        Ok(None)
+    }
+
+    fn parse_locations(
+        &self,
+        value: AttributeValue<Slice<'d>>,
+    ) -> Result<Option<Locations>, DwarfError> {
+        if let AttributeValue::Exprloc(expr) = value {
+            return self
+                .parse_location_expression(expr)
+                .map(|v| v.map(Locations::Single));
+        }
+
+        let mut result = Vec::new();
+        let locations = self.inner.attr_locations(value)?.into_iter().flatten();
+        for location in locations {
+            let location = location?;
+
+            let range = location.range;
+            let address = offset(range.begin, self.inner.info.address_offset);
+            let Some(size) = range.end.checked_sub(range.begin) else {
+                // Invalid range, end before start.
+                continue;
+            };
+
+            let location = LocationInfo {
+                address,
+                size,
+                location: match self.parse_location_expression(location.data)? {
+                    Some(location) => location,
+                    None => continue,
+                },
+            };
+            result.push((range, location));
+        }
+
+        Ok(match result.is_empty() {
+            true => None,
+            false => Some(Locations::Many(result)),
+        })
+    }
+
+    fn parse_location_expression(
+        &self,
+        expr: Expression<Slice<'d>>,
+    ) -> Result<Option<Location>, DwarfError> {
+        let mut operations = expr.operations(self.inner.unit.encoding());
+
+        let Some(op) = operations.next()? else {
+            return Ok(None);
+        };
+        if operations.next()?.is_some() {
+            // Currently we only support location expressions with a single op.
+            return Ok(None);
+        }
+
+        Ok(match op {
+            Operation::Register { register } => Some(Location::Register { id: register.0 }),
+            // Currently more operations are not supported.
+            _ => None,
+        })
+    }
+
     /// Collects all functions within this compilation unit.
     fn functions(
         &self,
@@ -1086,6 +1261,14 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         self.parse_functions(-1, &mut entries, &mut output)?;
         Ok(output.functions)
     }
+}
+
+/// Return value of [`DwarfUnit::parse_locations`].
+enum Locations {
+    /// A single location.
+    Single(Location),
+    /// Many locations, dependent on the PC at runtime.
+    Many(Vec<(Range, LocationInfo)>),
 }
 
 /// The state we pass around during function parsing.

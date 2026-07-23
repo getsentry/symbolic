@@ -3,7 +3,10 @@
 
 use std::{cmp::Reverse, collections::BinaryHeap};
 
-use crate::base::{FileInfo, Function, LineInfo};
+use crate::{
+    base::{FileInfo, Function, LineInfo},
+    variable, Variable,
+};
 use symbolic_common::Name;
 
 /// Allows creating a [`Function`] from unordered line and inlinee records.
@@ -29,6 +32,8 @@ pub struct FunctionBuilder<'s> {
     /// The lines, in any order. They will be sorted in `finish()`. These record specify locations
     /// at the innermost level of the inline stack at the line record's address.
     lines: Vec<LineInfo<'s>>,
+    /// All variables found inside the function.
+    variables: Vec<Variable<'s>>,
     max_inline_depth: Option<u32>,
 }
 
@@ -42,6 +47,7 @@ impl<'s> FunctionBuilder<'s> {
             size,
             inlinees: BinaryHeap::new(),
             lines: Vec::new(),
+            variables: Vec::new(),
             max_inline_depth: None,
         }
     }
@@ -82,6 +88,11 @@ impl<'s> FunctionBuilder<'s> {
         }));
     }
 
+    /// Add a variable to the function.
+    pub fn add_variable(&mut self, variable: Variable<'s>) {
+        self.variables.push(variable);
+    }
+
     /// Add a line record, specifying the line at this address inside the innermost inlinee that
     /// covers that address. This method can be called in any order.
     pub fn add_leaf_line(
@@ -119,6 +130,7 @@ impl<'s> FunctionBuilder<'s> {
             address,
             size,
             inlinees,
+            variables,
             mut lines,
             max_inline_depth: _,
         } = self;
@@ -135,6 +147,7 @@ impl<'s> FunctionBuilder<'s> {
             compilation_dir,
             lines: Vec::new(),
             inlinees: Vec::new(),
+            variables,
             inline: false,
         };
         let outer_function_end = address + size;
@@ -176,6 +189,7 @@ impl<'s> FunctionBuilder<'s> {
                     compilation_dir,
                     lines: Vec::new(),
                     inlinees: Vec::new(),
+                    variables: Vec::new(),
                     inline: true,
                 });
                 next_inlinee = inlinee_iter.next();
