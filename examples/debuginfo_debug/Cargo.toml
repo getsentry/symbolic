@@ -1,6 +1,6 @@
 [package]
 name = "debuginfo_debug"
-version = "14.0.0-alpha.2"
+version = "14.0.0-alpha.3"
 authors = ["Markus Stange <mstange.moz@gmail.com>"]
 edition = "2021"
 publish = false
@@ -10,6 +10,6 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
-symbolic = { version = "14.0.0-alpha.2", path = "../../symbolic", features = [
+symbolic = { version = "14.0.0-alpha.3", path = "../../symbolic", features = [
     "demangle",
 ] }
