@@ -124,9 +124,13 @@ impl Error for ObjectError {
     }
 }
 
+// For reference, macOS Chromium (around July 2026) has a max inlinee depth of around 60, so
+// let's double it; 128 ought to be enough for anybody.
+const MAX_INLINE_DEPTH_DEFAULT: u32 = 128;
+
 /// Options for parsing object files.
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct ParseObjectOptions {
     /// The maximum uncompressed size for compressed debug file sections.
     ///
@@ -139,9 +143,17 @@ pub struct ParseObjectOptions {
     pub max_decompressed_embedded_source_size: Option<usize>,
 
     /// The maximum inline nesting depth to process.
-    ///
-    /// This is only relevant for Breakpad objects (for the time being).
-    pub max_inline_depth: Option<u32>,
+    pub max_inline_depth: u32,
+}
+
+impl Default for ParseObjectOptions {
+    fn default() -> Self {
+        Self {
+            max_decompressed_section_size: Default::default(),
+            max_decompressed_embedded_source_size: Default::default(),
+            max_inline_depth: MAX_INLINE_DEPTH_DEFAULT,
+        }
+    }
 }
 
 /// Tries to infer the object type from the start of the given buffer.

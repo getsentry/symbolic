@@ -72,6 +72,7 @@ pub struct ElfObject<'data> {
     data: &'data [u8],
     is_malformed: bool,
     max_decompressed_section_size: Option<usize>,
+    max_inline_depth: u32,
 }
 
 impl<'data> ElfObject<'data> {
@@ -171,6 +172,7 @@ impl<'data> ElfObject<'data> {
                         data,
                         is_malformed: true,
                         max_decompressed_section_size: opts.max_decompressed_section_size,
+                        max_inline_depth: opts.max_inline_depth,
                     });
                 }
             };
@@ -355,6 +357,7 @@ impl<'data> ElfObject<'data> {
             data,
             is_malformed: false,
             max_decompressed_section_size: opts.max_decompressed_section_size,
+            max_inline_depth: opts.max_inline_depth,
         })
     }
 
@@ -562,7 +565,13 @@ impl<'data> ElfObject<'data> {
     /// [`has_debug_info`](struct.ElfObject.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'data>, DwarfError> {
         let symbols = self.symbol_map();
-        DwarfDebugSession::parse(self, symbols, self.load_address() as i64, self.kind())
+        DwarfDebugSession::parse(
+            self,
+            symbols,
+            self.load_address() as i64,
+            self.kind(),
+            self.max_inline_depth,
+        )
     }
 
     /// Determines whether this object contains stack unwinding information.

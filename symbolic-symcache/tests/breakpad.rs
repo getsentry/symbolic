@@ -161,7 +161,7 @@ FUNC 1000 2000 0 outer
 
     let limit = 512;
     let mut opts = ParseObjectOptions::default();
-    opts.max_inline_depth = Some(limit);
+    opts.max_inline_depth = limit;
     let breakpad = Object::parse_with_opts(sym.as_bytes(), opts).unwrap();
 
     let mut buffer = Vec::new();

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use symbolic_debuginfo::pe::PeObject;
+use symbolic_debuginfo::{pe::PeObject, Parse};
 use symbolic_ppdb::{EmbeddedSource, PortablePdb};
 use symbolic_testutils::fixture;
 

@@ -8,15 +8,20 @@ use symbolic_common::{clean_path, join_path, Arch, CodeId, DebugId, Name};
 use crate::sourcebundle::SourceFileDescriptor;
 use crate::ParseObjectOptions;
 
-pub(crate) trait Parse<'data>: Sized {
+/// A generic parser trait, used by the various debuginfos.
+pub trait Parse<'data>: Sized {
+    /// The type of error to emit during parsing.
     type Error;
 
-    fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error>;
+    /// Parse the supplied bytes, with the specified parsing options.
+    fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error>;
 
+    /// Parse the supplied bytes with default parsing options.
     fn parse(data: &'data [u8]) -> Result<Self, Self::Error> {
         Self::parse_with_opts(data, Default::default())
     }
 
+    /// Returns true if the supplied bytes can be successfully parsed.
     fn test(data: &'data [u8]) -> bool {
         Self::parse(data).is_ok()
     }

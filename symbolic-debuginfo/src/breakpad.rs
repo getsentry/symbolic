@@ -940,7 +940,7 @@ pub struct BreakpadObject<'data> {
     arch: Arch,
     module: BreakpadModuleRecord<'data>,
     data: &'data [u8],
-    max_inline_depth: Option<u32>,
+    max_inline_depth: u32,
 }
 
 impl<'data> BreakpadObject<'data> {
@@ -1265,7 +1265,7 @@ impl<'data> Iterator for BreakpadSymbolIterator<'data> {
 pub struct BreakpadDebugSession<'data> {
     file_map: BreakpadFileMap<'data>,
     lines: Lines<'data>,
-    max_inline_depth: Option<u32>,
+    max_inline_depth: u32,
 }
 
 impl BreakpadDebugSession<'_> {
@@ -1331,15 +1331,11 @@ pub struct BreakpadFunctionIterator<'s> {
     next_line: Option<&'s [u8]>,
     inline_origin_map: BreakpadInlineOriginMap<'s>,
     lines: Lines<'s>,
-    max_inline_depth: Option<u32>,
+    max_inline_depth: u32,
 }
 
 impl<'s> BreakpadFunctionIterator<'s> {
-    fn new(
-        file_map: &'s BreakpadFileMap<'s>,
-        mut lines: Lines<'s>,
-        max_inline_depth: Option<u32>,
-    ) -> Self {
+    fn new(file_map: &'s BreakpadFileMap<'s>, mut lines: Lines<'s>, max_inline_depth: u32) -> Self {
         let next_line = lines.next();
         Self {
             file_map,
@@ -1390,8 +1386,8 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
             b"",
             fun_record.address,
             fun_record.size,
-        )
-        .max_inline_depth(self.max_inline_depth);
+            self.max_inline_depth,
+        );
 
         for line in self.lines.by_ref() {
             // Stop parsing LINE records once other expected records are encountered.

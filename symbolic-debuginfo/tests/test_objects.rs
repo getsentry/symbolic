@@ -5,6 +5,7 @@ use std::io::BufWriter;
 use symbolic_common::{ByteView, Language};
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
+use symbolic_debuginfo::Parse;
 use symbolic_debuginfo::{
     pe::PeObject, FileEntry, Function, LineInfo, Object, ParseObjectOptions, SymbolMap,
 };

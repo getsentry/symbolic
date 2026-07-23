@@ -1,7 +1,11 @@
 //! Contains utilities for parsing a WASM module to retrieve the information needed by [`super::WasmObject`]
 
 use super::WasmError;
-use crate::base::{ObjectKind, Symbol};
+use crate::{
+    base::{ObjectKind, Symbol},
+    wasm::WasmObject,
+    Parse, ParseObjectOptions,
+};
 use wasmparser::{
     BinaryReader, CompositeInnerType, FuncValidatorAllocations, NameSectionReader, Payload,
     TypeRef, Validator, WasmFeatures,
@@ -48,9 +52,14 @@ impl BitVec {
     }
 }
 
-impl<'data> super::WasmObject<'data> {
-    /// Tries to parse a WASM from the given slice.
-    pub fn parse(data: &'data [u8]) -> Result<Self, WasmError> {
+impl<'d> Parse<'d> for WasmObject<'d> {
+    type Error = WasmError;
+
+    fn test(data: &[u8]) -> bool {
+        Self::test(data)
+    }
+
+    fn parse_with_opts(data: &'d [u8], popts: ParseObjectOptions) -> Result<Self, Self::Error> {
         let mut code_offset = 0;
         let mut build_id = None;
         let mut dwarf_sections = Vec::new();
@@ -224,6 +233,7 @@ impl<'data> super::WasmObject<'data> {
             data,
             code_offset,
             kind,
+            max_inline_depth: popts.max_inline_depth,
         })
     }
 }
