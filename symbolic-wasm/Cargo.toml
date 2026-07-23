@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-wasm"
-version = "14.0.0-alpha.2"
+version = "14.0.0-alpha.3"
 license = "MIT"
 authors = [
     "Sentry <hello@sentry.io>",
@@ -19,8 +19,8 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-symbolic-common = { version = "14.0.0-alpha.2", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "14.0.0-alpha.2", path = "../symbolic-debuginfo", default-features = false, features = [
+symbolic-common = { version = "14.0.0-alpha.3", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "14.0.0-alpha.3", path = "../symbolic-debuginfo", default-features = false, features = [
     "breakpad",
     "elf",
     "macho",
@@ -30,7 +30,7 @@ symbolic-debuginfo = { version = "14.0.0-alpha.2", path = "../symbolic-debuginfo
     "js",
     "wasm",
 ] }
-symbolic-il2cpp = { version = "14.0.0-alpha.2", path = "../symbolic-il2cpp" }
+symbolic-il2cpp = { version = "14.0.0-alpha.3", path = "../symbolic-il2cpp" }
 
 serde = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
