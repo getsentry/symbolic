@@ -5,7 +5,7 @@ use std::{cmp::Reverse, collections::BinaryHeap};
 
 use crate::{
     base::{FileInfo, Function, LineInfo},
-    variable, Variable,
+    Variable,
 };
 use symbolic_common::Name;
 
@@ -32,8 +32,8 @@ pub struct FunctionBuilder<'s> {
     /// The lines, in any order. They will be sorted in `finish()`. These record specify locations
     /// at the innermost level of the inline stack at the line record's address.
     lines: Vec<LineInfo<'s>>,
-    /// All variables found inside the function.
-    variables: Vec<Variable<'s>>,
+    /// All variables found inside the function and its inlinees.
+    variables: Vec<FunctionBuilderVariable<'s>>,
     max_inline_depth: Option<u32>,
 }
 
@@ -72,6 +72,21 @@ impl<'s> FunctionBuilder<'s> {
         call_file: FileInfo<'s>,
         call_line: u64,
     ) {
+        self.add_inlinee_with_scope(None, depth, name, address, size, call_file, call_line);
+    }
+
+    /// Add an inlinee record associated with a specific debug information scope.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn add_inlinee_with_scope(
+        &mut self,
+        scope_id: Option<usize>,
+        depth: u32,
+        name: Name<'s>,
+        address: u64,
+        size: u64,
+        call_file: FileInfo<'s>,
+        call_line: u64,
+    ) {
         // An inlinee that starts before the function is obviously bogus same for an inlinee that
         // has a depth deeper than the limit.
         if address < self.address || depth > self.max_inline_depth.unwrap_or(u32::MAX) {
@@ -79,6 +94,7 @@ impl<'s> FunctionBuilder<'s> {
         }
 
         self.inlinees.push(Reverse(FunctionBuilderInlinee {
+            scope_id,
             depth,
             address,
             size,
@@ -90,7 +106,17 @@ impl<'s> FunctionBuilder<'s> {
 
     /// Add a variable to the function.
     pub fn add_variable(&mut self, variable: Variable<'s>) {
-        self.variables.push(variable);
+        self.add_variable_for_scope(None, variable);
+    }
+
+    /// Add a variable associated with a specific debug information scope.
+    pub(crate) fn add_variable_for_scope(
+        &mut self,
+        scope_id: Option<usize>,
+        variable: Variable<'s>,
+    ) {
+        self.variables
+            .push(FunctionBuilderVariable { scope_id, variable });
     }
 
     /// Add a line record, specifying the line at this address inside the innermost inlinee that
@@ -140,6 +166,11 @@ impl<'s> FunctionBuilder<'s> {
         // Sort the lines by address.
         lines.sort_by_key(|line| line.address);
 
+        let outer_variables = variables
+            .iter()
+            .filter(|variable| variable.scope_id.is_none())
+            .map(|variable| variable.variable.clone())
+            .collect();
         let outer_function = Function {
             address,
             size,
@@ -147,7 +178,7 @@ impl<'s> FunctionBuilder<'s> {
             compilation_dir,
             lines: Vec::new(),
             inlinees: Vec::new(),
-            variables,
+            variables: outer_variables,
             inline: false,
         };
         let outer_function_end = address + size;
@@ -182,6 +213,23 @@ impl<'s> FunctionBuilder<'s> {
                     file: inlinee.call_file,
                     line: inlinee.call_line,
                 });
+                let inline_variables = inlinee
+                    .scope_id
+                    .into_iter()
+                    .flat_map(|scope_id| {
+                        variables.iter().filter_map(move |variable| {
+                            (variable.scope_id == Some(scope_id))
+                                .then(|| {
+                                    variable_for_range(
+                                        &variable.variable,
+                                        inlinee.address,
+                                        inlinee.size,
+                                    )
+                                })
+                                .flatten()
+                        })
+                    })
+                    .collect();
                 stack.push(Function {
                     address: inlinee.address,
                     size: inlinee.size,
@@ -189,7 +237,7 @@ impl<'s> FunctionBuilder<'s> {
                     compilation_dir,
                     lines: Vec::new(),
                     inlinees: Vec::new(),
-                    variables: Vec::new(),
+                    variables: inline_variables,
                     inline: true,
                 });
                 next_inlinee = inlinee_iter.next();
@@ -248,6 +296,8 @@ impl<'s> FunctionBuilder<'s> {
 /// Represents a contiguous address range which is covered by an inlined function call.
 #[derive(PartialEq, Eq, Clone, Debug)]
 struct FunctionBuilderInlinee<'s> {
+    /// The debug information scope that produced this inline call.
+    pub scope_id: Option<usize>,
     /// The inline nesting level of this inline call. Calls from the outer function have depth 0.
     pub depth: u32,
     /// The start address.
@@ -260,6 +310,26 @@ struct FunctionBuilderInlinee<'s> {
     pub call_file: FileInfo<'s>,
     /// The line number of the location of the call.
     pub call_line: u64,
+}
+
+/// A variable and the debug information scope that owns it.
+struct FunctionBuilderVariable<'s> {
+    pub scope_id: Option<usize>,
+    pub variable: Variable<'s>,
+}
+
+fn variable_for_range<'s>(
+    variable: &Variable<'s>,
+    address: u64,
+    size: u64,
+) -> Option<Variable<'s>> {
+    let end_address = address.saturating_add(size);
+    let mut variable = variable.clone();
+    variable.locations.retain(|location| {
+        let location_end = location.address.saturating_add(location.size);
+        location.address < end_address && address < location_end
+    });
+    (!variable.locations.is_empty()).then_some(variable)
 }
 
 /// Implement ordering in DFS order, i.e. first by address and then by depth.
@@ -469,6 +539,20 @@ fn ensure_proper_nesting(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{Kind, Location, LocationInfo};
+
+    fn variable(name: &'static str, address: u64, size: u64) -> Variable<'static> {
+        Variable {
+            name: name.into(),
+            ty: None,
+            kind: Kind::Local,
+            locations: vec![LocationInfo {
+                address,
+                size,
+                location: Location::Register { id: 0 },
+            }],
+        }
+    }
 
     #[test]
     fn test_simple() {
@@ -515,6 +599,43 @@ mod tests {
             &func.inlinees[0].lines,
             &[LineInfo::new(0x20, 0x20, b"bar.c", 1)]
         );
+    }
+
+    #[test]
+    fn test_inlinee_variables_are_assigned_by_scope() {
+        let mut builder = FunctionBuilder::new(Name::from("outer"), &[], 0x10, 0x40);
+        builder.add_inlinee_with_scope(
+            Some(1),
+            0,
+            Name::from("first"),
+            0x20,
+            0x10,
+            FileInfo::default(),
+            0,
+        );
+        builder.add_inlinee_with_scope(
+            Some(2),
+            0,
+            Name::from("second"),
+            0x30,
+            0x10,
+            FileInfo::default(),
+            0,
+        );
+
+        builder.add_variable(variable("outer_var", 0x10, 0x40));
+        builder.add_variable_for_scope(Some(1), variable("first_var", 0x10, 0x40));
+        builder.add_variable_for_scope(Some(2), variable("second_var", 0x10, 0x40));
+
+        let function = builder.finish();
+
+        assert_eq!(function.variables.len(), 1);
+        assert_eq!(function.variables[0].name, "outer_var");
+        assert_eq!(function.inlinees.len(), 2);
+        assert_eq!(function.inlinees[0].variables.len(), 1);
+        assert_eq!(function.inlinees[0].variables[0].name, "first_var");
+        assert_eq!(function.inlinees[1].variables.len(), 1);
+        assert_eq!(function.inlinees[1].variables[0].name, "second_var");
     }
 
     #[test]

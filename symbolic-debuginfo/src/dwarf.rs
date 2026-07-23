@@ -957,7 +957,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             })
             .collect();
 
-        self.parse_function_children(depth, 0, entries, &mut builders, output, language)?;
+        self.parse_function_children(depth, 0, None, entries, &mut builders, output, language)?;
 
         if let Some(line_program) = &self.line_program {
             for (range, builder) in &mut builders {
@@ -983,6 +983,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         &self,
         depth: isize,
         inline_depth: u32,
+        inline_scope: Option<usize>,
         entries: &mut EntriesRaw<'d, '_>,
         builders: &mut [(Range, FunctionBuilder<'d>)],
         output: &mut FunctionsOutput<'_, 'd>,
@@ -1016,7 +1017,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     )?;
                 }
                 constants::DW_TAG_variable => {
-                    self.parse_variable(entries, abbrev, builders)?;
+                    self.parse_variable(entries, abbrev, inline_scope, builders)?;
                 }
                 _ => {
                     entries.skip_attributes(abbrev.attributes())?;
@@ -1093,7 +1094,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
             let address = offset(range.begin, self.inner.info.address_offset);
             let size = range.end - range.begin;
-            builder.add_inlinee(
+            builder.add_inlinee_with_scope(
+                Some(dw_die_offset.0),
                 inline_depth,
                 name.clone(),
                 address,
@@ -1103,13 +1105,22 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             );
         }
 
-        self.parse_function_children(depth, inline_depth + 1, entries, builders, output, language)
+        self.parse_function_children(
+            depth,
+            inline_depth + 1,
+            Some(dw_die_offset.0),
+            entries,
+            builders,
+            output,
+            language,
+        )
     }
 
     fn parse_variable(
         &self,
         entries: &mut EntriesRaw<'d, '_>,
         abbrev: &gimli::Abbreviation,
+        inline_scope: Option<usize>,
         builders: &mut [(Range, FunctionBuilder<'d>)],
     ) -> Result<Option<()>, DwarfError> {
         let mut ty = None;
@@ -1179,12 +1190,15 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             locations.sort_unstable_by_key(|location| location.address);
 
             if !locations.is_empty() {
-                builder.add_variable(variable::Variable {
-                    name: name.clone(),
-                    ty: ty.clone(),
-                    kind,
-                    locations,
-                });
+                builder.add_variable_for_scope(
+                    inline_scope,
+                    variable::Variable {
+                        name: name.clone(),
+                        ty: ty.clone(),
+                        kind,
+                        locations,
+                    },
+                );
             }
         }
 

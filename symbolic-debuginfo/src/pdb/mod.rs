@@ -869,6 +869,7 @@ impl<'s> Unit<'s> {
             compilation_dir: &[],
             lines,
             inlinees: Vec::new(),
+            variables: Vec::new(),
             inline: false,
         }))
     }
@@ -936,6 +937,7 @@ impl<'s> Unit<'s> {
             compilation_dir: &[],
             lines,
             inlinees: Vec::new(),
+            variables: Vec::new(),
             inline: true,
         }))
     }
