@@ -6,7 +6,7 @@ use symbolic_common::{ByteView, Language};
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
 use symbolic_debuginfo::{
-    FileEntry, Function, LineInfo, Object, ParseObjectOptions, SymbolMap, pe::PeObject,
+    FileEntry, Function, LineInfo, Location, Object, ParseObjectOptions, SymbolMap, pe::PeObject,
 };
 use symbolic_testutils::fixture;
 
@@ -72,6 +72,34 @@ impl fmt::Debug for FunctionsDebug<'_> {
                     line.file.dir_str(),
                     indent = self.1 * 2
                 )?;
+            }
+
+            if !function.variables.is_empty() {
+                writeln!(f, "{:indent$}  variables:", "", indent = self.1 * 2)?;
+            }
+
+            for variable in &function.variables {
+                writeln!(
+                    f,
+                    "{:indent$}    {} ({})",
+                    "",
+                    variable.name,
+                    variable.kind,
+                    indent = self.1 * 2
+                )?;
+
+                for location in &variable.locations {
+                    match location.location {
+                        Location::Register { id } => writeln!(
+                            f,
+                            "{:indent$}      {:#x}..{:#x}: register {id}",
+                            "",
+                            location.address,
+                            location.address.saturating_add(location.size),
+                            indent = self.1 * 2
+                        )?,
+                    }
+                }
             }
 
             write!(f, "{:?}", FunctionsDebug(&function.inlinees, self.1 + 1))?;

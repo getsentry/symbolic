@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt};
 
 ///
 #[derive(Debug, Clone)]
@@ -41,6 +41,15 @@ pub enum Kind {
     Parameter,
     /// The variable is a local.
     Local,
+}
+
+impl fmt::Display for Kind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Parameter => f.write_str("parameter"),
+            Self::Local => f.write_str("local"),
+        }
+    }
 }
 
 /// A half open address range.

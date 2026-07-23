@@ -113,6 +113,19 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x1332: mingw-w64/mingw-w64-crt/crt/crtdll.c:178 (D:/W/B/src)
   0x1335: mingw-w64/mingw-w64-crt/crt/crtdll.c:178 (D:/W/B/src)
   0x133f: mingw-w64/mingw-w64-crt/crt/crtdll.c:170 (D:/W/B/src)
+  variables:
+    hDllHandle (parameter)
+      0x11e0..0x11f6: register 2
+      0x11f6..0x12b8: register 5
+    dwReason (parameter)
+      0x11e0..0x11f6: register 1
+      0x11f6..0x12c9: register 3
+    lpreserved (parameter)
+      0x11e0..0x11f6: register 8
+      0x11f6..0x12bf: register 4
+    retcode (local)
+      0x121d..0x1223: register 0
+      0x1259..0x1288: register 14
 
   > 0x123c: _CRT_INIT (0x5)
     0x123c: mingw-w64/mingw-w64-crt/crt/crtdll.c:129 (D:/W/B/src)
@@ -158,6 +171,10 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 > 0x1350: atexit (0xf)
   0x1350: mingw-w64/mingw-w64-crt/crt/crtdll.c:182 (D:/W/B/src)
   0x1353: mingw-w64/mingw-w64-crt/crt/crtdll.c:185 (D:/W/B/src)
+  variables:
+    func (parameter)
+      0x1350..0x135a: register 2
+      0x135a..0x135f: register 1
 
 > 0x1360: _Z13lcNetInfoGlibv (0x60)
   0x1360: qtbase-everywhere-src-6.10.1/src/plugins/networkinformation/glib/qglibnetworkinformationbackend.cpp:17 (D:/W/B/src)
@@ -307,6 +324,10 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x149d: qtbase-everywhere-src-6.10.1/src/plugins/networkinformation/glib/qglibnetworkinformationbackend.cpp:117 (D:/W/B/src)
   0x14c2: qtbase-everywhere-src-6.10.1/src/plugins/networkinformation/glib/qglibnetworkinformationbackend.cpp:117 (D:/W/B/src)
   0x14c5: qtbase-everywhere-src-6.10.1/src/plugins/networkinformation/glib/qglibnetworkinformationbackend.cpp:119 (D:/W/B/src)
+  variables:
+    this (parameter)
+      0x13e4..0x13f8: register 2
+      0x13f8..0x14cc: register 4
 
   > 0x13f0: _ZN26QNetworkInformationBackendC2Ev (0x15)
     0x13f0: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:47 (D:/W/B/src)
@@ -326,6 +347,13 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x15da: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:0 (D:/W/B/src)
   0x15ea: qtbase-everywhere-src-6.10.1/src/plugins/networkinformation/glib/qglibnetworkinformationbackend.cpp:139 (D:/W/B/src)
   0x15fb: qtbase-everywhere-src-6.10.1/src/plugins/networkinformation/glib/qglibnetworkinformationbackend.cpp:0 (D:/W/B/src)
+  variables:
+    backend (parameter)
+      0x14d4..0x14fd: register 2
+      0x14fd..0x15f2: register 4
+      0x15fb..0x1601: register 4
+    connectivityState (local)
+      0x1505..0x15ac: register 5
 
   > 0x1505: _ZN12_GLOBAL__N_136reachabilityFromGNetworkConnectivityE20GNetworkConnectivity (0x16)
     0x1505: qtbase-everywhere-src-6.10.1/src/plugins/networkinformation/glib/qglibnetworkinformationbackend.cpp:22 (D:/W/B/src)
@@ -413,6 +441,11 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x16ba: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:0 (D:/W/B/src)
   0x16ca: qtbase-everywhere-src-6.10.1/src/plugins/networkinformation/glib/qglibnetworkinformationbackend.cpp:144 (D:/W/B/src)
   0x16d5: qtbase-everywhere-src-6.10.1/src/plugins/networkinformation/glib/qglibnetworkinformationbackend.cpp:0 (D:/W/B/src)
+  variables:
+    backend (parameter)
+      0x1614..0x1637: register 2
+      0x1637..0x167f: register 4
+      0x1687..0x16a7: register 4
 
   > 0x1645: _ZN26QNetworkInformationBackend10setMeteredEb (0x42)
     0x1645: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:116 (D:/W/B/src)

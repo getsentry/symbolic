@@ -20,7 +20,7 @@ use std::sync::Arc;
 use fallible_iterator::FallibleIterator;
 use gimli::read::{AttributeValue, Error as GimliError, Range};
 use gimli::{
-    AbbreviationsCacheStrategy, DwarfFileType, Expression, LocListIter, Operation,
+    AbbreviationsCacheStrategy, DwarfFileType, Expression, LocListIter, LocationLists, Operation,
     UnitSectionOffset, constants,
 };
 use once_cell::sync::OnceCell;
@@ -1436,6 +1436,8 @@ struct DwarfSections<'data> {
     debug_info: DwarfSectionData<'data, gimli::read::DebugInfo<Slice<'data>>>,
     debug_line: DwarfSectionData<'data, gimli::read::DebugLine<Slice<'data>>>,
     debug_line_str: DwarfSectionData<'data, gimli::read::DebugLineStr<Slice<'data>>>,
+    debug_loc: DwarfSectionData<'data, gimli::read::DebugLoc<Slice<'data>>>,
+    debug_loclists: DwarfSectionData<'data, gimli::read::DebugLocLists<Slice<'data>>>,
     debug_names: DwarfSectionData<'data, gimli::read::DebugNames<Slice<'data>>>,
     debug_str: DwarfSectionData<'data, gimli::read::DebugStr<Slice<'data>>>,
     debug_str_offsets: DwarfSectionData<'data, gimli::read::DebugStrOffsets<Slice<'data>>>,
@@ -1458,6 +1460,8 @@ impl<'data> DwarfSections<'data> {
             debug_info: DwarfSectionData::load(dwarf),
             debug_line: DwarfSectionData::load(dwarf),
             debug_line_str: DwarfSectionData::load(dwarf),
+            debug_loc: DwarfSectionData::load(dwarf),
+            debug_loclists: DwarfSectionData::load(dwarf),
             debug_names: DwarfSectionData::load(dwarf),
             debug_str: DwarfSectionData::load(dwarf),
             debug_str_offsets: DwarfSectionData::load(dwarf),
@@ -1508,7 +1512,10 @@ impl<'d> DwarfInfo<'d> {
             debug_types: Default::default(),
             debug_macinfo: sections.debug_macinfo.to_gimli(),
             debug_macro: sections.debug_macro.to_gimli(),
-            locations: Default::default(),
+            locations: LocationLists::new(
+                sections.debug_loc.to_gimli(),
+                sections.debug_loclists.to_gimli(),
+            ),
             ranges: RangeLists::new(
                 sections.debug_ranges.to_gimli(),
                 sections.debug_rnglists.to_gimli(),

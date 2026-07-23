@@ -6,7 +6,7 @@ use clap::builder::ValueParser;
 use clap::{value_parser, Arg, ArgAction, ArgMatches, Command};
 
 use symbolic::common::{ByteView, Language, Name, NameMangling};
-use symbolic::debuginfo::{Function, Object};
+use symbolic::debuginfo::{Function, Location, Object};
 use symbolic::demangle::{Demangle, DemangleOptions};
 
 fn print_name<'a, N: Borrow<Name<'a>>>(name: Option<N>, matches: &ArgMatches) {
@@ -41,6 +41,7 @@ fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches) -> Result<b
         }
     }
 
+    let mut found_line = false;
     for line in &function.lines {
         if line.address + line.size.unwrap_or(1) <= addr {
             continue;
@@ -64,10 +65,35 @@ fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches) -> Result<b
         print_range(line.address, line.size, matches);
         println!();
 
-        return Ok(true);
+        found_line = true;
+        break;
     }
 
-    Ok(false)
+    if found_line && *matches.get_one("variables").unwrap() {
+        for variable in &function.variables {
+            let mut locations = variable
+                .locations
+                .iter()
+                .take_while(|location| location.address <= addr)
+                .filter(|location| addr - location.address < location.size)
+                .peekable();
+
+            if locations.peek().is_some() {
+                println!("    {} ({})", variable.name, variable.kind);
+            }
+
+            for location in locations {
+                print!("      ");
+                match location.location {
+                    Location::Register { id } => print!("reg:{id}"),
+                }
+                print_range(location.address, Some(location.size), matches);
+                println!();
+            }
+        }
+    }
+
+    Ok(found_line)
 }
 
 fn execute(matches: &ArgMatches) -> Result<()> {
@@ -168,6 +194,13 @@ In the second, addr2line reads hexadecimal addresses from standard input, and pr
                 .long("inlinees")
                 .action(ArgAction::SetTrue)
                 .help("If the address belongs to a function that was inlined, the source information for all enclosing scopes back to the first non-inlined function will also be printed. For example, if \"main\" inlines \"callee1\" which inlines \"callee2\", and address is from \"callee2\", the source information for \"callee1\" and \"main\" will also be printed.")
+        )
+        .arg(
+            Arg::new("variables")
+                .short('v')
+                .long("variables")
+                .action(ArgAction::SetTrue)
+                .help("Display variable information."),
         )
         .arg(
             Arg::new("addrs")
