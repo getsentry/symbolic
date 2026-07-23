@@ -138,6 +138,8 @@ expression: "FunctionsDebug(&functions[..10], 0)"
       0xea0..0xeb1: register 2
       0xeb1..0xf41: register 12
       0xfa9..0xfe7: register 12
+    out (local)
+      0xea0..0xfe7: frame base +16
     out_size (local)
       0xf23..0xf72: register 3
 
@@ -198,6 +200,8 @@ expression: "FunctionsDebug(&functions[..10], 0)"
       0xff0..0x1001: register 2
       0x1001..0x107b: register 14
       0x10f9..0x1137: register 14
+    out (local)
+      0xff0..0x1137: frame base +8
     out_size (local)
       0x106b..0x10b7: register 6
 
