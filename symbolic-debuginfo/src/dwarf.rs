@@ -28,7 +28,7 @@ use thiserror::Error;
 
 use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
 
-use crate::function_builder::FunctionBuilder;
+use crate::function_builder::{FunctionBuilder, FunctionBuilderInlinee};
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
 use crate::sourcebundle::SourceFileDescriptor;
@@ -457,11 +457,11 @@ impl<'d> UnitRef<'d, '_> {
     /// Resolves a attribute unit ref or debug info ref to a [`UnitSectionOffset`].
     ///
     /// Returns `None` for attributes not containing a reference or unsupported references.
-    fn to_unit_section_offset(&self, attr: Attribute<'d>) -> Option<UnitSectionOffset> {
+    fn to_unit_section_offset(self, attr: Attribute<'d>) -> Option<UnitSectionOffset> {
         match attr.value() {
             AttributeValue::UnitRef(offset) => Some(offset.to_unit_section_offset(self.unit)),
             AttributeValue::DebugInfoRef(offset) => offset.to_unit_section_offset(self.unit),
-            _ => return None,
+            _ => None,
         }
     }
 
@@ -996,6 +996,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Traverses a subtree during function parsing.
+    #[allow(clippy::too_many_arguments)]
     fn parse_function_children(
         &self,
         depth: isize,
@@ -1130,15 +1131,15 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 .filter_map(|variable| self.variable_for_range(variable, *range))
                 .collect();
 
-            builder.add_inlinee_with_variables(
-                inline_depth,
-                name.clone(),
+            builder.add_inlinee(FunctionBuilderInlinee {
+                depth: inline_depth,
+                name: name.clone(),
                 address,
                 size,
-                call_file.clone(),
+                call_file: call_file.clone(),
                 call_line,
                 variables,
-            );
+            });
         }
 
         Ok(())
@@ -1227,12 +1228,16 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         };
 
         locations.sort_unstable_by_key(|location| location.address);
-        (!locations.is_empty()).then(|| variable::Variable {
-            name: variable.name.clone(),
-            ty: variable.ty.clone(),
-            kind: variable.kind,
-            locations,
-        })
+
+        match !locations.is_empty() {
+            true => Some(variable::Variable {
+                name: variable.name.clone(),
+                ty: variable.ty.clone(),
+                kind: variable.kind,
+                locations,
+            }),
+            false => None,
+        }
     }
 
     fn parse_locations(
@@ -1268,9 +1273,9 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             result.push((range, location));
         }
 
-        Ok(match result.is_empty() {
-            true => None,
-            false => Some(Locations::Many(result)),
+        Ok(match !result.is_empty() {
+            true => Some(Locations::Many(result)),
+            false => None,
         })
     }
 

@@ -1441,7 +1441,7 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
                         call_line: inline_record.call_site_line,
                         variables: Vec::new(),
                     };
-                    builder.add_inlinee2(inlinee);
+                    builder.add_inlinee(inlinee);
                 }
                 continue;
             }

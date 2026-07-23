@@ -63,57 +63,7 @@ impl<'s> FunctionBuilder<'s> {
     /// Add an inlinee record. This method can be called in any order.
     ///
     /// Inlinees which are called directly from the outer function have depth 0.
-    pub fn add_inlinee(
-        &mut self,
-        depth: u32,
-        name: Name<'s>,
-        address: u64,
-        size: u64,
-        call_file: FileInfo<'s>,
-        call_line: u64,
-    ) {
-        self.add_inlinee_with_variables(
-            depth,
-            name,
-            address,
-            size,
-            call_file,
-            call_line,
-            Vec::new(),
-        );
-    }
-
-    /// Add an inlinee record with its variables.
-    #[allow(clippy::too_many_arguments)]
-    pub fn add_inlinee_with_variables(
-        &mut self,
-        depth: u32,
-        name: Name<'s>,
-        address: u64,
-        size: u64,
-        call_file: FileInfo<'s>,
-        call_line: u64,
-        variables: Vec<Variable<'s>>,
-    ) {
-        // An inlinee that starts before the function is obviously bogus same for an inlinee that
-        // has a depth deeper than the limit.
-        if address < self.address || depth > self.max_inline_depth.unwrap_or(u32::MAX) {
-            return;
-        }
-
-        self.inlinees.push(Reverse(FunctionBuilderInlinee {
-            depth,
-            address,
-            size,
-            name,
-            call_file,
-            call_line,
-            variables,
-        }));
-    }
-
-    /// Add an inlinee record with its variables.
-    pub fn add_inlinee2(&mut self, inlinee: FunctionBuilderInlinee<'s>) {
+    pub fn add_inlinee(&mut self, inlinee: FunctionBuilderInlinee<'s>) {
         // An inlinee that starts before the function is obviously bogus same for an inlinee that
         // has a depth deeper than the limit.
         if inlinee.address < self.address
@@ -539,19 +489,6 @@ mod tests {
     use super::*;
     use crate::{Kind, Location, LocationInfo};
 
-    fn variable(name: &'static str, address: u64, size: u64) -> Variable<'static> {
-        Variable {
-            name: name.into(),
-            ty: None,
-            kind: Kind::Local,
-            locations: vec![LocationInfo {
-                address,
-                size,
-                location: Location::Register { id: 0 },
-            }],
-        }
-    }
-
     #[test]
     fn test_simple() {
         // 0x10 - 0x40: foo in foo.c on line 1
@@ -569,7 +506,7 @@ mod tests {
         // 0x20 - 0x40: bar in bar.c on line 1
         // - inlined into: foo in foo.c on line 2
         let mut builder = FunctionBuilder::new(Name::from("foo"), &[], 0x10, 0x30);
-        builder.add_inlinee2(FunctionBuilderInlinee {
+        builder.add_inlinee(FunctionBuilderInlinee {
             depth: 0,
             name: Name::from("bar"),
             address: 0x20,
@@ -601,41 +538,6 @@ mod tests {
     }
 
     #[test]
-    fn test_inlinee_variables_are_attached_structurally() {
-        let mut builder = FunctionBuilder::new(Name::from("outer"), &[], 0x10, 0x40);
-        builder.add_inlinee_with_variables(
-            0,
-            Name::from("first"),
-            0x20,
-            0x10,
-            FileInfo::default(),
-            0,
-            vec![variable("first_var", 0x10, 0x40)],
-        );
-        builder.add_inlinee_with_variables(
-            0,
-            Name::from("second"),
-            0x30,
-            0x10,
-            FileInfo::default(),
-            0,
-            vec![variable("second_var", 0x10, 0x40)],
-        );
-
-        builder.add_variable(variable("outer_var", 0x10, 0x40));
-
-        let function = builder.finish();
-
-        assert_eq!(function.variables.len(), 1);
-        assert_eq!(function.variables[0].name, "outer_var");
-        assert_eq!(function.inlinees.len(), 2);
-        assert_eq!(function.inlinees[0].variables.len(), 1);
-        assert_eq!(function.inlinees[0].variables[0].name, "first_var");
-        assert_eq!(function.inlinees[1].variables.len(), 1);
-        assert_eq!(function.inlinees[1].variables[0].name, "second_var");
-    }
-
-    #[test]
     fn test_longer_line_record() {
         // Consider the following code:
         //
@@ -664,30 +566,33 @@ mod tests {
         //               |---------|      (child2.c line 1)
 
         let mut builder = FunctionBuilder::new(Name::from("parent"), &[], 0x10, 0x40);
-        builder.add_inlinee(
-            0,
-            Name::from("child1"),
-            0x20,
-            0x10,
-            FileInfo::from_filename(b"parent.c"),
-            1,
-        );
-        builder.add_inlinee(
-            1,
-            Name::from("child2"),
-            0x20,
-            0x10,
-            FileInfo::from_filename(b"child1.c"),
-            1,
-        );
-        builder.add_inlinee(
-            0,
-            Name::from("child2"),
-            0x30,
-            0x10,
-            FileInfo::from_filename(b"parent.c"),
-            2,
-        );
+        builder.add_inlinee(FunctionBuilderInlinee {
+            depth: 0,
+            name: Name::from("child1"),
+            address: 0x20,
+            size: 0x10,
+            call_file: FileInfo::from_filename(b"parent.c"),
+            call_line: 1,
+            variables: Vec::new(),
+        });
+        builder.add_inlinee(FunctionBuilderInlinee {
+            depth: 1,
+            name: Name::from("child2"),
+            address: 0x20,
+            size: 0x10,
+            call_file: FileInfo::from_filename(b"child1.c"),
+            call_line: 1,
+            variables: Vec::new(),
+        });
+        builder.add_inlinee(FunctionBuilderInlinee {
+            depth: 0,
+            name: Name::from("child2"),
+            address: 0x30,
+            size: 0x10,
+            call_file: FileInfo::from_filename(b"parent.c"),
+            call_line: 2,
+            variables: Vec::new(),
+        });
         builder.add_leaf_line(0x10, Some(0x10), FileInfo::from_filename(b"parent.c"), 1);
         builder.add_leaf_line(0x20, Some(0x20), FileInfo::from_filename(b"child2.c"), 1);
         builder.add_leaf_line(0x40, Some(0x10), FileInfo::from_filename(b"parent.c"), 1);
