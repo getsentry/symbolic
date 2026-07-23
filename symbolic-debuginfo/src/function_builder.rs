@@ -6,7 +6,6 @@ use std::{cmp::Reverse, collections::BinaryHeap, fmt};
 use crate::{
     base::{FileInfo, Function, LineInfo},
     breakpad::{BreakpadError, BreakpadErrorKind},
-    dwarf::{DwarfError, DwarfErrorKind},
 };
 use symbolic_common::Name;
 use thiserror::Error;
@@ -15,7 +14,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct FunctionBuilderError {
-    kind: FunctionBuilderErrorKind,
+    pub(crate) kind: FunctionBuilderErrorKind,
 }
 
 /// The kind of error origination in the FunctionBuilder.
@@ -36,26 +35,6 @@ impl fmt::Display for FunctionBuilderErrorKind {
 impl From<FunctionBuilderErrorKind> for FunctionBuilderError {
     fn from(kind: FunctionBuilderErrorKind) -> Self {
         Self { kind }
-    }
-}
-
-impl From<FunctionBuilderError> for DwarfError {
-    fn from(value: FunctionBuilderError) -> Self {
-        match value.kind {
-            FunctionBuilderErrorKind::TooManyInlineeNestings => {
-                DwarfErrorKind::CorruptedData.into()
-            }
-        }
-    }
-}
-
-impl From<FunctionBuilderError> for BreakpadError {
-    fn from(value: FunctionBuilderError) -> Self {
-        match value.kind {
-            FunctionBuilderErrorKind::TooManyInlineeNestings => {
-                BreakpadErrorKind::TooManyInlineeNestings.into()
-            }
-        }
     }
 }
 

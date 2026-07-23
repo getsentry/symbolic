@@ -26,7 +26,7 @@ use thiserror::Error;
 use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
 
 use crate::base::*;
-use crate::function_builder::FunctionBuilder;
+use crate::function_builder::{FunctionBuilder, FunctionBuilderError, FunctionBuilderErrorKind};
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
 use crate::sourcebundle::SourceFileDescriptor;
@@ -92,6 +92,10 @@ pub enum DwarfErrorKind {
 
     /// The DWARF file is corrupted. See the cause for more information.
     CorruptedData,
+
+    /// A resource limit was reached while operating on the DWARF file.  See the source
+    /// for more details.
+    ExhaustedResourceLimit,
 }
 
 impl fmt::Display for DwarfErrorKind {
@@ -104,6 +108,7 @@ impl fmt::Display for DwarfErrorKind {
             Self::UnexpectedInline => write!(f, "unexpected inline function without parent"),
             Self::InvertedFunctionRange => write!(f, "function with inverted address range"),
             Self::CorruptedData => write!(f, "corrupted dwarf debug data"),
+            Self::ExhaustedResourceLimit => write!(f, "exhausted resource limit"),
         }
     }
 }
@@ -143,6 +148,16 @@ impl From<DwarfErrorKind> for DwarfError {
 impl From<GimliError> for DwarfError {
     fn from(e: GimliError) -> Self {
         Self::new(DwarfErrorKind::CorruptedData, e)
+    }
+}
+
+impl From<FunctionBuilderError> for DwarfError {
+    fn from(value: FunctionBuilderError) -> Self {
+        match value.kind {
+            FunctionBuilderErrorKind::TooManyInlineeNestings => {
+                Self::new(DwarfErrorKind::ExhaustedResourceLimit, value)
+            }
+        }
     }
 }
 
