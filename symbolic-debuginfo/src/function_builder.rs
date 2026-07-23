@@ -169,13 +169,6 @@ impl<'s> FunctionBuilder<'s> {
                     file: inlinee.call_file,
                     line: inlinee.call_line,
                 });
-                let inline_variables = inlinee
-                    .variables
-                    .iter()
-                    .filter_map(|variable| {
-                        variable_for_range(variable, inlinee.address, inlinee.size)
-                    })
-                    .collect();
                 stack.push(Function {
                     address: inlinee.address,
                     size: inlinee.size,
@@ -183,7 +176,7 @@ impl<'s> FunctionBuilder<'s> {
                     compilation_dir,
                     lines: Vec::new(),
                     inlinees: Vec::new(),
-                    variables: inline_variables,
+                    variables: inlinee.variables,
                     inline: true,
                 });
                 next_inlinee = inlinee_iter.next();
@@ -265,20 +258,6 @@ impl PartialEq for FunctionBuilderInlinee<'_> {
 }
 
 impl Eq for FunctionBuilderInlinee<'_> {}
-
-fn variable_for_range<'s>(
-    variable: &Variable<'s>,
-    address: u64,
-    size: u64,
-) -> Option<Variable<'s>> {
-    let end_address = address.saturating_add(size);
-    let mut variable = variable.clone();
-    variable.locations.retain(|location| {
-        let location_end = location.address.saturating_add(location.size);
-        location.address < end_address && address < location_end
-    });
-    (!variable.locations.is_empty()).then_some(variable)
-}
 
 /// Implement ordering in DFS order, i.e. first by address and then by depth.
 impl PartialOrd for FunctionBuilderInlinee<'_> {
@@ -478,6 +457,23 @@ fn ensure_proper_nesting(
             // function. Those inlinees can be as long as they want; we don't try to
             // force them to stay within the outer function's address range here.
         }
+
+        // Clip inlinee variable to the new range.
+        inlinee.variables.retain_mut(|variable| {
+            variable.locations.retain_mut(|location| {
+                let location_end = location.address.saturating_add(location.size);
+                let location_end = location_end.min(end_address);
+                location.address = location.address.max(start_address);
+                if location.address >= location_end {
+                    return false;
+                }
+                location.size = location_end - location.address;
+                true
+            });
+
+            !variable.locations.is_empty()
+        });
+
         result.push(inlinee);
         end_address_stack.push(end_address); // this goes into end_address_stack[depth]
     }
@@ -486,8 +482,9 @@ fn ensure_proper_nesting(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{Kind, Location, LocationInfo};
+
+    use super::*;
 
     #[test]
     fn test_simple() {
@@ -535,6 +532,90 @@ mod tests {
             &func.inlinees[0].lines,
             &[LineInfo::new(0x20, 0x20, b"bar.c", 1)]
         );
+    }
+
+    #[test]
+    fn test_inlinee_variable_fixup_location_ranges() {
+        let variable = Variable {
+            name: "value".into(),
+            ty: None,
+            kind: Kind::Local,
+            locations: vec![LocationInfo {
+                address: 0x10,
+                size: 0x40,
+                location: Location::Register { id: 0 },
+            }],
+        };
+
+        let mut builder = FunctionBuilder::new(Name::from("outer"), &[], 0x10, 0x40);
+        builder.add_inlinee(FunctionBuilderInlinee {
+            depth: 0,
+            address: 0x20,
+            size: 0x10,
+            name: Name::from("inline"),
+            call_file: FileInfo::default(),
+            call_line: 0,
+            variables: vec![variable],
+        });
+
+        let function = builder.finish();
+
+        insta::assert_debug_snapshot!(function, @r#"
+        Function {
+            address: 0x10,
+            size: 0x40,
+            name: Name {
+                string: "outer",
+                lang: Unknown,
+                mangling: Unknown,
+            },
+            compilation_dir: "",
+            lines: [
+                LineInfo {
+                    address: 0x20,
+                    size: 0x10,
+                    file: FileInfo {
+                        name: "",
+                        dir: "",
+                    },
+                    line: 0,
+                },
+            ],
+            inlinees: [
+                Function {
+                    address: 0x20,
+                    size: 0x10,
+                    name: Name {
+                        string: "inline",
+                        lang: Unknown,
+                        mangling: Unknown,
+                    },
+                    compilation_dir: "",
+                    lines: [],
+                    inlinees: [],
+                    inline: true,
+                    variables: [
+                        Variable {
+                            name: "value",
+                            ty: None,
+                            kind: Local,
+                            locations: [
+                                LocationInfo {
+                                    address: 0x20,
+                                    size: 0x10,
+                                    location: Register {
+                                        id: 0,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            inline: false,
+            variables: [],
+        }
+        "#);
     }
 
     #[test]

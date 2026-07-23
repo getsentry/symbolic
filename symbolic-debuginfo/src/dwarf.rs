@@ -151,7 +151,7 @@ impl From<GimliError> for DwarfError {
 
 /// A reference to a type in the DWARF file.
 #[derive(Debug, Clone)]
-pub struct DwarfTypeRef(UnitSectionOffset);
+pub struct DwarfTypeRef(#[expect(unused)] UnitSectionOffset);
 
 /// DWARF section information including its data.
 ///
@@ -1220,24 +1220,32 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             }],
             Locations::Many(locations) => locations
                 .iter()
-                .filter(|(location_range, _)| {
-                    location_range.begin < range.end && range.begin < location_range.end
+                // Make sure the ranges overlap
+                .filter(|(lr, _)| lr.begin < range.end && range.begin < lr.end)
+                // Trim location range to parent range, technically not necessary, but makes
+                // everything a bit nicer to look at and deal with.
+                .map(|(lr, location)| {
+                    let address = lr.begin.max(range.begin);
+                    LocationInfo {
+                        address: offset(address, self.inner.info.address_offset),
+                        size: lr.end.min(range.end) - address,
+                        location: location.location.clone(),
+                    }
                 })
-                .map(|(_, location)| location.clone())
                 .collect(),
         };
 
-        locations.sort_unstable_by_key(|location| location.address);
-
-        match !locations.is_empty() {
-            true => Some(variable::Variable {
-                name: variable.name.clone(),
-                ty: variable.ty.clone(),
-                kind: variable.kind,
-                locations,
-            }),
-            false => None,
+        if locations.is_empty() {
+            return None;
         }
+
+        locations.sort_unstable_by_key(|location| location.address);
+        Some(variable::Variable {
+            name: variable.name.clone(),
+            ty: variable.ty.clone(),
+            kind: variable.kind,
+            locations,
+        })
     }
 
     fn parse_locations(
@@ -1273,10 +1281,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             result.push((range, location));
         }
 
-        Ok(match !result.is_empty() {
-            true => Some(Locations::Many(result)),
-            false => None,
-        })
+        Ok((!result.is_empty()).then_some(Locations::Many(result)))
     }
 
     fn parse_location_expression(

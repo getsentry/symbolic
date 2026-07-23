@@ -1,13 +1,15 @@
 use std::{borrow::Cow, fmt};
 
+/// A type reference.
 ///
+/// Links a variable to a concrete type.
 #[derive(Debug, Clone)]
-pub struct TypeRef(NativeTypeRef);
+pub struct TypeRef(#[expect(unused, reason = "not yet implemented")] NativeTypeRef);
 
 #[derive(Debug, Clone)]
 enum NativeTypeRef {
     #[cfg(feature = "dwarf")]
-    Dwarf(crate::dwarf::DwarfTypeRef),
+    Dwarf(#[expect(unused)] crate::dwarf::DwarfTypeRef),
 }
 
 #[cfg(feature = "dwarf")]
@@ -17,6 +19,7 @@ impl From<crate::dwarf::DwarfTypeRef> for TypeRef {
     }
 }
 
+/// A single variable available in a function scope.
 #[derive(Debug, Clone)]
 pub struct Variable<'data> {
     /// The name of the variable.
@@ -28,6 +31,8 @@ pub struct Variable<'data> {
     /// The kind of the variable.
     pub kind: Kind,
     /// Possible locations at runtime of the variable.
+    ///
+    /// Locations are stored in ascending order based on their [`LocationInfo::address`].
     ///
     /// There may be multiple overlapping locations for the same pc range, if the variable
     /// can be sourced from multiple locations.
@@ -62,7 +67,7 @@ pub struct Range {
 }
 
 /// Contains metadata describing the location of a variable at runtime.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct LocationInfo {
     /// Start of the address range of this location's validity.
     pub address: u64,
@@ -70,6 +75,16 @@ pub struct LocationInfo {
     pub size: u64,
     /// The location of the variable at runtime.
     pub location: Location,
+}
+
+impl fmt::Debug for LocationInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("LocationInfo")
+            .field("address", &format_args!("{:#x}", self.address))
+            .field("size", &format_args!("{:#x}", self.size))
+            .field("location", &self.location)
+            .finish()
+    }
 }
 
 /// Describes the location of a variable at runtime.

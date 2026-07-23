@@ -756,6 +756,7 @@ impl fmt::Debug for Function<'_> {
             .field("lines", &self.lines)
             .field("inlinees", &self.inlinees)
             .field("inline", &self.inline)
+            .field("variables", &self.variables)
             .finish()
     }
 }
