@@ -3,7 +3,10 @@
 
 use std::{cmp::Reverse, collections::BinaryHeap, fmt};
 
-use crate::base::{FileInfo, Function, LineInfo};
+use crate::{
+    Variable,
+    base::{FileInfo, Function, LineInfo},
+};
 use symbolic_common::Name;
 use thiserror::Error;
 
@@ -593,7 +596,7 @@ mod tests {
             variables: vec![variable],
         });
 
-        let function = builder.finish();
+        let function = builder.finish().unwrap();
 
         insta::assert_debug_snapshot!(function, @r#"
         Function {

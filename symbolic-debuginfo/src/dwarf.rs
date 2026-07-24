@@ -28,11 +28,13 @@ use thiserror::Error;
 use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
 
 use crate::base::*;
-use crate::function_builder::{FunctionBuilder, FunctionBuilderError, FunctionBuilderErrorKind};
+use crate::function_builder::{
+    FunctionBuilder, FunctionBuilderError, FunctionBuilderErrorKind, FunctionBuilderInlinee,
+};
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::{Kind, Location, LocationInfo, base::*, variable};
+use crate::{Kind, Location, LocationInfo, variable};
 
 /// This is a fake BcSymbolMap used when macho support is turned off since they are unfortunately
 /// part of the dwarf interface

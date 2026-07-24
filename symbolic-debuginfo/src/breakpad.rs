@@ -13,6 +13,8 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameManglin
 
 use crate::ParseObjectOptions;
 use crate::base::*;
+use crate::function_builder::FunctionBuilderError;
+use crate::function_builder::FunctionBuilderErrorKind;
 use crate::function_builder::{FunctionBuilder, FunctionBuilderInlinee};
 use crate::sourcebundle::SourceFileDescriptor;
 
