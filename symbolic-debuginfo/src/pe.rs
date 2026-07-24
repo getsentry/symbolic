@@ -88,6 +88,21 @@ impl<'data> PeObject<'data> {
         FileFormat::Pe
     }
 
+    /// Tries to parse a PE object from the given slice.
+    pub fn parse(data: &'data [u8]) -> Result<Self, PeError> {
+        let opts = pe::options::ParseOptions::default()
+            .with_parse_mode(goblin::pe::options::ParseMode::Permissive)
+            .with_parse_imports(false);
+        let pe = pe::PE::parse_with_opts(data, &opts).map_err(PeError::new)?;
+        let is_stub = is_pe_stub(&pe);
+        Ok(PeObject {
+            pe,
+            data,
+            is_stub,
+            max_inline_depth: ParseObjectOptions::default().max_inline_depth,
+        })
+    }
+
     /// The code identifier of this object.
     ///
     /// The code identifier consists of the `time_date_stamp` field id the COFF header, followed by

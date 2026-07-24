@@ -71,6 +71,18 @@ impl<'d> MachObject<'d> {
         matches!(MachArchive::is_fat(data), Some(false))
     }
 
+    /// Tries to parse a MachO from the given slice.
+    pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
+        mach::MachO::parse(data, 0)
+            .map(|macho| MachObject {
+                macho,
+                data,
+                bcsymbolmap: None,
+                max_inline_depth: ParseObjectOptions::default().max_inline_depth,
+            })
+            .map_err(MachError::new)
+    }
+
     /// Parses and loads the [`BcSymbolMap`] into the object.
     ///
     /// The bitcode symbol map must match the object, there is nothing in the symbol map
