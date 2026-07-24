@@ -42,7 +42,6 @@ minidump-processor = "0.26.1"
 minidump-unwind = "0.26.1"
 nom = "7.1.3"
 nom-supreme = "0.8.0"
-once_cell = "1.17.1"
 parking_lot = "0.12.1"
 pdb-addr2line = "0.12.1"
 proguard = { version = "5.8.1", features = ["uuid"] }
