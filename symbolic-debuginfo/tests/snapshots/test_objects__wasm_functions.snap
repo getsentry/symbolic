@@ -62,7 +62,56 @@ expression: r
             ],
             inlinees: [],
             inline: false,
-            variables: [],
+            variables: [
+                Variable {
+                    name: "a",
+                    ty: Some(
+                        TypeRef(
+                            Dwarf(
+                                DwarfTypeRef(
+                                    UnitSectionOffset(
+                                        687,
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                    kind: Parameter,
+                    locations: [
+                        LocationInfo {
+                            address: 0x1a6,
+                            size: 0x29,
+                            location: FrameOffset {
+                                offset: 12,
+                            },
+                        },
+                    ],
+                },
+                Variable {
+                    name: "b",
+                    ty: Some(
+                        TypeRef(
+                            Dwarf(
+                                DwarfTypeRef(
+                                    UnitSectionOffset(
+                                        687,
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                    kind: Parameter,
+                    locations: [
+                        LocationInfo {
+                            address: 0x1a6,
+                            size: 0x29,
+                            location: FrameOffset {
+                                offset: 8,
+                            },
+                        },
+                    ],
+                },
+            ],
         },
     ),
     Ok(
@@ -533,7 +582,32 @@ expression: r
             lines: [],
             inlinees: [],
             inline: false,
-            variables: [],
+            variables: [
+                Variable {
+                    name: "tmp",
+                    ty: Some(
+                        TypeRef(
+                            Dwarf(
+                                DwarfTypeRef(
+                                    UnitSectionOffset(
+                                        9384,
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                    kind: Local,
+                    locations: [
+                        LocationInfo {
+                            address: 0x10000019e,
+                            size: 0xd7,
+                            location: FrameOffset {
+                                offset: 8,
+                            },
+                        },
+                    ],
+                },
+            ],
         },
     ),
     Ok(
@@ -629,7 +703,32 @@ expression: r
             lines: [],
             inlinees: [],
             inline: false,
-            variables: [],
+            variables: [
+                Variable {
+                    name: "t",
+                    ty: Some(
+                        TypeRef(
+                            Dwarf(
+                                DwarfTypeRef(
+                                    UnitSectionOffset(
+                                        11615,
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                    kind: Local,
+                    locations: [
+                        LocationInfo {
+                            address: 0x10000019e,
+                            size: 0xc7,
+                            location: FrameOffset {
+                                offset: 0,
+                            },
+                        },
+                    ],
+                },
+            ],
         },
     ),
     Ok(

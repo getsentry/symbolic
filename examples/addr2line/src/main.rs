@@ -86,6 +86,7 @@ fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches) -> Result<b
                 print!("      ");
                 match location.location {
                     Location::Register { id } => print!("reg:{id}"),
+                    Location::FrameOffset { offset } => print!("fbreg:{offset}"),
                 }
                 print_range(location.address, Some(location.size), matches);
                 println!();

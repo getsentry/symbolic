@@ -86,4 +86,9 @@ pub enum Location {
         /// An architecture dependent id of the register.
         id: u16,
     },
+    /// The variable can be found at an offset relative to the function's frame base.
+    FrameOffset {
+        /// The signed offset from the frame base.
+        offset: i64,
+    },
 }
