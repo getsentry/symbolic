@@ -52,6 +52,13 @@ impl BitVec {
     }
 }
 
+impl<'data> super::WasmObject<'data> {
+    /// Tries to parse a WASM from the given slice.
+    pub fn parse(data: &'data [u8]) -> Result<Self, WasmError> {
+        WasmObject::parse_with_opts(data, ParseObjectOptions::default())
+    }
+}
+
 impl<'d> Parse<'d> for WasmObject<'d> {
     type Error = WasmError;
 
