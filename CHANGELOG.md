@@ -6,6 +6,9 @@
 
 - Change the MSRV version to 1.85 and Rust Edition 2024. ([#1028](https://github.com/getsentry/symbolic/pull/1028))
 
+**Dependencies**
+- Bump `pdb-addr2line` to 0.12.1 to fix a potential infinite recursion. ([#1030](https://github.com/getsentry/symbolic/pull/1030))
+
 ## 14.0.0-alpha.3
 
 **Breaking Changes**
