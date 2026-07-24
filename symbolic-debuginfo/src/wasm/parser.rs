@@ -2,9 +2,9 @@
 
 use super::WasmError;
 use crate::{
+    Parse, ParseObjectOptions,
     base::{ObjectKind, Symbol},
     wasm::WasmObject,
-    Parse, ParseObjectOptions,
 };
 use wasmparser::{
     BinaryReader, CompositeInnerType, FuncValidatorAllocations, NameSectionReader, Payload,
