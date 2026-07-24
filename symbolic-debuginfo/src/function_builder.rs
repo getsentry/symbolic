@@ -93,9 +93,7 @@ impl<'s> FunctionBuilder<'s> {
     pub fn add_inlinee(&mut self, inlinee: FunctionBuilderInlinee<'s>) {
         // An inlinee that starts before the function is obviously bogus same for an inlinee that
         // has a depth deeper than the limit.
-        if inlinee.address < self.address
-            || inlinee.depth > self.max_inline_depth
-        {
+        if inlinee.address < self.address || inlinee.depth > self.max_inline_depth {
             return;
         }
 
@@ -583,7 +581,7 @@ mod tests {
             }],
         };
 
-        let mut builder = FunctionBuilder::new(Name::from("outer"), &[], 0x10, 0x40);
+        let mut builder = FunctionBuilder::new(Name::from("outer"), &[], 0x10, 0x40, 255);
         builder.add_inlinee(FunctionBuilderInlinee {
             depth: 0,
             address: 0x20,

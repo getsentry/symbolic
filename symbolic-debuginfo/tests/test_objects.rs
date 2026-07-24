@@ -6,7 +6,6 @@ use symbolic_common::{ByteView, Language};
 use symbolic_debuginfo::ObjectDebugSession;
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
-use symbolic_debuginfo::Parse;
 use symbolic_debuginfo::{
     FileEntry, Function, LineInfo, Location, Object, ParseObjectOptions, SymbolMap, Type, TypeRef,
     TypeSize, pe::PeObject,
