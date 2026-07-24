@@ -18,7 +18,7 @@ use crate::sourcebundle::*;
 use crate::wasm::*;
 
 macro_rules! match_inner {
-    ($value:expr_2021, $ty:tt ($pat:pat) => $expr:expr_2021) => {
+    ($value:expr, $ty:tt ($pat:pat) => $expr:expr) => {
         match $value {
             $ty::Breakpad($pat) => $expr,
             $ty::Elf($pat) => $expr,
@@ -33,7 +33,7 @@ macro_rules! match_inner {
 }
 
 macro_rules! map_inner {
-    ($value:expr_2021, $from:tt($pat:pat) => $to:tt($expr:expr_2021)) => {
+    ($value:expr, $from:tt($pat:pat) => $to:tt($expr:expr)) => {
         match $value {
             $from::Breakpad($pat) => $to::Breakpad($expr),
             $from::Elf($pat) => $to::Elf($expr),
@@ -48,7 +48,7 @@ macro_rules! map_inner {
 }
 
 macro_rules! map_result {
-    ($value:expr_2021, $from:tt($pat:pat) => $to:tt($expr:expr_2021)) => {
+    ($value:expr, $from:tt($pat:pat) => $to:tt($expr:expr)) => {
         match $value {
             $from::Breakpad($pat) => $expr.map($to::Breakpad).map_err(ObjectError::transparent),
             $from::Elf($pat) => $expr.map($to::Elf).map_err(ObjectError::transparent),
@@ -237,7 +237,7 @@ impl<'data> Object<'data> {
         opts: ParseObjectOptions,
     ) -> Result<Self, ObjectError> {
         macro_rules! parse_object {
-            ($kind:ident, $file:ident, $data:expr_2021) => {
+            ($kind:ident, $file:ident, $data:expr) => {
                 Object::$kind($file::parse_with_opts(data, opts).map_err(ObjectError::transparent)?)
             };
         }

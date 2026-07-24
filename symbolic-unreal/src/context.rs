@@ -460,7 +460,7 @@ fn test_get_platform_properties_no_children() {
 }
 
 macro_rules! test_unreal_contect {
-    ($xml_parent:expr_2021, $func_name:expr_2021, $name:ident, $xml_elm:expr_2021, $expect:expr_2021, $(,)*) => {
+    ($xml_parent:expr, $func_name:expr, $name:ident, $xml_elm:expr, $expect:expr, $(,)*) => {
         #[cfg(test)]
         mod $name {
             use super::*;
@@ -488,7 +488,7 @@ macro_rules! test_unreal_contect {
 }
 
 macro_rules! test_unreal_runtime_properties {
-    ($name:ident, $xml_elm:expr_2021, $expect:expr_2021 $(,)*) => {
+    ($name:ident, $xml_elm:expr, $expect:expr $(,)*) => {
         test_unreal_contect!(
             "RuntimeProperties",
             Unreal4ContextRuntimeProperties::from_xml,
@@ -500,7 +500,7 @@ macro_rules! test_unreal_runtime_properties {
 }
 
 macro_rules! test_unreal_platform_properties {
-    ($name:ident, $xml_elm:expr_2021, $expect:expr_2021 $(,)*) => {
+    ($name:ident, $xml_elm:expr, $expect:expr $(,)*) => {
         test_unreal_contect!(
             "PlatformProperties",
             Unreal4ContextPlatformProperties::from_xml,

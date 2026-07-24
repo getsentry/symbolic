@@ -161,7 +161,7 @@ impl<'data> ElfObject<'data> {
         };
 
         macro_rules! return_partial_on_err {
-            ($parse_func:expr_2021) => {
+            ($parse_func:expr) => {
                 if let Ok(expected) = $parse_func {
                     expected
                 } else {

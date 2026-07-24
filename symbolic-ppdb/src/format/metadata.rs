@@ -902,7 +902,7 @@ impl<'data> CustomDebugInformationIterator<'data> {
 }
 
 macro_rules! ok_or_return {
-    ( $a:expr_2021 ) => {
+    ( $a:expr ) => {
         match $a {
             Ok(value) => value,
             Err(err) => return Some(Err(err)),

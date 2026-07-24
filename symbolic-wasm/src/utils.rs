@@ -17,7 +17,7 @@ use wasm_bindgen::JsError;
 ///   module path (e.g. `pe::PeObject`), where the borrowed and `'static` forms must
 ///   be spelled out because a `path` fragment cannot be followed by a lifetime.
 macro_rules! derived_from_cell {
-    ($ty:ident, $owner:expr_2021, $derived:expr_2021) => {
+    ($ty:ident, $owner:expr, $derived:expr) => {
         $crate::utils::derived_from_cell!(
             symbolic_debuginfo::$ty<'_>,
             symbolic_debuginfo::$ty<'static>,
@@ -25,7 +25,7 @@ macro_rules! derived_from_cell {
             $derived
         )
     };
-    ($borrowed:ty, $static:ty, $owner:expr_2021, $derived:expr_2021) => {{
+    ($borrowed:ty, $static:ty, $owner:expr, $derived:expr) => {{
         let derived = std::mem::transmute::<$borrowed, $static>($derived);
         ::symbolic_common::SelfCell::from_raw($owner.owner().clone(), derived)
     }};

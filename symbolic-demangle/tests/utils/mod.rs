@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! assert_demangle {
-    ($l:expr_2021, $o:expr_2021, { $($m:expr_2021 => $d:expr_2021),* }) => {{
+    ($l:expr, $o:expr, { $($m:expr => $d:expr),* }) => {{
         let mut __failures: Vec<String> = Vec::new();
 
         $({
@@ -22,7 +22,7 @@ macro_rules! assert_demangle {
 
         assert!(__failures.is_empty(), "demangling failed: \n\n{}\n", __failures.join("\n\n"));
     }};
-    ($l:expr_2021, $o:expr_2021, { $($m:expr_2021 => $d:expr_2021,)* }) => {
+    ($l:expr, $o:expr, { $($m:expr => $d:expr,)* }) => {
         assert_demangle!($l, $o, { $($m => $d),* })
     };
 }

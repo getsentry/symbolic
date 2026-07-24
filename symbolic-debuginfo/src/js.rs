@@ -123,7 +123,7 @@ mod tests {
     use super::*;
 
     macro_rules! test_sourcemaps_location {
-        ($name:ident, $input:expr_2021, $expected:expr_2021) => {
+        ($name:ident, $input:expr, $expected:expr) => {
             #[test]
             fn $name() {
                 assert_eq!(discover_sourcemaps_location($input), $expected);
@@ -238,7 +238,7 @@ mod tests {
     );
 
     macro_rules! test_debug_id {
-        ($name:ident, $input:expr_2021, $expected:expr_2021) => {
+        ($name:ident, $input:expr, $expected:expr) => {
             #[test]
             fn $name() {
                 assert_eq!(discover_debug_id($input), $expected);
