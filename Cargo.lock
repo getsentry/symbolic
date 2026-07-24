@@ -2549,7 +2549,6 @@ dependencies = [
  "memchr",
  "nom",
  "nom-supreme",
- "once_cell",
  "parking_lot",
  "pdb-addr2line",
  "proptest",

@@ -15,7 +15,7 @@ use std::error::Error;
 use std::fmt;
 use std::marker::PhantomData;
 use std::ops::Deref;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use fallible_iterator::FallibleIterator;
 use gimli::read::{AttributeValue, Error as GimliError, Range};
@@ -23,7 +23,6 @@ use gimli::{
     AbbreviationsCacheStrategy, DwarfFileType, Expression, LocListIter, LocationLists, Operation,
     UnitSectionOffset, constants,
 };
-use once_cell::sync::OnceCell;
 use thiserror::Error;
 
 use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
@@ -1481,7 +1480,7 @@ impl<'data> DwarfSections<'data> {
 struct DwarfInfo<'data> {
     inner: DwarfInner<'data>,
     headers: Vec<UnitHeader<'data>>,
-    units: Vec<OnceCell<Option<Unit<'data>>>>,
+    units: Vec<OnceLock<Option<Unit<'data>>>>,
     symbol_map: SymbolMap<'data>,
     address_offset: i64,
     kind: ObjectKind,
@@ -1532,7 +1531,7 @@ impl<'d> DwarfInfo<'d> {
 
         // Prepare random access to unit headers.
         let headers = FallibleIterator::collect::<Vec<_>>(inner.units())?;
-        let units = headers.iter().map(|_| OnceCell::new()).collect();
+        let units = headers.iter().map(|_| OnceLock::new()).collect();
 
         Ok(DwarfInfo {
             inner,
@@ -1552,20 +1551,22 @@ impl<'d> DwarfInfo<'d> {
             None => return Ok(None),
         };
 
-        let unit_opt = cell.get_or_try_init(|| {
-            // Parse the compilation unit from the header. This requires a top-level DIE that
-            // describes the unit itself. For some older DWARF files, this DIE might be missing
-            // which causes gimli to error out. We prefer to skip them silently as this simply marks
-            // an empty unit for us.
-            let header = self.headers[index];
-            match self.inner.unit(header) {
-                Ok(unit) => Ok(Some(unit)),
-                Err(gimli::read::Error::MissingUnitDie) => Ok(None),
-                Err(error) => Err(DwarfError::from(error)),
-            }
-        })?;
+        if let Some(unit_opt) = cell.get() {
+            return Ok(unit_opt.as_ref());
+        }
 
-        Ok(unit_opt.as_ref())
+        // Parse the compilation unit from the header. This requires a top-level DIE that
+        // describes the unit itself. For some older DWARF files, this DIE might be missing
+        // which causes gimli to error out. We prefer to skip them silently as this simply marks
+        // an empty unit for us.
+        let header = self.headers[index];
+        let parsed = match self.inner.unit(header) {
+            Ok(unit) => Some(unit),
+            Err(gimli::read::Error::MissingUnitDie) => None,
+            Err(error) => return Err(DwarfError::from(error)),
+        };
+
+        Ok(cell.get_or_init(|| parsed).as_ref())
     }
 
     /// Resolves an offset into a different compilation unit.

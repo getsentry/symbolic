@@ -35,7 +35,7 @@ default = [
 # Breakpad text format parsing and processing
 breakpad = ["nom", "nom-supreme", "regex"]
 # DWARF processing.
-dwarf = ["gimli", "once_cell"]
+dwarf = ["gimli"]
 # ELF reading
 elf = [
     "dwarf",
@@ -93,7 +93,6 @@ flate2 = { workspace = true, optional = true }
 gimli = { workspace = true, optional = true }
 goblin = { workspace = true, optional = true }
 memchr = { workspace = true, optional = true }
-once_cell = { workspace = true, optional = true }
 nom = { workspace = true, optional = true }
 nom-supreme = { workspace = true, optional = true }
 parking_lot = { workspace = true, optional = true }
