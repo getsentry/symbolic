@@ -3,10 +3,7 @@
 
 use std::{cmp::Reverse, collections::BinaryHeap, fmt};
 
-use crate::{
-    base::{FileInfo, Function, LineInfo},
-    breakpad::{BreakpadError, BreakpadErrorKind},
-};
+use crate::base::{FileInfo, Function, LineInfo};
 use symbolic_common::Name;
 use thiserror::Error;
 
