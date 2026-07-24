@@ -364,7 +364,11 @@ impl<'d> DwarfLineProgram<'d> {
     /// `1`, `2`, and `3`.
     pub fn get_rows(&self, range: &Range) -> &[DwarfRow] {
         for seq in &self.sequences {
-            if range.begin >= seq.end || seq.start >= range.end {
+            if seq.start >= range.end {
+                // Sequences are sorted, we know that no other sequence will match.
+                break;
+            }
+            if range.begin >= seq.end {
                 continue;
             }
 
@@ -657,6 +661,9 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     /// This method consumes the attributes of the DIE. This means that the `entries` iterator must
     /// be placed just before the attributes of the DIE. On return, the `entries` iterator is placed
     /// after the attributes, ready to read the next DIE's abbrev.
+    ///
+    /// The returned list of ranges only contains valid ranges (`begin < end`), no overlapping ranges,
+    /// and is sorted in ascending order.
     fn parse_ranges<'r>(
         &self,
         entries: &mut EntriesRaw<'d, '_>,
@@ -740,6 +747,28 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 range_buf.push(range);
             }
         }
+
+        // Filter out invalid (empty and reverse) ranges.
+        range_buf.retain(|range| range.end > range.begin);
+
+        // De-duplicate ranges and merge overlapping ranges and sort them.
+        //
+        // 2.17.3 in the DWARF 5 spec:
+        // > Bounded range entries in a range list may not overlap. There is no requirement
+        // > that the entries be ordered in any particular way.
+        //
+        // We could remove overlapping ranges, but we'll just merge them here instead, this will also
+        // remove duplicates. Since ranges are not ordered, we can also freely change the order (sorted).
+        range_buf.sort_unstable();
+        range_buf.dedup_by(|current, previous| {
+            // Use `<` here, to not merge adjacent ranges.
+            if current.begin < previous.end {
+                previous.end = previous.end.max(current.end);
+                true
+            } else {
+                false
+            }
+        });
 
         Ok((range_buf, call_location))
     }
@@ -883,11 +912,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         let seen_ranges = &mut *output.seen_ranges;
         ranges.retain(|range| {
-            // Filter out empty and reversed ranges.
-            if range.begin > range.end {
-                return false;
-            }
-
             // We have seen duplicate top-level function entries being yielded from the
             // [`DwarfFunctionIterator`], which combined with recursively walking its inlinees can
             // blow past symcache limits.
@@ -1069,8 +1093,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     ) -> Result<(), DwarfError> {
         let (ranges, call_location) = self.parse_ranges(entries, abbrev, &mut output.range_buf)?;
 
-        ranges.retain(|range| range.end > range.begin);
-
         // Ranges can be empty for three reasons: (1) the function is a no-op and does not
         // contain any code, (2) the function did contain eliminated dead code, or (3) some
         // tooling created garbage reversed ranges which we filtered out.
@@ -1117,12 +1139,19 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         for range in ranges.iter() {
             // Find the builder for the outer function that covers this range. Usually there's only
             // one outer range, so only one builder.
-            let builder = match builders.iter_mut().find(|(outer_range, _builder)| {
-                range.begin >= outer_range.begin && range.begin < outer_range.end
-            }) {
-                Some((_outer_range, builder)) => builder,
-                None => continue,
+            //
+            // We can use `partition_point` here, because builders are sorted by range and
+            // non-overlapping, see `parse_ranges`.
+            let builder_index =
+                builders.partition_point(|(outer_range, _)| outer_range.end <= range.begin);
+
+            let Some((outer_range, builder)) = builders.get_mut(builder_index) else {
+                continue;
             };
+            // `partition_point` may return the next builder when `range.begin` falls into a gap between outer ranges.
+            if range.begin < outer_range.begin {
+                continue;
+            }
 
             let address = offset(range.begin, self.inner.info.address_offset);
             let size = range.end - range.begin;
@@ -1220,8 +1249,9 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             }],
             Locations::Many(locations) => locations
                 .iter()
+                .take_while(|(lr, _)| lr.begin < range.end)
                 // Make sure the ranges overlap
-                .filter(|(lr, _)| lr.begin < range.end && range.begin < lr.end)
+                .filter(|(lr, _)| range.begin < lr.end)
                 // Trim location range to parent range, technically not necessary, but makes
                 // everything a bit nicer to look at and deal with.
                 .map(|(lr, location)| {
@@ -1280,6 +1310,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             };
             result.push((range, location));
         }
+
+        result.sort_unstable_by_key(|(r, _)| *r);
 
         Ok((!result.is_empty()).then_some(Locations::Many(result)))
     }
