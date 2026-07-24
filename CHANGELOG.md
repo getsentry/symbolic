@@ -5,6 +5,7 @@
 **Breaking Changes**
 
 - Change the MSRV version to 1.85 and Rust Edition 2024. ([#1028](https://github.com/getsentry/symbolic/pull/1028))
+- Adds variables to functions. ([#1025](https://github.com/getsentry/symbolic/pull/1025))
 
 ## 14.0.0-alpha.3
 
@@ -16,6 +17,7 @@
 - Removed the deprecated `BreakpadErrorKind::BadSyntax` variant. ([#1024](https://github.com/getsentry/symbolic/pull/1024))
 
 **Dependencies**
+
 - Bump `pdb-addr2line` to 0.12.0. This includes a switch from `pdb` to `pdb2`. ([#1018](https://github.com/getsentry/symbolic/pull/1018))
 
 ## 14.0.0-alpha.2

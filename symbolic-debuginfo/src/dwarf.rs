@@ -19,17 +19,20 @@ use std::sync::Arc;
 
 use fallible_iterator::FallibleIterator;
 use gimli::read::{AttributeValue, Error as GimliError, Range};
-use gimli::{AbbreviationsCacheStrategy, DwarfFileType, UnitSectionOffset, constants};
+use gimli::{
+    AbbreviationsCacheStrategy, DwarfFileType, Expression, LocListIter, LocationLists, Operation,
+    UnitSectionOffset, constants,
+};
 use once_cell::sync::OnceCell;
 use thiserror::Error;
 
 use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
 
-use crate::base::*;
-use crate::function_builder::FunctionBuilder;
+use crate::function_builder::{FunctionBuilder, FunctionBuilderInlinee};
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
 use crate::sourcebundle::SourceFileDescriptor;
+use crate::{Kind, Location, LocationInfo, base::*, variable};
 
 /// This is a fake BcSymbolMap used when macho support is turned off since they are unfortunately
 /// part of the dwarf interface
@@ -145,6 +148,10 @@ impl From<GimliError> for DwarfError {
         Self::new(DwarfErrorKind::CorruptedData, e)
     }
 }
+
+/// A reference to a type in the DWARF file.
+#[derive(Debug, Clone)]
+pub struct DwarfTypeRef(#[expect(unused)] UnitSectionOffset);
 
 /// DWARF section information including its data.
 ///
@@ -413,6 +420,15 @@ impl<'d> UnitRef<'d, '_> {
         Some(String::from_utf8_lossy(slice))
     }
 
+    /// Try to return an attribute value as a location list entry iterator.
+    #[inline(always)]
+    fn attr_locations(
+        &self,
+        value: AttributeValue<Slice<'d>>,
+    ) -> Result<Option<LocListIter<Slice<'d>>>, DwarfError> {
+        Ok(self.info.attr_locations(self.unit, value)?)
+    }
+
     /// Resolves an entry and if found invokes a function to transform it.
     ///
     /// As this might resolve into cached information the data borrowed from
@@ -435,6 +451,17 @@ impl<'d> UnitRef<'d, '_> {
             f(unit, entry)
         } else {
             Ok(None)
+        }
+    }
+
+    /// Resolves a attribute unit ref or debug info ref to a [`UnitSectionOffset`].
+    ///
+    /// Returns `None` for attributes not containing a reference or unsupported references.
+    fn to_unit_section_offset(self, attr: Attribute<'d>) -> Option<UnitSectionOffset> {
+        match attr.value() {
+            AttributeValue::UnitRef(offset) => Some(offset.to_unit_section_offset(self.unit)),
+            AttributeValue::DebugInfoRef(offset) => offset.to_unit_section_offset(self.unit),
+            _ => None,
         }
     }
 
@@ -930,7 +957,24 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             })
             .collect();
 
-        self.parse_function_children(depth, 0, entries, &mut builders, output, language)?;
+        let mut variables = Vec::new();
+        self.parse_function_children(
+            depth,
+            0,
+            entries,
+            &mut builders,
+            output,
+            language,
+            &mut variables,
+        )?;
+
+        for (range, builder) in &mut builders {
+            for variable in &variables {
+                if let Some(variable) = self.variable_for_range(variable, *range) {
+                    builder.add_variable(variable);
+                }
+            }
+        }
 
         if let Some(line_program) = &self.line_program {
             for (range, builder) in &mut builders {
@@ -952,6 +996,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Traverses a subtree during function parsing.
+    #[allow(clippy::too_many_arguments)]
     fn parse_function_children(
         &self,
         depth: isize,
@@ -960,6 +1005,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         builders: &mut [(Range, FunctionBuilder<'d>)],
         output: &mut FunctionsOutput<'_, 'd>,
         language: Language,
+        variables: &mut Vec<ParsedVariable<'d>>,
     ) -> Result<(), DwarfError> {
         while !entries.is_empty() {
             let dw_die_offset = entries.next_offset();
@@ -987,6 +1033,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                         output,
                         language,
                     )?;
+                }
+                constants::DW_TAG_variable | constants::DW_TAG_formal_parameter => {
+                    if let Some(variable) = self.parse_variable(entries, abbrev)? {
+                        variables.push(variable);
+                    }
                 }
                 _ => {
                     entries.skip_attributes(abbrev.attributes())?;
@@ -1030,6 +1081,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         if ranges.is_empty() {
             return self.parse_functions(depth, entries, output);
         }
+        let ranges = ranges.clone();
 
         let entry = self.inner.unit.entry(dw_die_offset)?;
         let language = self.resolve_function_language(&entry, language);
@@ -1050,6 +1102,17 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             .unwrap_or_default();
         let call_line = call_location.call_line.unwrap_or(0);
 
+        let mut variables = Vec::new();
+        self.parse_function_children(
+            depth,
+            inline_depth + 1,
+            entries,
+            builders,
+            output,
+            language,
+            &mut variables,
+        )?;
+
         // Create a separate inlinee for each range.
         for range in ranges.iter() {
             // Find the builder for the outer function that covers this range. Usually there's only
@@ -1063,17 +1126,183 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
             let address = offset(range.begin, self.inner.info.address_offset);
             let size = range.end - range.begin;
-            builder.add_inlinee(
-                inline_depth,
-                name.clone(),
+            let variables = variables
+                .iter()
+                .filter_map(|variable| self.variable_for_range(variable, *range))
+                .collect();
+
+            builder.add_inlinee(FunctionBuilderInlinee {
+                depth: inline_depth,
+                name: name.clone(),
                 address,
                 size,
-                call_file.clone(),
+                call_file: call_file.clone(),
                 call_line,
-            );
+                variables,
+            });
         }
 
-        self.parse_function_children(depth, inline_depth + 1, entries, builders, output, language)
+        Ok(())
+    }
+
+    fn parse_variable(
+        &self,
+        entries: &mut EntriesRaw<'d, '_>,
+        abbrev: &gimli::Abbreviation,
+    ) -> Result<Option<ParsedVariable<'d>>, DwarfError> {
+        let mut ty = None;
+        let mut name = None;
+        let mut locations = None;
+        let mut is_declaration = false;
+
+        for &spec in abbrev.attributes() {
+            let attr = entries.read_attribute(spec)?;
+            match attr.name() {
+                constants::DW_AT_name => {
+                    name = self.inner.string_value(attr.value());
+                }
+                constants::DW_AT_declaration if attr.value() == AttributeValue::Flag(true) => {
+                    // We don't care about declarations, we only care about actual definitions of
+                    // the variables.
+                    //
+                    // No early return possible, the attributes need to be consumed fully.
+                    is_declaration = true;
+                }
+                constants::DW_AT_location => {
+                    locations = self.parse_locations(attr.value())?;
+                }
+                // This will need some further refinement, `to_unit_section_offset` is only enough
+                // for unit and debug info references, it does not yet support debug types references,
+                // and references to supplementary object files. Supplementary object files are
+                // generally not supported, but type section references should be implemented.
+                constants::DW_AT_type
+                    if let Some(offset) = self.inner.to_unit_section_offset(attr) =>
+                {
+                    ty = Some(variable::TypeRef::from(DwarfTypeRef(offset)));
+                }
+
+                // No location means optimized out, so we do not store the variable for now.
+                _ => {}
+            }
+        }
+
+        if is_declaration {
+            return Ok(None);
+        }
+
+        let (Some(name), Some(locations)) = (name, locations) else {
+            return Ok(None);
+        };
+
+        let kind = match abbrev.tag() {
+            constants::DW_TAG_formal_parameter => Kind::Parameter,
+            _ => Kind::Local,
+        };
+
+        Ok(Some(ParsedVariable {
+            name,
+            ty,
+            kind,
+            locations,
+        }))
+    }
+
+    fn variable_for_range(
+        &self,
+        variable: &ParsedVariable<'d>,
+        range: Range,
+    ) -> Option<variable::Variable<'d>> {
+        let mut locations = match &variable.locations {
+            Locations::Single(location) => vec![LocationInfo {
+                address: offset(range.begin, self.inner.info.address_offset),
+                size: range.end - range.begin,
+                location: location.clone(),
+            }],
+            Locations::Many(locations) => locations
+                .iter()
+                // Make sure the ranges overlap
+                .filter(|(lr, _)| lr.begin < range.end && range.begin < lr.end)
+                // Trim location range to parent range, technically not necessary, but makes
+                // everything a bit nicer to look at and deal with.
+                .map(|(lr, location)| {
+                    let address = lr.begin.max(range.begin);
+                    LocationInfo {
+                        address: offset(address, self.inner.info.address_offset),
+                        size: lr.end.min(range.end) - address,
+                        location: location.location.clone(),
+                    }
+                })
+                .collect(),
+        };
+
+        if locations.is_empty() {
+            return None;
+        }
+
+        locations.sort_unstable_by_key(|location| location.address);
+        Some(variable::Variable {
+            name: variable.name.clone(),
+            ty: variable.ty.clone(),
+            kind: variable.kind,
+            locations,
+        })
+    }
+
+    fn parse_locations(
+        &self,
+        value: AttributeValue<Slice<'d>>,
+    ) -> Result<Option<Locations>, DwarfError> {
+        if let AttributeValue::Exprloc(expr) = value {
+            return self
+                .parse_location_expression(expr)
+                .map(|v| v.map(Locations::Single));
+        }
+
+        let mut result = Vec::new();
+        let locations = self.inner.attr_locations(value)?.into_iter().flatten();
+        for location in locations {
+            let location = location?;
+
+            let range = location.range;
+            let address = offset(range.begin, self.inner.info.address_offset);
+            let Some(size) = range.end.checked_sub(range.begin) else {
+                // Invalid range, end before start.
+                continue;
+            };
+
+            let location = LocationInfo {
+                address,
+                size,
+                location: match self.parse_location_expression(location.data)? {
+                    Some(location) => location,
+                    None => continue,
+                },
+            };
+            result.push((range, location));
+        }
+
+        Ok((!result.is_empty()).then_some(Locations::Many(result)))
+    }
+
+    fn parse_location_expression(
+        &self,
+        expr: Expression<Slice<'d>>,
+    ) -> Result<Option<Location>, DwarfError> {
+        let mut operations = expr.operations(self.inner.unit.encoding());
+
+        let Some(op) = operations.next()? else {
+            return Ok(None);
+        };
+        if operations.next()?.is_some() {
+            // Currently we only support location expressions with a single op.
+            return Ok(None);
+        }
+
+        Ok(match op {
+            Operation::Register { register } => Some(Location::Register { id: register.0 }),
+            // Currently more operations are not supported.
+            _ => None,
+        })
     }
 
     /// Collects all functions within this compilation unit.
@@ -1086,6 +1315,22 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         self.parse_functions(-1, &mut entries, &mut output)?;
         Ok(output.functions)
     }
+}
+
+/// A variable before its locations are restricted to a concrete range.
+struct ParsedVariable<'data> {
+    name: Cow<'data, str>,
+    ty: Option<variable::TypeRef>,
+    kind: Kind,
+    locations: Locations,
+}
+
+/// Return value of [`DwarfUnit::parse_locations`].
+enum Locations {
+    /// A single location.
+    Single(Location),
+    /// Many locations, dependent on the PC at runtime.
+    Many(Vec<(Range, LocationInfo)>),
 }
 
 /// The state we pass around during function parsing.
@@ -1196,6 +1441,8 @@ struct DwarfSections<'data> {
     debug_info: DwarfSectionData<'data, gimli::read::DebugInfo<Slice<'data>>>,
     debug_line: DwarfSectionData<'data, gimli::read::DebugLine<Slice<'data>>>,
     debug_line_str: DwarfSectionData<'data, gimli::read::DebugLineStr<Slice<'data>>>,
+    debug_loc: DwarfSectionData<'data, gimli::read::DebugLoc<Slice<'data>>>,
+    debug_loclists: DwarfSectionData<'data, gimli::read::DebugLocLists<Slice<'data>>>,
     debug_names: DwarfSectionData<'data, gimli::read::DebugNames<Slice<'data>>>,
     debug_str: DwarfSectionData<'data, gimli::read::DebugStr<Slice<'data>>>,
     debug_str_offsets: DwarfSectionData<'data, gimli::read::DebugStrOffsets<Slice<'data>>>,
@@ -1218,6 +1465,8 @@ impl<'data> DwarfSections<'data> {
             debug_info: DwarfSectionData::load(dwarf),
             debug_line: DwarfSectionData::load(dwarf),
             debug_line_str: DwarfSectionData::load(dwarf),
+            debug_loc: DwarfSectionData::load(dwarf),
+            debug_loclists: DwarfSectionData::load(dwarf),
             debug_names: DwarfSectionData::load(dwarf),
             debug_str: DwarfSectionData::load(dwarf),
             debug_str_offsets: DwarfSectionData::load(dwarf),
@@ -1268,7 +1517,10 @@ impl<'d> DwarfInfo<'d> {
             debug_types: Default::default(),
             debug_macinfo: sections.debug_macinfo.to_gimli(),
             debug_macro: sections.debug_macro.to_gimli(),
-            locations: Default::default(),
+            locations: LocationLists::new(
+                sections.debug_loc.to_gimli(),
+                sections.debug_loclists.to_gimli(),
+            ),
             ranges: RangeLists::new(
                 sections.debug_ranges.to_gimli(),
                 sections.debug_rnglists.to_gimli(),

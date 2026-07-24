@@ -3,7 +3,10 @@
 
 use std::{cmp::Reverse, collections::BinaryHeap};
 
-use crate::base::{FileInfo, Function, LineInfo};
+use crate::{
+    Variable,
+    base::{FileInfo, Function, LineInfo},
+};
 use symbolic_common::Name;
 
 /// Allows creating a [`Function`] from unordered line and inlinee records.
@@ -29,6 +32,8 @@ pub struct FunctionBuilder<'s> {
     /// The lines, in any order. They will be sorted in `finish()`. These record specify locations
     /// at the innermost level of the inline stack at the line record's address.
     lines: Vec<LineInfo<'s>>,
+    /// All variables found inside the function.
+    variables: Vec<Variable<'s>>,
     max_inline_depth: Option<u32>,
 }
 
@@ -42,6 +47,7 @@ impl<'s> FunctionBuilder<'s> {
             size,
             inlinees: BinaryHeap::new(),
             lines: Vec::new(),
+            variables: Vec::new(),
             max_inline_depth: None,
         }
     }
@@ -57,29 +63,21 @@ impl<'s> FunctionBuilder<'s> {
     /// Add an inlinee record. This method can be called in any order.
     ///
     /// Inlinees which are called directly from the outer function have depth 0.
-    pub fn add_inlinee(
-        &mut self,
-        depth: u32,
-        name: Name<'s>,
-        address: u64,
-        size: u64,
-        call_file: FileInfo<'s>,
-        call_line: u64,
-    ) {
+    pub fn add_inlinee(&mut self, inlinee: FunctionBuilderInlinee<'s>) {
         // An inlinee that starts before the function is obviously bogus same for an inlinee that
         // has a depth deeper than the limit.
-        if address < self.address || depth > self.max_inline_depth.unwrap_or(u32::MAX) {
+        if inlinee.address < self.address
+            || inlinee.depth > self.max_inline_depth.unwrap_or(u32::MAX)
+        {
             return;
         }
 
-        self.inlinees.push(Reverse(FunctionBuilderInlinee {
-            depth,
-            address,
-            size,
-            name,
-            call_file,
-            call_line,
-        }));
+        self.inlinees.push(Reverse(inlinee));
+    }
+
+    /// Add a variable to the function.
+    pub fn add_variable(&mut self, variable: Variable<'s>) {
+        self.variables.push(variable);
     }
 
     /// Add a line record, specifying the line at this address inside the innermost inlinee that
@@ -119,6 +117,7 @@ impl<'s> FunctionBuilder<'s> {
             address,
             size,
             inlinees,
+            variables,
             mut lines,
             max_inline_depth: _,
         } = self;
@@ -135,6 +134,7 @@ impl<'s> FunctionBuilder<'s> {
             compilation_dir,
             lines: Vec::new(),
             inlinees: Vec::new(),
+            variables,
             inline: false,
         };
         let outer_function_end = address + size;
@@ -176,6 +176,7 @@ impl<'s> FunctionBuilder<'s> {
                     compilation_dir,
                     lines: Vec::new(),
                     inlinees: Vec::new(),
+                    variables: inlinee.variables,
                     inline: true,
                 });
                 next_inlinee = inlinee_iter.next();
@@ -232,8 +233,8 @@ impl<'s> FunctionBuilder<'s> {
 }
 
 /// Represents a contiguous address range which is covered by an inlined function call.
-#[derive(PartialEq, Eq, Clone, Debug)]
-struct FunctionBuilderInlinee<'s> {
+#[derive(Clone, Debug)]
+pub struct FunctionBuilderInlinee<'s> {
     /// The inline nesting level of this inline call. Calls from the outer function have depth 0.
     pub depth: u32,
     /// The start address.
@@ -246,7 +247,17 @@ struct FunctionBuilderInlinee<'s> {
     pub call_file: FileInfo<'s>,
     /// The line number of the location of the call.
     pub call_line: u64,
+    /// Variables owned by this inline call.
+    pub variables: Vec<Variable<'s>>,
 }
+
+impl PartialEq for FunctionBuilderInlinee<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        (self.address, self.depth) == (other.address, other.depth)
+    }
+}
+
+impl Eq for FunctionBuilderInlinee<'_> {}
 
 /// Implement ordering in DFS order, i.e. first by address and then by depth.
 impl PartialOrd for FunctionBuilderInlinee<'_> {
@@ -446,6 +457,23 @@ fn ensure_proper_nesting(
             // function. Those inlinees can be as long as they want; we don't try to
             // force them to stay within the outer function's address range here.
         }
+
+        // Clip inlinee variable to the new range.
+        inlinee.variables.retain_mut(|variable| {
+            variable.locations.retain_mut(|location| {
+                let location_end = location.address.saturating_add(location.size);
+                let location_end = location_end.min(end_address);
+                location.address = location.address.max(start_address);
+                if location.address >= location_end {
+                    return false;
+                }
+                location.size = location_end - location.address;
+                true
+            });
+
+            !variable.locations.is_empty()
+        });
+
         result.push(inlinee);
         end_address_stack.push(end_address); // this goes into end_address_stack[depth]
     }
@@ -454,6 +482,8 @@ fn ensure_proper_nesting(
 
 #[cfg(test)]
 mod tests {
+    use crate::{Kind, Location, LocationInfo};
+
     use super::*;
 
     #[test]
@@ -473,14 +503,15 @@ mod tests {
         // 0x20 - 0x40: bar in bar.c on line 1
         // - inlined into: foo in foo.c on line 2
         let mut builder = FunctionBuilder::new(Name::from("foo"), &[], 0x10, 0x30);
-        builder.add_inlinee(
-            0,
-            Name::from("bar"),
-            0x20,
-            0x20,
-            FileInfo::from_filename(b"foo.c"),
-            2,
-        );
+        builder.add_inlinee(FunctionBuilderInlinee {
+            depth: 0,
+            name: Name::from("bar"),
+            address: 0x20,
+            size: 0x20,
+            call_file: FileInfo::from_filename(b"foo.c"),
+            call_line: 2,
+            variables: Vec::new(),
+        });
         builder.add_leaf_line(0x10, Some(0x10), FileInfo::from_filename(b"foo.c"), 1);
         builder.add_leaf_line(0x20, Some(0x20), FileInfo::from_filename(b"bar.c"), 1);
         let func = builder.finish();
@@ -501,6 +532,90 @@ mod tests {
             &func.inlinees[0].lines,
             &[LineInfo::new(0x20, 0x20, b"bar.c", 1)]
         );
+    }
+
+    #[test]
+    fn test_inlinee_variable_fixup_location_ranges() {
+        let variable = Variable {
+            name: "value".into(),
+            ty: None,
+            kind: Kind::Local,
+            locations: vec![LocationInfo {
+                address: 0x10,
+                size: 0x40,
+                location: Location::Register { id: 0 },
+            }],
+        };
+
+        let mut builder = FunctionBuilder::new(Name::from("outer"), &[], 0x10, 0x40);
+        builder.add_inlinee(FunctionBuilderInlinee {
+            depth: 0,
+            address: 0x20,
+            size: 0x10,
+            name: Name::from("inline"),
+            call_file: FileInfo::default(),
+            call_line: 0,
+            variables: vec![variable],
+        });
+
+        let function = builder.finish();
+
+        insta::assert_debug_snapshot!(function, @r#"
+        Function {
+            address: 0x10,
+            size: 0x40,
+            name: Name {
+                string: "outer",
+                lang: Unknown,
+                mangling: Unknown,
+            },
+            compilation_dir: "",
+            lines: [
+                LineInfo {
+                    address: 0x20,
+                    size: 0x10,
+                    file: FileInfo {
+                        name: "",
+                        dir: "",
+                    },
+                    line: 0,
+                },
+            ],
+            inlinees: [
+                Function {
+                    address: 0x20,
+                    size: 0x10,
+                    name: Name {
+                        string: "inline",
+                        lang: Unknown,
+                        mangling: Unknown,
+                    },
+                    compilation_dir: "",
+                    lines: [],
+                    inlinees: [],
+                    inline: true,
+                    variables: [
+                        Variable {
+                            name: "value",
+                            ty: None,
+                            kind: Local,
+                            locations: [
+                                LocationInfo {
+                                    address: 0x20,
+                                    size: 0x10,
+                                    location: Register {
+                                        id: 0,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            inline: false,
+            variables: [],
+        }
+        "#);
     }
 
     #[test]
@@ -532,30 +647,33 @@ mod tests {
         //               |---------|      (child2.c line 1)
 
         let mut builder = FunctionBuilder::new(Name::from("parent"), &[], 0x10, 0x40);
-        builder.add_inlinee(
-            0,
-            Name::from("child1"),
-            0x20,
-            0x10,
-            FileInfo::from_filename(b"parent.c"),
-            1,
-        );
-        builder.add_inlinee(
-            1,
-            Name::from("child2"),
-            0x20,
-            0x10,
-            FileInfo::from_filename(b"child1.c"),
-            1,
-        );
-        builder.add_inlinee(
-            0,
-            Name::from("child2"),
-            0x30,
-            0x10,
-            FileInfo::from_filename(b"parent.c"),
-            2,
-        );
+        builder.add_inlinee(FunctionBuilderInlinee {
+            depth: 0,
+            name: Name::from("child1"),
+            address: 0x20,
+            size: 0x10,
+            call_file: FileInfo::from_filename(b"parent.c"),
+            call_line: 1,
+            variables: Vec::new(),
+        });
+        builder.add_inlinee(FunctionBuilderInlinee {
+            depth: 1,
+            name: Name::from("child2"),
+            address: 0x20,
+            size: 0x10,
+            call_file: FileInfo::from_filename(b"child1.c"),
+            call_line: 1,
+            variables: Vec::new(),
+        });
+        builder.add_inlinee(FunctionBuilderInlinee {
+            depth: 0,
+            name: Name::from("child2"),
+            address: 0x30,
+            size: 0x10,
+            call_file: FileInfo::from_filename(b"parent.c"),
+            call_line: 2,
+            variables: Vec::new(),
+        });
         builder.add_leaf_line(0x10, Some(0x10), FileInfo::from_filename(b"parent.c"), 1);
         builder.add_leaf_line(0x20, Some(0x20), FileInfo::from_filename(b"child2.c"), 1);
         builder.add_leaf_line(0x40, Some(0x10), FileInfo::from_filename(b"parent.c"), 1);

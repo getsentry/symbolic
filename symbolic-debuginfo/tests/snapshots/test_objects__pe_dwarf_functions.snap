@@ -7,6 +7,9 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x14f4: crtexe.c:419 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x14f9: crtexe.c:419 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x14ff: crtexe.c:420 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
+  variables:
+    func (parameter)
+      0x14f0..0x14f8: register 2
 
 > 0x1180: __tmainCRTStartup (0x326)
   0x1180: crtexe.c:223 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
@@ -95,6 +98,24 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x148e: crtexe.c:251 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x1494: crtexe.c:252 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x149e: crtexe.c:324 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
+  variables:
+    lpszCommandLine (local)
+      0x1291..0x12fd: register 0
+    inDoubleQuote (local)
+      0x1298..0x12a7: register 2
+      0x12ae..0x12c8: register 2
+    lock_free (local)
+      0x11d3..0x11e8: register 0
+      0x11f1..0x1201: register 0
+      0x13f2..0x1406: register 0
+    fiberid (local)
+      0x11c8..0x11fd: register 4
+      0x13f2..0x13ff: register 4
+    nested (local)
+      0x11ff..0x1315: register 6
+      0x13e3..0x13f2: register 6
+      0x1404..0x144f: register 6
+      0x147b..0x149e: register 6
 
   > 0x11b4: NtCurrentTeb (0x10)
     0x11b4: winnt.h:9094 (/mxe/usr/x86_64-w64-mingw32.static/include)
@@ -138,6 +159,9 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x14e1: crtexe.c:202 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x14e6: crtexe.c:204 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x14e8: crtexe.c:213 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
+  variables:
+    ret (local)
+      0x14e6..0x14ed: register 0
 
 > 0x14b0: WinMainCRTStartup (0x1d)
   0x14b0: crtexe.c:170 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
@@ -145,6 +169,9 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x14c1: crtexe.c:176 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x14c6: crtexe.c:178 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x14c8: crtexe.c:187 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
+  variables:
+    ret (local)
+      0x14c6..0x14cd: register 0
 
 > 0x1130: pre_cpp_init (0x49)
   0x1130: crtexe.c:155 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
@@ -199,12 +226,26 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
 > 0x1000: __mingw_invalidParameterHandler (0x1)
   0x1000: crtexe.c:123 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
+  variables:
+    expression (parameter)
+      0x1000..0x1001: register 2
+    function (parameter)
+      0x1000..0x1001: register 1
+    file (parameter)
+      0x1000..0x1001: register 8
+    line (parameter)
+      0x1000..0x1001: register 9
 
 > 0x1572: main (0x1f)
   0x1572: hello.c:3 (/src)
   0x1576: hello.c:3 (/src)
   0x157b: hello.c:4 (/src)
   0x1587: hello.c:5 (/src)
+  variables:
+    argc (parameter)
+      0x1572..0x157a: register 2
+    argv (parameter)
+      0x1572..0x157a: register 1
 
 > 0x1530: printf (0x42)
   0x1530: stdio.h:369 (/mxe/usr/x86_64-w64-mingw32.static/include)
@@ -213,6 +254,12 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x1557: stdio.h:372 (/mxe/usr/x86_64-w64-mingw32.static/include)
   0x156b: stdio.h:375 (/mxe/usr/x86_64-w64-mingw32.static/include)
   0x1570: stdio.h:375 (/mxe/usr/x86_64-w64-mingw32.static/include)
+  variables:
+    __format (parameter)
+      0x1530..0x1557: register 2
+      0x1557..0x1570: register 3
+    __retval (local)
+      0x156b..0x1572: register 0
 
 > 0x1650: __main (0x1f)
   0x1650: gccmain.c:55 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)

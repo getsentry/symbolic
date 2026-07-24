@@ -12,6 +12,9 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 > 0xd40: _ZN15google_breakpad18MinidumpFileWriterC1Ev (0x1a)
   0xd40: minidump_file_writer.cc:96 (../deps/breakpad/src/client)
   0xd59: minidump_file_writer.cc:97 (../deps/breakpad/src/client)
+  variables:
+    this (parameter)
+      0xd40..0xd5a: register 5
 
   > 0xd40: _ZN15google_breakpad18MinidumpFileWriterC2Ev (0x19)
     0xd40: minidump_file_writer.cc:93 (../deps/breakpad/src/client)
@@ -54,6 +57,11 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0xde4: minidump_file_writer.cc:99 (../deps/breakpad/src/client)
   0xe0a: minidump_file_writer.cc:102 (../deps/breakpad/src/client)
   0xe0c: minidump_file_writer.cc:99 (../deps/breakpad/src/client)
+  variables:
+    this (parameter)
+      0xde0..0xde4: register 5
+      0xde4..0xe0b: register 3
+      0xe0c..0xe14: register 3
 
   > 0xde4: _ZN15google_breakpad18MinidumpFileWriterD2Ev (0x26)
     0xde4: minidump_file_writer.cc:100 (../deps/breakpad/src/client)
@@ -80,6 +88,15 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0xe42: minidump_file_writer.cc:112 (../deps/breakpad/src/client)
   0xe48: minidump_file_writer.cc:112 (../deps/breakpad/src/client)
   0xe4a: minidump_file_writer.cc:105 (../deps/breakpad/src/client)
+  variables:
+    this (parameter)
+      0xe20..0xe27: register 5
+      0xe27..0xe49: register 3
+      0xe4a..0xe69: register 3
+    path (parameter)
+      0xe20..0xe24: register 4
+      0xe24..0xe40: register 2
+      0xe4a..0xe5f: register 2
 
 > 0xe70: _ZN15google_breakpad18MinidumpFileWriter7SetFileEi (0x2d)
   0xe70: minidump_file_writer.cc:116 (../deps/breakpad/src/client)
@@ -87,6 +104,9 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0xe78: minidump_file_writer.cc:118 (../deps/breakpad/src/client)
   0xe7c: minidump_file_writer.cc:122 (../deps/breakpad/src/client)
   0xe7e: minidump_file_writer.cc:116 (../deps/breakpad/src/client)
+  variables:
+    this (parameter)
+      0xe70..0xe85: register 5
 
 > 0xea0: _ZN15google_breakpad18MinidumpFileWriter20CopyStringToMDStringEPKwjPNS_10TypedMDRVAI8MDStringEE (0x147)
   0xea0: minidump_file_writer.cc:150 (../deps/breakpad/src/client)
@@ -106,6 +126,20 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0xf7b: minidump_file_writer.cc:160 (../deps/breakpad/src/client)
   0xf97: minidump_file_writer.cc:179 (../deps/breakpad/src/client)
   0xfa9: minidump_file_writer.cc:174 (../deps/breakpad/src/client)
+  variables:
+    this (parameter)
+      0xea0..0xed2: register 5
+    str (parameter)
+      0xea0..0xeb6: register 4
+      0xeb6..0xf23: register 3
+      0xf76..0xf94: register 3
+      0xfa9..0xfe7: register 3
+    mdstring (parameter)
+      0xea0..0xeb1: register 2
+      0xeb1..0xf41: register 12
+      0xfa9..0xfe7: register 12
+    out_size (local)
+      0xf23..0xf72: register 3
 
   > 0xefa: _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm (0x25)
     0xefa: minidump_file_writer-inl.h:83 (../deps/breakpad/src/client)
@@ -153,6 +187,19 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x10c5: minidump_file_writer.cc:189 (../deps/breakpad/src/client)
   0x10e7: minidump_file_writer.cc:205 (../deps/breakpad/src/client)
   0x10f9: minidump_file_writer.cc:201 (../deps/breakpad/src/client)
+  variables:
+    this (parameter)
+      0xff0..0x1023: register 5
+    str (parameter)
+      0xff0..0x1006: register 4
+      0x1006..0x10ef: register 3
+      0x10f9..0x1137: register 3
+    mdstring (parameter)
+      0xff0..0x1001: register 2
+      0x1001..0x107b: register 14
+      0x10f9..0x1137: register 14
+    out_size (local)
+      0x106b..0x10b7: register 6
 
   > 0x1049: _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm (0x1e)
     0x1049: minidump_file_writer-inl.h:83 (../deps/breakpad/src/client)
@@ -186,3 +233,10 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
 > 0x1140: _ZN15google_breakpad18MinidumpFileWriter11WriteStringEPKwjP20MDLocationDescriptor (0x5)
   0x1140: minidump_file_writer.cc:245 (../deps/breakpad/src/client)
+  variables:
+    this (parameter)
+      0x1140..0x1145: register 5
+    str (parameter)
+      0x1140..0x1145: register 4
+    location (parameter)
+      0x1140..0x1145: register 2

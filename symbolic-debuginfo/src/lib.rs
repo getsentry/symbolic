@@ -36,6 +36,8 @@
 #![warn(missing_docs)]
 
 mod base;
+mod variable;
+
 #[cfg(all(
     feature = "breakpad",
     feature = "dwarf",
@@ -73,6 +75,8 @@ pub mod sourcebundle;
 pub mod wasm;
 
 pub use crate::base::*;
+pub use crate::variable::*;
+
 #[cfg(all(
     feature = "breakpad",
     feature = "dwarf",

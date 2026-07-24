@@ -7,6 +7,7 @@ use symbolic_common::{Arch, CodeId, DebugId, Name, clean_path, join_path};
 
 use crate::ParseObjectOptions;
 use crate::sourcebundle::SourceFileDescriptor;
+use crate::variable;
 
 pub(crate) trait Parse<'data>: Sized {
     type Error;
@@ -729,6 +730,8 @@ pub struct Function<'data> {
     pub inlinees: Vec<Function<'data>>,
     /// Specifies whether this function is inlined.
     pub inline: bool,
+    /// List of local variables and parameters of this function.
+    pub variables: Vec<variable::Variable<'data>>,
 }
 
 impl Function<'_> {
@@ -753,6 +756,7 @@ impl fmt::Debug for Function<'_> {
             .field("lines", &self.lines)
             .field("inlinees", &self.inlinees)
             .field("inline", &self.inline)
+            .field("variables", &self.variables)
             .finish()
     }
 }
