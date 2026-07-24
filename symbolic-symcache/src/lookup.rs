@@ -2,12 +2,12 @@ use std::fmt;
 
 use symbolic_common::{Language, Name, NameMangling};
 
+use crate::SymCacheInner;
 use crate::v7::lookup::{
     FilesV7, FilesV8, FunctionsV7, FunctionsV8, SourceLocationV7, SourceLocationV8,
     SourceLocationsV7, SourceLocationsV8,
 };
 use crate::v9::lookup::{FilesV9, FunctionsV9, SourceLocationV9, SourceLocationsV9};
-use crate::SymCacheInner;
 
 use super::SymCache;
 
@@ -83,9 +83,7 @@ impl File<'_> {
 
         let prefix = symbolic_common::join_path(comp_dir, directory);
         let full_path = symbolic_common::join_path(&prefix, self.name);
-        let full_path = symbolic_common::clean_path(&full_path).into_owned();
-
-        full_path
+        symbolic_common::clean_path(&full_path).into_owned()
     }
 
     /// Returns this file's full path on the source server (version 9+).

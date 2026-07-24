@@ -149,10 +149,12 @@ fn test_debug_session_source_by_path() {
     session.source_by_path(&first).unwrap();
 
     // A path the object does not reference resolves to nothing.
-    assert!(session
-        .source_by_path("/definitely/not/a/referenced/source")
-        .unwrap()
-        .is_none());
+    assert!(
+        session
+            .source_by_path("/definitely/not/a/referenced/source")
+            .unwrap()
+            .is_none()
+    );
 }
 
 #[cfg(target_arch = "wasm32")]

@@ -460,7 +460,7 @@ fn test_get_platform_properties_no_children() {
 }
 
 macro_rules! test_unreal_contect {
-    ($xml_parent:expr, $func_name:expr, $name:ident, $xml_elm:expr, $expect:expr, $(,)*) => {
+    ($xml_parent:expr_2021, $func_name:expr_2021, $name:ident, $xml_elm:expr_2021, $expect:expr_2021, $(,)*) => {
         #[cfg(test)]
         mod $name {
             use super::*;
@@ -488,7 +488,7 @@ macro_rules! test_unreal_contect {
 }
 
 macro_rules! test_unreal_runtime_properties {
-    ($name:ident, $xml_elm:expr, $expect:expr $(,)*) => {
+    ($name:ident, $xml_elm:expr_2021, $expect:expr_2021 $(,)*) => {
         test_unreal_contect!(
             "RuntimeProperties",
             Unreal4ContextRuntimeProperties::from_xml,
@@ -500,7 +500,7 @@ macro_rules! test_unreal_runtime_properties {
 }
 
 macro_rules! test_unreal_platform_properties {
-    ($name:ident, $xml_elm:expr, $expect:expr $(,)*) => {
+    ($name:ident, $xml_elm:expr_2021, $expect:expr_2021 $(,)*) => {
         test_unreal_contect!(
             "PlatformProperties",
             Unreal4ContextPlatformProperties::from_xml,
@@ -556,7 +556,11 @@ YetAnother!__scrt_common_main_seh() [f:\dd\vctools\crt\vcstartup\src\startup\exe
 kernel32
 ntdll"
 );
-test_unreal_runtime_properties!(portable_call_stack, "PCallStack", "YetAnother 0x0000000025ca0000 + 703394 YetAnother 0x0000000025ca0000 + 281f2ee YetAnother 0x0000000025ca0000 + 2a26dd3 YetAnother 0x0000000025ca0000 + 2a4f984 YetAnother 0x0000000025ca0000 + 355e77e YetAnother 0x0000000025ca0000 + 3576186 YetAnother 0x0000000025ca0000 + 8acc56 YetAnother 0x0000000025ca0000 + 8acf00 YetAnother 0x0000000025ca0000 + 35c121d YetAnother 0x0000000025ca0000 + 35cfb58 YetAnother 0x0000000025ca0000 + 2eb082f YetAnother 0x0000000025ca0000 + 2eb984f YetAnother 0x0000000025ca0000 + 2d1cd39 YetAnother 0x0000000025ca0000 + 325258 YetAnother 0x0000000025ca0000 + 334e4c YetAnother 0x0000000025ca0000 + 334eaa YetAnother 0x0000000025ca0000 + 3429e6 YetAnother 0x0000000025ca0000 + 44e73c6 KERNEL32 0x000000000fd40000 + 13034 ntdll 0x0000000010060000 + 71471");
+test_unreal_runtime_properties!(
+    portable_call_stack,
+    "PCallStack",
+    "YetAnother 0x0000000025ca0000 + 703394 YetAnother 0x0000000025ca0000 + 281f2ee YetAnother 0x0000000025ca0000 + 2a26dd3 YetAnother 0x0000000025ca0000 + 2a4f984 YetAnother 0x0000000025ca0000 + 355e77e YetAnother 0x0000000025ca0000 + 3576186 YetAnother 0x0000000025ca0000 + 8acc56 YetAnother 0x0000000025ca0000 + 8acf00 YetAnother 0x0000000025ca0000 + 35c121d YetAnother 0x0000000025ca0000 + 35cfb58 YetAnother 0x0000000025ca0000 + 2eb082f YetAnother 0x0000000025ca0000 + 2eb984f YetAnother 0x0000000025ca0000 + 2d1cd39 YetAnother 0x0000000025ca0000 + 325258 YetAnother 0x0000000025ca0000 + 334e4c YetAnother 0x0000000025ca0000 + 334eaa YetAnother 0x0000000025ca0000 + 3429e6 YetAnother 0x0000000025ca0000 + 44e73c6 KERNEL32 0x000000000fd40000 + 13034 ntdll 0x0000000010060000 + 71471"
+);
 test_unreal_runtime_properties!(
     error_message,
     "ErrorMessage",

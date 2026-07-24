@@ -6,8 +6,8 @@ use regex::Regex;
 #[cfg(any(test, feature = "serde"))]
 use time::format_description::well_known::Rfc3339;
 
-use crate::error::Unreal4Error;
 use crate::Unreal4ErrorKind;
+use crate::error::Unreal4Error;
 
 #[cfg(test)]
 use similar_asserts::assert_eq;

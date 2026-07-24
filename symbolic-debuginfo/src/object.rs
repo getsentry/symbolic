@@ -18,7 +18,7 @@ use crate::sourcebundle::*;
 use crate::wasm::*;
 
 macro_rules! match_inner {
-    ($value:expr, $ty:tt ($pat:pat) => $expr:expr) => {
+    ($value:expr_2021, $ty:tt ($pat:pat) => $expr:expr_2021) => {
         match $value {
             $ty::Breakpad($pat) => $expr,
             $ty::Elf($pat) => $expr,
@@ -33,7 +33,7 @@ macro_rules! match_inner {
 }
 
 macro_rules! map_inner {
-    ($value:expr, $from:tt($pat:pat) => $to:tt($expr:expr)) => {
+    ($value:expr_2021, $from:tt($pat:pat) => $to:tt($expr:expr_2021)) => {
         match $value {
             $from::Breakpad($pat) => $to::Breakpad($expr),
             $from::Elf($pat) => $to::Elf($expr),
@@ -48,7 +48,7 @@ macro_rules! map_inner {
 }
 
 macro_rules! map_result {
-    ($value:expr, $from:tt($pat:pat) => $to:tt($expr:expr)) => {
+    ($value:expr_2021, $from:tt($pat:pat) => $to:tt($expr:expr_2021)) => {
         match $value {
             $from::Breakpad($pat) => $expr.map($to::Breakpad).map_err(ObjectError::transparent),
             $from::Elf($pat) => $expr.map($to::Elf).map_err(ObjectError::transparent),
@@ -237,7 +237,7 @@ impl<'data> Object<'data> {
         opts: ParseObjectOptions,
     ) -> Result<Self, ObjectError> {
         macro_rules! parse_object {
-            ($kind:ident, $file:ident, $data:expr) => {
+            ($kind:ident, $file:ident, $data:expr_2021) => {
                 Object::$kind($file::parse_with_opts(data, opts).map_err(ObjectError::transparent)?)
             };
         }
@@ -252,7 +252,7 @@ impl<'data> Object<'data> {
             FileFormat::Wasm => parse_object!(Wasm, WasmObject, data),
             FileFormat::PortablePdb => parse_object!(PortablePdb, PortablePdbObject, data),
             FileFormat::Unknown => {
-                return Err(ObjectError::new(ObjectErrorRepr::UnsupportedObject))
+                return Err(ObjectError::new(ObjectErrorRepr::UnsupportedObject));
             }
         };
 
@@ -279,7 +279,7 @@ impl<'data> Object<'data> {
     /// (e.g. executable or library), even if this object is a debug file. See the variants for the
     /// semantics of this code identifier.
     pub fn code_id(&self) -> Option<CodeId> {
-        match_inner!(self, Object(ref o) => o.code_id())
+        match_inner!(self, Object(o) => o.code_id())
     }
 
     /// The debug information identifier of this object.
@@ -287,42 +287,42 @@ impl<'data> Object<'data> {
     /// For platforms that use different identifiers for their code and debug files, this _always_
     /// refers to the debug file, regardless whether this object is a debug file or not.
     pub fn debug_id(&self) -> DebugId {
-        match_inner!(self, Object(ref o) => o.debug_id())
+        match_inner!(self, Object(o) => o.debug_id())
     }
 
     /// The CPU architecture of this object.
     pub fn arch(&self) -> Arch {
-        match_inner!(self, Object(ref o) => o.arch())
+        match_inner!(self, Object(o) => o.arch())
     }
 
     /// The kind of this object.
     pub fn kind(&self) -> ObjectKind {
-        match_inner!(self, Object(ref o) => o.kind())
+        match_inner!(self, Object(o) => o.kind())
     }
 
     /// The address at which the image prefers to be loaded into memory.
     pub fn load_address(&self) -> u64 {
-        match_inner!(self, Object(ref o) => o.load_address())
+        match_inner!(self, Object(o) => o.load_address())
     }
 
     /// Determines whether this object exposes a public symbol table.
     pub fn has_symbols(&self) -> bool {
-        match_inner!(self, Object(ref o) => o.has_symbols())
+        match_inner!(self, Object(o) => o.has_symbols())
     }
 
     /// Returns an iterator over symbols in the public symbol table.
     pub fn symbols(&self) -> SymbolIterator<'data, '_> {
-        map_inner!(self, Object(ref o) => SymbolIterator(o.symbols()))
+        map_inner!(self, Object(o) => SymbolIterator(o.symbols()))
     }
 
     /// Returns an ordered map of symbols in the symbol table.
     pub fn symbol_map(&self) -> SymbolMap<'data> {
-        match_inner!(self, Object(ref o) => o.symbol_map())
+        match_inner!(self, Object(o) => o.symbol_map())
     }
 
     /// Determines whether this object contains debug information.
     pub fn has_debug_info(&self) -> bool {
-        match_inner!(self, Object(ref o) => o.has_debug_info())
+        match_inner!(self, Object(o) => o.has_debug_info())
     }
 
     /// Constructs a debugging session.
@@ -377,22 +377,22 @@ impl<'data> Object<'data> {
 
     /// Determines whether this object contains stack unwinding information.
     pub fn has_unwind_info(&self) -> bool {
-        match_inner!(self, Object(ref o) => o.has_unwind_info())
+        match_inner!(self, Object(o) => o.has_unwind_info())
     }
 
     /// Determines whether this object contains embedded source
     pub fn has_sources(&self) -> bool {
-        match_inner!(self, Object(ref o) => o.has_sources())
+        match_inner!(self, Object(o) => o.has_sources())
     }
 
     /// Determines whether this object is malformed and was only partially parsed
     pub fn is_malformed(&self) -> bool {
-        match_inner!(self, Object(ref o) => o.is_malformed())
+        match_inner!(self, Object(o) => o.is_malformed())
     }
 
     /// Returns the raw data of the underlying buffer.
     pub fn data(&self) -> &'data [u8] {
-        match_inner!(self, Object(ref o) => o.data())
+        match_inner!(self, Object(o) => o.data())
     }
 }
 
@@ -646,7 +646,7 @@ impl<'data> Iterator for SymbolIterator<'data, '_> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match_inner!(self, SymbolIterator(ref mut iter) => iter.next())
+        match_inner!(self, SymbolIterator(iter) => iter.next())
     }
 }
 
@@ -719,7 +719,7 @@ impl<'d> Archive<'d> {
                 Archive(ArchiveInner::PortablePdb(MonoArchive::new(data, opts)))
             }
             FileFormat::Unknown => {
-                return Err(ObjectError::new(ObjectErrorRepr::UnsupportedObject))
+                return Err(ObjectError::new(ObjectErrorRepr::UnsupportedObject));
             }
         };
 

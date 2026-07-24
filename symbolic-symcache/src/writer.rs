@@ -1,7 +1,7 @@
 //! Defines the [SymCache Converter](`SymCacheConverter`).
 
-use std::collections::btree_map;
 use std::collections::BTreeMap;
+use std::collections::btree_map;
 use std::io::Write;
 
 use indexmap::IndexSet;
@@ -10,8 +10,8 @@ use symbolic_debuginfo::{DebugSession, FileFormat, Function, ObjectLike, Symbol}
 use watto::{Pod, StringTable, Writer};
 
 use crate::raw::v9::NO_SOURCE_LOCATION;
-use crate::{raw, transform};
 use crate::{Error, ErrorKind};
+use crate::{raw, transform};
 
 /// The SymCache Converter.
 ///

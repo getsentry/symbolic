@@ -52,7 +52,7 @@ const SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE: c_int = 0x1;
 const SYMBOLIC_SWIFT_FEATURE_PARAMETERS: c_int = 0x2;
 
 #[cfg(feature = "swift")]
-extern "C" {
+unsafe extern "C" {
     fn symbolic_demangle_swift(
         sym: *const c_char,
         buf: *mut c_char,

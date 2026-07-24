@@ -14,7 +14,7 @@ impl<'data, Flavor: SymCacheV7Flavor> SymCacheV7Inner<'data, Flavor> {
                 return SourceLocationsV7Inner {
                     cache: self,
                     source_location_idx: u32::MAX,
-                }
+                };
             }
         };
 

@@ -90,12 +90,12 @@ ffi_fn! {
         index: usize,
     ) -> Result<*mut SymbolicObject> {
         let archive = SymbolicArchive::as_rust(archive);
-        if let Some(object) = archive.get().object_by_index(index)? {
+        match archive.get().object_by_index(index)? { Some(object) => {
             let object = SelfCell::from_raw(archive.owner().clone(), object);
             Ok(SymbolicObject::from_rust(object))
-        } else {
+        } _ => {
             Ok(ptr::null_mut())
-        }
+        }}
     }
 }
 

@@ -8,7 +8,7 @@ use std::ops::Deref;
 
 use bytes::Bytes;
 use flate2::bufread::ZlibDecoder;
-use scroll::{ctx::TryFromCtx, Endian, Pread};
+use scroll::{Endian, Pread, ctx::TryFromCtx};
 
 use crate::context::Unreal4Context;
 use crate::error::{Unreal4Error, Unreal4ErrorKind};

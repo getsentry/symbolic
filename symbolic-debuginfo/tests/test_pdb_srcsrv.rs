@@ -5,8 +5,8 @@
 //! development where builds happen on different machines with Perforce.
 
 use symbolic_common::ByteView;
-use symbolic_debuginfo::pdb::PdbObject;
 use symbolic_debuginfo::Object;
+use symbolic_debuginfo::pdb::PdbObject;
 use symbolic_testutils::fixture;
 
 #[test]

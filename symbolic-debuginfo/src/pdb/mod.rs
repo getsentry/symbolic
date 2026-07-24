@@ -9,12 +9,12 @@ use std::sync::Arc;
 
 use elsa::sync::FrozenMap;
 use parking_lot::Mutex;
+use pdb_addr2line::ModuleProvider;
 use pdb_addr2line::pdb::{
     AddressMap, FallibleIterator, ImageSectionHeader, InlineSiteSymbol, LineProgram, MachineType,
     Module, ModuleInfo, PdbInternalSectionOffset, ProcedureSymbol, RawString, SeparatedCodeSymbol,
     SymbolData, TypeIndex,
 };
-use pdb_addr2line::ModuleProvider;
 use smallvec::SmallVec;
 use thiserror::Error;
 
@@ -22,11 +22,11 @@ use symbolic_common::{
     Arch, AsSelf, CodeId, CpuFamily, DebugId, Language, Name, NameMangling, SelfCell, Uuid,
 };
 
+use crate::ParseObjectOptions;
 use crate::base::*;
 use crate::function_stack::FunctionStack;
 use crate::pdb::srcsrv::{SourceServerInfo, SourceServerMappings};
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::ParseObjectOptions;
 
 mod srcsrv;
 

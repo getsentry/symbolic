@@ -43,9 +43,11 @@ fn test_get_minidump_slice() {
 
     assert_eq!(minidump_file.index(), crash_file.index());
 
-    assert!(ue4_crash
-        .file_by_type(Unreal4FileType::AppleCrashReport)
-        .is_none());
+    assert!(
+        ue4_crash
+            .file_by_type(Unreal4FileType::AppleCrashReport)
+            .is_none()
+    );
 }
 
 #[test]

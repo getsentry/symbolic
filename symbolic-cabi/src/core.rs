@@ -61,17 +61,19 @@ impl SymbolicStr {
 
     /// Releases memory held by an unmanaged `SymbolicStr`.
     pub unsafe fn free(&mut self) {
-        if self.owned {
-            String::from_raw_parts(self.data as *mut _, self.len, self.len);
-            self.data = ptr::null_mut();
-            self.len = 0;
-            self.owned = false;
+        unsafe {
+            if self.owned {
+                String::from_raw_parts(self.data as *mut _, self.len, self.len);
+                self.data = ptr::null_mut();
+                self.len = 0;
+                self.owned = false;
+            }
         }
     }
 
     /// Returns the Rust string managed by a `SymbolicStr`.
     pub unsafe fn as_str(&self) -> &str {
-        str::from_utf8_unchecked(slice::from_raw_parts(self.data as *const _, self.len))
+        unsafe { str::from_utf8_unchecked(slice::from_raw_parts(self.data as *const _, self.len)) }
     }
 }
 
@@ -117,7 +119,7 @@ impl SymbolicUuid {
 
     /// Returns the Rust UUID managed by a `SymbolicUUID`.
     pub unsafe fn as_uuid(&self) -> &Uuid {
-        &*(self as *const Self as *const Uuid)
+        unsafe { &*(self as *const Self as *const Uuid) }
     }
 }
 
@@ -272,22 +274,21 @@ impl SymbolicErrorCode {
 }
 
 /// Initializes the symbolic library.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn symbolic_init() {
-    set_panic_hook();
+    unsafe {
+        set_panic_hook();
+    }
 }
 
 /// Returns the last error code.
 ///
 /// If there is no error, 0 is returned.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn symbolic_err_get_last_code() -> SymbolicErrorCode {
-    LAST_ERROR.with(|e| {
-        if let Some(ref err) = *e.borrow() {
-            SymbolicErrorCode::from_error(err.as_ref())
-        } else {
-            SymbolicErrorCode::NoError
-        }
+    LAST_ERROR.with(|e| match *e.borrow() {
+        Some(ref err) => SymbolicErrorCode::from_error(err.as_ref()),
+        _ => SymbolicErrorCode::NoError,
     })
 }
 
@@ -295,11 +296,11 @@ pub unsafe extern "C" fn symbolic_err_get_last_code() -> SymbolicErrorCode {
 ///
 /// If there is no error an empty string is returned.  This allocates new memory
 /// that needs to be freed with `symbolic_str_free`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
     use std::fmt::Write;
-    LAST_ERROR.with(|e| {
-        if let Some(ref err) = *e.borrow() {
+    LAST_ERROR.with(|e| match *e.borrow() {
+        Some(ref err) => {
             let mut err = err.as_ref();
             let mut msg = err.to_string();
             while let Some(cause) = err.source() {
@@ -307,20 +308,19 @@ pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
                 err = cause;
             }
             SymbolicStr::from_string(msg)
-        } else {
-            Default::default()
         }
+        _ => Default::default(),
     })
 }
 
 /// Returns the panic information as string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn symbolic_err_get_backtrace() -> SymbolicStr {
     SymbolicStr::default()
 }
 
 /// Clears the last error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn symbolic_err_clear() {
     LAST_ERROR.with(|e| {
         *e.borrow_mut() = None;
@@ -343,23 +343,25 @@ ffi_fn! {
 ///
 /// If the string is marked as not owned then this function does not
 /// do anything.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn symbolic_str_free(string: *mut SymbolicStr) {
-    (*string).free()
+    unsafe { (*string).free() }
 }
 
 /// Returns true if the uuid is nil.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn symbolic_uuid_is_nil(uuid: *const SymbolicUuid) -> bool {
-    Uuid::from_bytes((*uuid).data) == Uuid::nil()
+    unsafe { Uuid::from_bytes((*uuid).data) == Uuid::nil() }
 }
 
 /// Formats the UUID into a string.
 ///
 /// The string is newly allocated and needs to be released with
 /// `symbolic_cstr_free`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn symbolic_uuid_to_str(uuid: *const SymbolicUuid) -> SymbolicStr {
-    let uuid = Uuid::from_bytes((*uuid).data);
-    SymbolicStr::from_string(uuid.hyphenated().to_string())
+    unsafe {
+        let uuid = Uuid::from_bytes((*uuid).data);
+        SymbolicStr::from_string(uuid.hyphenated().to_string())
+    }
 }

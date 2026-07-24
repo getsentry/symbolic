@@ -4,7 +4,7 @@ use symbolic_debuginfo as di;
 use wasm_bindgen::prelude::*;
 
 use super::Object;
-use crate::utils::{provider_bytes, Result};
+use crate::utils::{Result, provider_bytes};
 
 /// A descriptor that provides information about a source file.
 ///

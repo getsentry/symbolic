@@ -11,9 +11,9 @@ use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
+use crate::ParseObjectOptions;
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::ParseObjectOptions;
 pub(crate) use mono_archive::{MonoArchive, MonoArchiveObjects};
 
 mod bcsymbolmap;
@@ -768,11 +768,7 @@ impl<'d> MachArchive<'d> {
                 // https://docs.oracle.com/javase/specs/jvms/se6/html/ClassFile.doc.html
                 let narches = data.pread_with::<u32>(4, scroll::BE).ok()?;
 
-                if narches < 45 {
-                    Some(true)
-                } else {
-                    None
-                }
+                if narches < 45 { Some(true) } else { None }
             }
             goblin::mach::header::MH_CIGAM_64
             | goblin::mach::header::MH_CIGAM

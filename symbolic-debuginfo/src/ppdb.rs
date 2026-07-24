@@ -9,9 +9,9 @@ use symbolic_common::{Arch, CodeId, DebugId};
 use symbolic_ppdb::EmbeddedSource;
 use symbolic_ppdb::{Document, FormatError, PortablePdb};
 
+use crate::ParseObjectOptions;
 use crate::base::*;
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::ParseObjectOptions;
 
 /// An iterator over symbols in a [`PortablePdbObject`].
 pub type PortablePdbSymbolIterator<'data> = iter::Empty<Symbol<'data>>;

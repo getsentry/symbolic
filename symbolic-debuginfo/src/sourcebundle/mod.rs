@@ -58,16 +58,16 @@ use parking_lot::Mutex;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
-use zip::{write::SimpleFileOptions, ZipWriter};
+use zip::{ZipWriter, write::SimpleFileOptions};
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, SourceLinkMappings};
 
 use self::utf8_reader::Utf8Reader;
+use crate::ParseObjectOptions;
 use crate::base::*;
 use crate::js::{
     discover_debug_id, discover_sourcemap_embedded_debug_id, discover_sourcemaps_location,
 };
-use crate::ParseObjectOptions;
 
 /// Magic bytes of a source bundle. They are prepended to the ZIP file.
 static BUNDLE_MAGIC: [u8; 4] = *b"SYSB";
@@ -1637,13 +1637,15 @@ mod tests {
         let writer = Cursor::new(Vec::new());
         let mut bundle = SourceBundleWriter::start(writer)?;
 
-        assert!(bundle
-            .add_file(
-                "bar.txt",
-                &[0, 159, 146, 150][..],
-                SourceFileInfo::default()
-            )
-            .is_err());
+        assert!(
+            bundle
+                .add_file(
+                    "bar.txt",
+                    &[0, 159, 146, 150][..],
+                    SourceFileInfo::default()
+                )
+                .is_err()
+        );
 
         Ok(())
     }
@@ -1693,21 +1695,31 @@ mod tests {
 
         let session = bundle.debug_session().unwrap();
 
-        assert!(session
-            .source_by_path("C:\\users\\martin\\mydebugfile.cs")?
-            .is_some());
-        assert!(session
-            .source_by_path("C:/users/martin/mydebugfile.cs")?
-            .is_some());
-        assert!(session
-            .source_by_path("C:\\users\\martin/mydebugfile.cs")?
-            .is_some());
-        assert!(session
-            .source_by_path("/usr/martin/mydebugfile.h")?
-            .is_some());
-        assert!(session
-            .source_by_path("\\usr\\martin\\mydebugfile.h")?
-            .is_some());
+        assert!(
+            session
+                .source_by_path("C:\\users\\martin\\mydebugfile.cs")?
+                .is_some()
+        );
+        assert!(
+            session
+                .source_by_path("C:/users/martin/mydebugfile.cs")?
+                .is_some()
+        );
+        assert!(
+            session
+                .source_by_path("C:\\users\\martin/mydebugfile.cs")?
+                .is_some()
+        );
+        assert!(
+            session
+                .source_by_path("/usr/martin/mydebugfile.h")?
+                .is_some()
+        );
+        assert!(
+            session
+                .source_by_path("\\usr\\martin\\mydebugfile.h")?
+                .is_some()
+        );
 
         Ok(())
     }
@@ -1747,13 +1759,14 @@ mod tests {
         assert_eq!(f.path(), Some("/files/bar.js.min"));
         assert_eq!(f.source_mapping_url(), Some("bar.js.map"));
 
-        assert!(sess
-            .source_by_debug_id(
+        assert!(
+            sess.source_by_debug_id(
                 "5e618b9f-54a9-4389-b196-519819dd7c47".parse().unwrap(),
                 SourceFileType::Source
             )
             .unwrap()
-            .is_none());
+            .is_none()
+        );
 
         Ok(())
     }
