@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Breaking Changes**
+
+- Change the MSRV version to 1.85 and Rust Edition 2024. ([#1028](https://github.com/getsentry/symbolic/pull/1028))
+
 ## 14.0.0-alpha.3
 
 **Breaking Changes**

@@ -7,8 +7,8 @@ use std::fmt;
 
 use core::cmp;
 use flate2::{Decompress, FlushDecompress};
-use goblin::elf::compression_header::{CompressionHeader, ELFCOMPRESS_ZLIB};
 use goblin::elf::SectionHeader;
+use goblin::elf::compression_header::{CompressionHeader, ELFCOMPRESS_ZLIB};
 use goblin::elf64::sym::SymIterator;
 use goblin::strtab::Strtab;
 use goblin::{
@@ -20,9 +20,9 @@ use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
+use crate::ParseObjectOptions;
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::ParseObjectOptions;
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;

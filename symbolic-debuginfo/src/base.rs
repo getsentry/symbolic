@@ -3,10 +3,10 @@ use std::fmt;
 use std::ops::{Bound, Deref, RangeBounds};
 use std::str::FromStr;
 
-use symbolic_common::{clean_path, join_path, Arch, CodeId, DebugId, Name};
+use symbolic_common::{Arch, CodeId, DebugId, Name, clean_path, join_path};
 
-use crate::sourcebundle::SourceFileDescriptor;
 use crate::ParseObjectOptions;
+use crate::sourcebundle::SourceFileDescriptor;
 
 pub(crate) trait Parse<'data>: Sized {
     type Error;

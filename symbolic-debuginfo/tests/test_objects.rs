@@ -6,7 +6,7 @@ use symbolic_common::{ByteView, Language};
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
 use symbolic_debuginfo::{
-    pe::PeObject, FileEntry, Function, LineInfo, Object, ParseObjectOptions, SymbolMap,
+    FileEntry, Function, LineInfo, Object, ParseObjectOptions, SymbolMap, pe::PeObject,
 };
 use symbolic_testutils::fixture;
 
@@ -436,9 +436,11 @@ fn test_elf_compressed_gnu() {
     let object = ElfObject::parse_with_opts(&view, opts).unwrap();
 
     // Opening the session fails because the debuginfo section isn't actually valid.
-    assert!(object
-        .debug_session()
-        .is_err_and(|err| err.kind() == DwarfErrorKind::CorruptedData));
+    assert!(
+        object
+            .debug_session()
+            .is_err_and(|err| err.kind() == DwarfErrorKind::CorruptedData)
+    );
 
     opts.max_decompressed_section_size = Some(5);
     let object = ElfObject::parse_with_opts(&view, opts).unwrap();
@@ -455,9 +457,11 @@ fn test_elf_compressed_shf() {
     let object = ElfObject::parse_with_opts(&view, opts).unwrap();
 
     // Opening the session fails because the debuginfo section isn't actually valid.
-    assert!(object
-        .debug_session()
-        .is_err_and(|err| err.kind() == DwarfErrorKind::CorruptedData));
+    assert!(
+        object
+            .debug_session()
+            .is_err_and(|err| err.kind() == DwarfErrorKind::CorruptedData)
+    );
 
     opts.max_decompressed_section_size = Some(5);
     let object = ElfObject::parse_with_opts(&view, opts).unwrap();

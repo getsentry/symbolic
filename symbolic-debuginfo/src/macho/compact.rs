@@ -1228,7 +1228,7 @@ impl<'a> CompactUnwindInfoIter<'a> {
         let opcode = match entry.opcode_or_index {
             OpcodeOrIndex::Opcode(opcode) => opcode,
             OpcodeOrIndex::Index(opcode_idx) => {
-                if let SecondLevelPage::Compressed(ref page) = second_level_page {
+                if let SecondLevelPage::Compressed(page) = second_level_page {
                     if opcode_idx < self.root.global_opcodes_len {
                         self.global_opcode(opcode_idx)?
                     } else {
@@ -1333,11 +1333,10 @@ impl<'a> CompactUnwindInfoIter<'a> {
         println!("  Top level indices: (count = {})", self.root.pages_len);
         for i in 0..self.root.pages_len {
             let entry = self.first_level_entry(i)?.unwrap();
-            println!("    [{}]: function offset=0x{:08x}, 2nd level page offset=0x{:08x}, LSDA offset=0x{:08x}",
-                    i,
-                    entry.first_address,
-                    entry.second_level_page_offset,
-                    entry.lsda_index_offset);
+            println!(
+                "    [{}]: function offset=0x{:08x}, 2nd level page offset=0x{:08x}, LSDA offset=0x{:08x}",
+                i, entry.first_address, entry.second_level_page_offset, entry.lsda_index_offset
+            );
         }
 
         // TODO: print LSDA info
@@ -1352,10 +1351,10 @@ impl<'a> CompactUnwindInfoIter<'a> {
 
             // If this is the first entry of this page, dump the page
             if second_idx == 0 {
-                println!("    Second level index[{}]: offset in section=0x{:08x}, base function=0x{:08x}",
-                iter.first_idx,
-                first.second_level_page_offset,
-                first.first_address);
+                println!(
+                    "    Second level index[{}]: offset in section=0x{:08x}, base function=0x{:08x}",
+                    iter.first_idx, first.second_level_page_offset, first.first_address
+                );
             }
 
             // Dump the entry
@@ -2067,8 +2066,8 @@ impl Iterator for CompactCfiOpIter {
 mod test {
 
     use super::{
-        CompactCfiOp, CompactCfiRegister, CompactUnwindInfoIter, CompactUnwindOp, Opcode,
-        ARM64_REG_BASE,
+        ARM64_REG_BASE, CompactCfiOp, CompactCfiRegister, CompactUnwindInfoIter, CompactUnwindOp,
+        Opcode,
     };
     use crate::macho::MachError;
     use scroll::Pwrite;

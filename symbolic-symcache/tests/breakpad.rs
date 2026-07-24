@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 use std::io::Cursor;
 
-use symbolic_common::{clean_path, ByteView};
-use symbolic_debuginfo::{breakpad::BreakpadObject, Object, ParseObjectOptions};
+use symbolic_common::{ByteView, clean_path};
+use symbolic_debuginfo::{Object, ParseObjectOptions, breakpad::BreakpadObject};
 use symbolic_symcache::{SymCache, SymCacheConverter};
 use symbolic_testutils::fixture;
 
@@ -22,7 +22,10 @@ fn test_macos() {
         lookup_result[0].function().name(),
         "google_breakpad::MinidumpFileWriter::Copy(unsigned int, void const*, long)"
     );
-    assert_eq!(lookup_result[0].file().unwrap().full_path(), "/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client/minidump_file_writer.cc");
+    assert_eq!(
+        lookup_result[0].file().unwrap().full_path(),
+        "/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client/minidump_file_writer.cc"
+    );
     assert_eq!(lookup_result[0].line(), 312);
 }
 
@@ -82,7 +85,10 @@ fn test_windows() {
         lookup_result[0].function().name(),
         "google_breakpad::ExceptionHandler::WriteMinidumpWithException(unsigned long,_EXCEPTION_POINTERS *,MDRawAssertionInfo *)"
     );
-    assert_eq!(lookup_result[0].file().unwrap().full_path(), "c:\\projects\\breakpad-tools\\deps\\breakpad\\src\\client\\windows\\handler\\exception_handler.cc");
+    assert_eq!(
+        lookup_result[0].file().unwrap().full_path(),
+        "c:\\projects\\breakpad-tools\\deps\\breakpad\\src\\client\\windows\\handler\\exception_handler.cc"
+    );
     assert_eq!(lookup_result[0].line(), 846);
 }
 

@@ -1,8 +1,8 @@
 use std::io::Cursor;
 
 use symbolic_common::ByteView;
-use symbolic_debuginfo::macho::BcSymbolMap;
 use symbolic_debuginfo::Object;
+use symbolic_debuginfo::macho::BcSymbolMap;
 use symbolic_symcache::{SymCache, SymCacheConverter};
 
 type Error = Box<dyn std::error::Error>;

@@ -1679,7 +1679,7 @@ impl Serializer<'_> {
     fn write_pre(&mut self, t: &Type) {
         let storage_class = match t {
             Type::None => return,
-            Type::MemberFunction(func_class, calling_conv, _, _, ref inner) => {
+            Type::MemberFunction(func_class, calling_conv, _, _, inner) => {
                 if func_class.contains(FuncClass::THUNK) {
                     self.w.extend(b"[thunk]: ")
                 }
@@ -1706,7 +1706,7 @@ impl Serializer<'_> {
                 self.write_calling_conv(calling_conv);
                 return;
             }
-            Type::MemberFunctionPointer(ref symbol, _, calling_conv, _, _, ref inner) => {
+            Type::MemberFunctionPointer(symbol, _, calling_conv, _, _, inner) => {
                 self.write_pre(inner);
                 self.write_space();
                 self.w.push(b'(');
@@ -1717,7 +1717,7 @@ impl Serializer<'_> {
                 self.w.extend(b"::*");
                 return;
             }
-            Type::NonMemberFunction(calling_conv, _, _, ref inner) => {
+            Type::NonMemberFunction(calling_conv, _, _, inner) => {
                 self.write_pre(inner);
                 self.write_calling_conv(calling_conv);
                 return;
@@ -1754,9 +1754,9 @@ impl Serializer<'_> {
                 self.w.extend(b"...");
                 return;
             }
-            Type::Ptr(ref inner, storage_class)
-            | Type::Ref(ref inner, storage_class)
-            | Type::RValueRef(ref inner, storage_class) => {
+            Type::Ptr(inner, storage_class)
+            | Type::Ref(inner, storage_class)
+            | Type::RValueRef(inner, storage_class) => {
                 // "[]" and "()" (for function parameters) take precedence over "*",
                 // so "int *x(int)" means "x is a function returning int *". We need
                 // parentheses to supercede the default precedence. (e.g. we want to
@@ -1809,11 +1809,11 @@ impl Serializer<'_> {
 
                 storage_class
             }
-            Type::Array(_len, ref inner, storage_class) => {
+            Type::Array(_len, inner, storage_class) => {
                 self.write_pre(inner);
                 storage_class
             }
-            Type::Var(ref inner, kind, sc) => {
+            Type::Var(inner, kind, sc) => {
                 match kind {
                     VarStorageKind::PrivateStatic => self.w.extend(b"private: static "),
                     VarStorageKind::ProtectedStatic => self.w.extend(b"protected: static "),
@@ -1823,23 +1823,23 @@ impl Serializer<'_> {
                 self.write_pre(inner);
                 sc
             }
-            Type::Alias(ref names, sc) => {
+            Type::Alias(names, sc) => {
                 self.write_name(names, None);
                 sc
             }
-            Type::Struct(ref names, sc) => {
+            Type::Struct(names, sc) => {
                 self.write_class(names, "struct");
                 sc
             }
-            Type::Union(ref names, sc) => {
+            Type::Union(names, sc) => {
                 self.write_class(names, "union");
                 sc
             }
-            Type::Class(ref names, sc) => {
+            Type::Class(names, sc) => {
                 self.write_class(names, "class");
                 sc
             }
-            Type::Enum(ref names, sc) => {
+            Type::Enum(names, sc) => {
                 self.write_class(names, "enum");
                 sc
             }
@@ -2350,7 +2350,7 @@ impl Serializer<'_> {
                         // symbol type.
                     }
                     Operator::Conversion => {
-                        if let Some(Type::MemberFunction(_, _, _, _, ref rv)) = ty {
+                        if let Some(Type::MemberFunction(_, _, _, _, rv)) = ty {
                             self.w.extend(b"operator ");
                             self.write_pre(rv);
                             self.write_post(rv);

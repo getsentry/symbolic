@@ -5,7 +5,7 @@ use crate::raw::v9 as raw;
 use crate::{ErrorKind, Result};
 
 use symbolic_common::Arch;
-use watto::{align_to, Pod, StringTable};
+use watto::{Pod, StringTable, align_to};
 
 /// The serialized SymCache V9 binary format.
 #[derive(Clone, PartialEq, Eq)]

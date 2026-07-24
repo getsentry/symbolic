@@ -7,14 +7,14 @@ use std::io::Write;
 
 use gimli::RunTimeEndian;
 use goblin::pe;
-use scroll::{Pread, LE};
+use scroll::{LE, Pread};
 use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
+use crate::ParseObjectOptions;
 use crate::base::*;
 use crate::dwarf::*;
-use crate::ParseObjectOptions;
 
 pub use goblin::pe::exception::*;
 pub use goblin::pe::section_table::SectionTable;

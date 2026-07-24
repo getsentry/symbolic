@@ -27,17 +27,17 @@ use thiserror::Error;
 
 use symbolic_common::{Arch, ByteView, CpuFamily, UnknownArchError};
 use symbolic_debuginfo::breakpad::{BreakpadError, BreakpadObject, BreakpadStackRecord};
+use symbolic_debuginfo::dwarf::Dwarf;
 use symbolic_debuginfo::dwarf::gimli::{
     BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error as GimliError,
     FrameDescriptionEntry, Reader, ReaderOffset, Register, RegisterRule, UnwindContext,
     UnwindSection,
 };
-use symbolic_debuginfo::dwarf::Dwarf;
 use symbolic_debuginfo::macho::{
     CompactCfiOp, CompactCfiRegister, CompactUnwindInfoIter, CompactUnwindOp, MachError, MachObject,
 };
-use symbolic_debuginfo::pdb::pdb::{self, FallibleIterator, FrameData, Rva, StringTable};
 use symbolic_debuginfo::pdb::PdbObject;
+use symbolic_debuginfo::pdb::pdb::{self, FallibleIterator, FrameData, Rva, StringTable};
 use symbolic_debuginfo::pe::{
     Arm64UnwindCode, PeObject, RuntimeFunction, StackFrameOffset, UnwindOperation,
 };

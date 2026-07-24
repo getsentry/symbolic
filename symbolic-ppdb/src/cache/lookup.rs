@@ -1,6 +1,6 @@
 use symbolic_common::Language;
 
-use super::{raw, PortablePdbCache};
+use super::{PortablePdbCache, raw};
 
 /// Line information for a given IL offset in a function.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

@@ -14,7 +14,7 @@ impl<'data> SymCacheV9<'data> {
                 return SourceLocationsV9 {
                     cache: self,
                     source_location_idx: u32::MAX,
-                }
+                };
             }
         };
 

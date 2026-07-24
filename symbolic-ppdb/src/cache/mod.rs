@@ -53,7 +53,7 @@ pub(crate) mod writer;
 
 use symbolic_common::{AsSelf, DebugId};
 use thiserror::Error;
-use watto::{align_to, Pod};
+use watto::{Pod, align_to};
 
 const PPDBCACHE_VERSION: u32 = 1;
 

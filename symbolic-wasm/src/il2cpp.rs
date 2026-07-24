@@ -4,7 +4,7 @@ use symbolic_il2cpp::ObjectLineMapping;
 use wasm_bindgen::prelude::*;
 
 use crate::debuginfo::Object;
-use crate::utils::{provider_bytes, Result};
+use crate::utils::{Result, provider_bytes};
 
 /// Extracts a Unity Il2cpp line mapping from `object`, serialized as JSON.
 ///

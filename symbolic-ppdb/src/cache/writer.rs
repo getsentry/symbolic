@@ -5,7 +5,7 @@ use indexmap::IndexSet;
 use symbolic_common::{DebugId, Language};
 use watto::{Pod, StringTable};
 
-use super::{raw, CacheError};
+use super::{CacheError, raw};
 use crate::PortablePdb;
 
 /// The PortablePdbCache Converter.

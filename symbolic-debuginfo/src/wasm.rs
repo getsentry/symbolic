@@ -7,7 +7,7 @@ use thiserror::Error;
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::{base::*, ParseObjectOptions};
+use crate::{ParseObjectOptions, base::*};
 
 mod parser;
 

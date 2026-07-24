@@ -19,7 +19,7 @@ use std::sync::Arc;
 
 use fallible_iterator::FallibleIterator;
 use gimli::read::{AttributeValue, Error as GimliError, Range};
-use gimli::{constants, AbbreviationsCacheStrategy, DwarfFileType, UnitSectionOffset};
+use gimli::{AbbreviationsCacheStrategy, DwarfFileType, UnitSectionOffset, constants};
 use once_cell::sync::OnceCell;
 use thiserror::Error;
 
