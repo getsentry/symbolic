@@ -1317,7 +1317,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 }
 
-/// A variable before its locations are restricted to a concrete ranges.
+/// A variable before its locations are restricted to a concrete range.
 struct ParsedVariable<'data> {
     name: Cow<'data, str>,
     ty: Option<variable::TypeRef>,

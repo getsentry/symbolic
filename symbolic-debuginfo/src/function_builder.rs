@@ -4,8 +4,8 @@
 use std::{cmp::Reverse, collections::BinaryHeap};
 
 use crate::{
-    base::{FileInfo, Function, LineInfo},
     Variable,
+    base::{FileInfo, Function, LineInfo},
 };
 use symbolic_common::Name;
 

@@ -26,7 +26,7 @@ pub struct Variable<'data> {
     pub name: Cow<'data, str>,
     /// The type of the variable.
     ///
-    /// May be `None` if the variable had no type information attached or could not be parsed.
+    /// May be `None` if the variable had no type information attached or it could not be parsed.
     pub ty: Option<TypeRef>,
     /// The kind of the variable.
     pub kind: Kind,
@@ -55,15 +55,6 @@ impl fmt::Display for Kind {
             Self::Local => f.write_str("local"),
         }
     }
-}
-
-/// A half open address range.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Range {
-    /// The beginning address of the range.
-    pub begin: u64,
-    /// The first address past the end of the range.
-    pub end: u64,
 }
 
 /// Contains metadata describing the location of a variable at runtime.
