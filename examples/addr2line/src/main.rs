@@ -6,7 +6,7 @@ use clap::builder::ValueParser;
 use clap::{value_parser, Arg, ArgAction, ArgMatches, Command};
 
 use symbolic::common::{ByteView, Language, Name, NameMangling};
-use symbolic::debuginfo::{Function, Location, Object};
+use symbolic::debuginfo::{DebugSession, Function, Location, Object, ObjectDebugSession};
 use symbolic::demangle::{Demangle, DemangleOptions};
 
 fn print_name<'a, N: Borrow<Name<'a>>>(name: Option<N>, matches: &ArgMatches) {
@@ -30,14 +30,19 @@ fn print_range(start: u64, len: Option<u64>, matches: &ArgMatches) {
     }
 }
 
-fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches) -> Result<bool> {
+fn resolve(
+    session: &ObjectDebugSession<'_>,
+    function: &Function<'_>,
+    addr: u64,
+    matches: &ArgMatches,
+) -> Result<bool> {
     if function.address > addr || function.address + function.size <= addr {
         return Ok(false);
     }
 
     if *matches.get_one("inlinees").unwrap() {
         for il in &function.inlinees {
-            resolve(il, addr, matches)?;
+            resolve(session, il, addr, matches)?;
         }
     }
 
@@ -90,6 +95,8 @@ fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches) -> Result<b
                 print_range(location.address, Some(location.size), matches);
                 println!();
             }
+
+            let ty = variable.ty.as_ref().and_then(|ty| session.lookup_type(ty));
         }
     }
 
@@ -109,7 +116,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
     'addrs: for &addr in matches.get_many::<u64>("addrs").unwrap_or_default() {
         for function in session.functions() {
             let function = function.context("failed to read function")?;
-            if resolve(&function, addr, matches)? {
+            if resolve(&session, &function, addr, matches)? {
                 continue 'addrs;
             }
         }

@@ -6,6 +6,8 @@ use std::fmt;
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 use symbolic_ppdb::PortablePdb;
 
+use crate::Type;
+use crate::TypeRef;
 use crate::base::*;
 use crate::breakpad::*;
 use crate::dwarf::*;
@@ -518,6 +520,16 @@ impl ObjectDebugSession<'_> {
         }
     }
 
+    pub fn lookup_type(&self, ty: &TypeRef) -> Option<Type> {
+        match *self {
+            ObjectDebugSession::Breakpad(ref s) => None,
+            ObjectDebugSession::Dwarf(ref s) => s.lookup_type(ty),
+            ObjectDebugSession::Pdb(ref s) => None,
+            ObjectDebugSession::SourceBundle(ref s) => None,
+            ObjectDebugSession::PortablePdb(ref s) => None,
+        }
+    }
+
     /// Looks up a file's source by its full canonicalized path.
     /// Returns either source contents, if it was embedded, or a source link.
     pub fn source_by_path(
@@ -555,6 +567,10 @@ impl<'session> DebugSession<'session> for ObjectDebugSession<'_> {
 
     fn files(&'session self) -> Self::FileIterator {
         self.files()
+    }
+
+    fn lookup_type(&'session self, ty: &TypeRef) -> Option<Type> {
+        self.lookup_type(ty)
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor<'_>>, Self::Error> {

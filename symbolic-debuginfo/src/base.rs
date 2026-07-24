@@ -5,9 +5,9 @@ use std::str::FromStr;
 
 use symbolic_common::{Arch, CodeId, DebugId, Name, clean_path, join_path};
 
-use crate::ParseObjectOptions;
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::variable;
+use crate::{ParseObjectOptions, TypeRef};
+use crate::{Type, variable};
 
 pub(crate) trait Parse<'data>: Sized {
     type Error;
@@ -809,6 +809,10 @@ pub trait DebugSession<'session> {
 
     /// Returns an iterator over all source files referenced by this debug file.
     fn files(&'session self) -> Self::FileIterator;
+
+    fn lookup_type(&'session self, ty: &TypeRef) -> Option<Type> {
+        todo!()
+    }
 
     /// Looks up a file's source by its full canonicalized path.
     ///

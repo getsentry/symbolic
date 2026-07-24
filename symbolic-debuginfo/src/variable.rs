@@ -6,6 +6,15 @@ use std::{borrow::Cow, fmt};
 #[derive(Debug, Clone)]
 pub struct TypeRef(#[expect(unused, reason = "not yet implemented")] NativeTypeRef);
 
+impl TypeRef {
+    #[cfg(feature = "dwarf")]
+    pub fn as_dwarf(&self) -> Option<&crate::dwarf::DwarfTypeRef> {
+        match &self.0 {
+            NativeTypeRef::Dwarf(dwarf) => Some(dwarf),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 enum NativeTypeRef {
     #[cfg(feature = "dwarf")]
@@ -18,6 +27,8 @@ impl From<crate::dwarf::DwarfTypeRef> for TypeRef {
         Self(NativeTypeRef::Dwarf(value))
     }
 }
+
+pub struct Type {}
 
 /// A single variable available in a function scope.
 #[derive(Debug, Clone)]

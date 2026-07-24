@@ -20,8 +20,8 @@ use std::sync::Arc;
 use fallible_iterator::FallibleIterator;
 use gimli::read::{AttributeValue, Error as GimliError, Range};
 use gimli::{
-    AbbreviationsCacheStrategy, DwarfFileType, Expression, LocListIter, LocationLists, Operation,
-    UnitSectionOffset, constants,
+    AbbreviationsCacheStrategy, DebugTypeSignature, DwarfFileType, Expression, LocListIter,
+    LocationLists, Operation, SectionId, UnitSectionOffset, constants,
 };
 use once_cell::sync::OnceCell;
 use thiserror::Error;
@@ -32,7 +32,7 @@ use crate::function_builder::{FunctionBuilder, FunctionBuilderInlinee};
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::{Kind, Location, LocationInfo, base::*, variable};
+use crate::{Kind, Location, LocationInfo, Type, TypeRef, base::*, variable};
 
 /// This is a fake BcSymbolMap used when macho support is turned off since they are unfortunately
 /// part of the dwarf interface
@@ -151,7 +151,20 @@ impl From<GimliError> for DwarfError {
 
 /// A reference to a type in the DWARF file.
 #[derive(Debug, Clone)]
-pub struct DwarfTypeRef(#[expect(unused)] UnitSectionOffset);
+pub struct DwarfTypeRef(DwarfTypeRefInner);
+
+#[derive(Debug, Clone)]
+enum DwarfTypeRefInner {
+    Offset {
+        /// Which section the `offset` belongs to.
+        ///
+        /// Must be either [`SectionId::DebugInfo`] or [`SectionId::DebugTypes`].
+        section: SectionId,
+        /// Offset into the section.
+        offset: UnitSectionOffset,
+    },
+    Signature(DebugTypeSignature),
+}
 
 /// DWARF section information including its data.
 ///
@@ -439,7 +452,7 @@ impl<'d> UnitRef<'d, '_> {
     {
         let (unit, offset) = match attr.value() {
             AttributeValue::UnitRef(offset) => (*self, offset),
-            AttributeValue::DebugInfoRef(offset) => self.info.find_unit_offset(offset)?,
+            AttributeValue::DebugInfoRef(offset) => self.info.find_info_unit_offset(offset)?,
             // TODO: There is probably more that can come back here.
             _ => return Ok(None),
         };
@@ -457,12 +470,26 @@ impl<'d> UnitRef<'d, '_> {
     /// Resolves a attribute unit ref or debug info ref to a [`UnitSectionOffset`].
     ///
     /// Returns `None` for attributes not containing a reference or unsupported references.
-    fn to_unit_section_offset(self, attr: Attribute<'d>) -> Option<UnitSectionOffset> {
+    fn to_type_ref(self, attr: Attribute<'d>) -> Option<DwarfTypeRef> {
         match attr.value() {
-            AttributeValue::UnitRef(offset) => Some(offset.to_unit_section_offset(self.unit)),
-            AttributeValue::DebugInfoRef(offset) => offset.to_unit_section_offset(self.unit),
+            AttributeValue::UnitRef(offset) => Some(DwarfTypeRefInner::Offset {
+                section: self.unit.section(),
+                offset: offset.to_unit_section_offset(self.unit),
+            }),
+            AttributeValue::DebugInfoRef(offset) => {
+                offset
+                    .to_unit_section_offset(self.unit)
+                    .map(|offset| DwarfTypeRefInner::Offset {
+                        section: SectionId::DebugInfo,
+                        offset,
+                    })
+            }
+            AttributeValue::DebugTypesRef(signature) => {
+                Some(DwarfTypeRefInner::Signature(signature))
+            }
             _ => None,
         }
+        .map(DwarfTypeRef)
     }
 
     /// Returns the offset of this unit within its section.
@@ -1171,16 +1198,9 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 constants::DW_AT_location => {
                     locations = self.parse_locations(attr.value())?;
                 }
-                // This will need some further refinement, `to_unit_section_offset` is only enough
-                // for unit and debug info references, it does not yet support debug types references,
-                // and references to supplementary object files. Supplementary object files are
-                // generally not supported, but type section references should be implemented.
-                constants::DW_AT_type
-                    if let Some(offset) = self.inner.to_unit_section_offset(attr) =>
-                {
-                    ty = Some(variable::TypeRef::from(DwarfTypeRef(offset)));
+                constants::DW_AT_type => {
+                    ty = self.inner.to_type_ref(attr).map(TypeRef::from);
                 }
-
                 // No location means optimized out, so we do not store the variable for now.
                 _ => {}
             }
@@ -1443,13 +1463,14 @@ struct DwarfSections<'data> {
     debug_line_str: DwarfSectionData<'data, gimli::read::DebugLineStr<Slice<'data>>>,
     debug_loc: DwarfSectionData<'data, gimli::read::DebugLoc<Slice<'data>>>,
     debug_loclists: DwarfSectionData<'data, gimli::read::DebugLocLists<Slice<'data>>>,
-    debug_names: DwarfSectionData<'data, gimli::read::DebugNames<Slice<'data>>>,
-    debug_str: DwarfSectionData<'data, gimli::read::DebugStr<Slice<'data>>>,
-    debug_str_offsets: DwarfSectionData<'data, gimli::read::DebugStrOffsets<Slice<'data>>>,
-    debug_ranges: DwarfSectionData<'data, gimli::read::DebugRanges<Slice<'data>>>,
-    debug_rnglists: DwarfSectionData<'data, gimli::read::DebugRngLists<Slice<'data>>>,
     debug_macinfo: DwarfSectionData<'data, gimli::read::DebugMacinfo<Slice<'data>>>,
     debug_macro: DwarfSectionData<'data, gimli::read::DebugMacro<Slice<'data>>>,
+    debug_names: DwarfSectionData<'data, gimli::read::DebugNames<Slice<'data>>>,
+    debug_ranges: DwarfSectionData<'data, gimli::read::DebugRanges<Slice<'data>>>,
+    debug_rnglists: DwarfSectionData<'data, gimli::read::DebugRngLists<Slice<'data>>>,
+    debug_str: DwarfSectionData<'data, gimli::read::DebugStr<Slice<'data>>>,
+    debug_str_offsets: DwarfSectionData<'data, gimli::read::DebugStrOffsets<Slice<'data>>>,
+    debug_types: DwarfSectionData<'data, gimli::read::DebugTypes<Slice<'data>>>,
 }
 
 impl<'data> DwarfSections<'data> {
@@ -1474,14 +1495,84 @@ impl<'data> DwarfSections<'data> {
             debug_rnglists: DwarfSectionData::load(dwarf),
             debug_macinfo: DwarfSectionData::load(dwarf),
             debug_macro: DwarfSectionData::load(dwarf),
+            debug_types: DwarfSectionData::load(dwarf),
         }
+    }
+}
+
+struct DwarfUnitTable<'data> {
+    headers: Vec<UnitHeader<'data>>,
+    units: Vec<OnceCell<Option<Unit<'data>>>>,
+}
+
+impl<'data> DwarfUnitTable<'data> {
+    fn from_iter<I>(iter: I) -> Result<Self, DwarfError>
+    where
+        I: FallibleIterator<Item = UnitHeader<'data>, Error = GimliError>,
+    {
+        let headers = FallibleIterator::collect::<Vec<_>>(iter)?;
+        let units = headers.iter().map(|_| OnceCell::new()).collect();
+        Ok(Self { headers, units })
+    }
+
+    /// Loads a compilation unit.
+    fn get_unit(
+        &self,
+        index: usize,
+        inner: &DwarfInner<'data>,
+    ) -> Result<Option<&Unit<'data>>, DwarfError> {
+        // Silently ignore unit references out-of-bound
+        let cell = match self.units.get(index) {
+            Some(cell) => cell,
+            None => return Ok(None),
+        };
+
+        let unit_opt = cell.get_or_try_init(|| {
+            // Parse the compilation unit from the header. This requires a top-level DIE that
+            // describes the unit itself. For some older DWARF files, this DIE might be missing
+            // which causes gimli to error out. We prefer to skip them silently as this simply marks
+            // an empty unit for us.
+            let header = self.headers[index];
+            match inner.unit(header) {
+                Ok(unit) => Ok(Some(unit)),
+                Err(gimli::read::Error::MissingUnitDie) => Ok(None),
+                Err(error) => Err(DwarfError::from(error)),
+            }
+        })?;
+
+        Ok(unit_opt.as_ref())
+    }
+
+    /// Resolves an offset into a different compilation unit.
+    fn find_unit_offset(
+        &self,
+        offset: UnitSectionOffset,
+        inner: &DwarfInner<'data>,
+    ) -> Result<(&Unit<'data>, UnitOffset), DwarfError> {
+        let search_result = self
+            .headers
+            .binary_search_by_key(&offset, UnitHeader::offset);
+
+        let index = match search_result {
+            Ok(index) => index,
+            Err(0) => return Err(DwarfErrorKind::InvalidUnitRef(offset.0).into()),
+            Err(next_index) => next_index - 1,
+        };
+
+        if let Some(unit) = self.get_unit(index, inner)? {
+            if let Some(unit_offset) = offset.to_unit_offset(unit) {
+                return Ok((unit, unit_offset));
+            }
+        }
+
+        Err(DwarfErrorKind::InvalidUnitRef(offset.0).into())
     }
 }
 
 struct DwarfInfo<'data> {
     inner: DwarfInner<'data>,
-    headers: Vec<UnitHeader<'data>>,
-    units: Vec<OnceCell<Option<Unit<'data>>>>,
+    info: DwarfUnitTable<'data>,
+    types: DwarfUnitTable<'data>,
     symbol_map: SymbolMap<'data>,
     address_offset: i64,
     kind: ObjectKind,
@@ -1514,7 +1605,7 @@ impl<'d> DwarfInfo<'d> {
             debug_names: sections.debug_names.to_gimli(),
             debug_str: sections.debug_str.to_gimli(),
             debug_str_offsets: sections.debug_str_offsets.to_gimli(),
-            debug_types: Default::default(),
+            debug_types: sections.debug_types.to_gimli(),
             debug_macinfo: sections.debug_macinfo.to_gimli(),
             debug_macro: sections.debug_macro.to_gimli(),
             locations: LocationLists::new(
@@ -1531,69 +1622,45 @@ impl<'d> DwarfInfo<'d> {
         inner.populate_abbreviations_cache(AbbreviationsCacheStrategy::Duplicates);
 
         // Prepare random access to unit headers.
-        let headers = FallibleIterator::collect::<Vec<_>>(inner.units())?;
-        let units = headers.iter().map(|_| OnceCell::new()).collect();
+        let info = DwarfUnitTable::from_iter(inner.units())?;
+        let types = DwarfUnitTable::from_iter(inner.type_units())?;
 
         Ok(DwarfInfo {
             inner,
-            headers,
-            units,
+            info,
+            types,
             symbol_map,
             address_offset,
             kind,
         })
     }
 
-    /// Loads a compilation unit.
-    fn get_unit(&self, index: usize) -> Result<Option<&Unit<'d>>, DwarfError> {
-        // Silently ignore unit references out-of-bound
-        let cell = match self.units.get(index) {
-            Some(cell) => cell,
-            None => return Ok(None),
-        };
-
-        let unit_opt = cell.get_or_try_init(|| {
-            // Parse the compilation unit from the header. This requires a top-level DIE that
-            // describes the unit itself. For some older DWARF files, this DIE might be missing
-            // which causes gimli to error out. We prefer to skip them silently as this simply marks
-            // an empty unit for us.
-            let header = self.headers[index];
-            match self.inner.unit(header) {
-                Ok(unit) => Ok(Some(unit)),
-                Err(gimli::read::Error::MissingUnitDie) => Ok(None),
-                Err(error) => Err(DwarfError::from(error)),
-            }
-        })?;
-
-        Ok(unit_opt.as_ref())
+    /// Loads a `.debug_info` compilation unit.
+    fn get_info_unit(&self, index: usize) -> Result<Option<&Unit<'d>>, DwarfError> {
+        self.info.get_unit(index, &self.inner)
     }
 
-    /// Resolves an offset into a different compilation unit.
-    fn find_unit_offset(
+    /// Resolves an offset into a different `.debug_info` compilation unit.
+    fn find_info_unit_offset(
         &self,
         offset: DebugInfoOffset,
     ) -> Result<(UnitRef<'d, '_>, UnitOffset), DwarfError> {
-        let section_offset = UnitSectionOffset(offset.0);
-        let search_result = self
-            .headers
-            .binary_search_by_key(&section_offset, UnitHeader::offset);
-
-        let index = match search_result {
-            Ok(index) => index,
-            Err(0) => return Err(DwarfErrorKind::InvalidUnitRef(offset.0).into()),
-            Err(next_index) => next_index - 1,
-        };
-
-        if let Some(unit) = self.get_unit(index)? {
-            if let Some(unit_offset) = section_offset.to_unit_offset(unit) {
-                return Ok((UnitRef { unit, info: self }, unit_offset));
-            }
-        }
-
-        Err(DwarfErrorKind::InvalidUnitRef(offset.0).into())
+        self.info
+            .find_unit_offset(UnitSectionOffset(offset.0), &self.inner)
+            .map(|(unit, offset)| (UnitRef { unit, info: self }, offset))
     }
 
-    /// Returns an iterator over all compilation units.
+    /// Resolves an offset into a different `.debug_info` compilation unit.
+    fn find_types_unit_offset(
+        &self,
+        offset: UnitSectionOffset,
+    ) -> Result<(UnitRef<'d, '_>, UnitOffset), DwarfError> {
+        self.types
+            .find_unit_offset(offset, &self.inner)
+            .map(|(unit, offset)| (UnitRef { unit, info: self }, offset))
+    }
+
+    /// Returns an iterator over all `.debug_info` compilation units.
     fn units(&'d self, bcsymbolmap: Option<&'d BcSymbolMap<'d>>) -> DwarfUnitIterator<'d> {
         DwarfUnitIterator {
             info: self,
@@ -1614,7 +1681,8 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for DwarfInfo<'d> {
 impl fmt::Debug for DwarfInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DwarfInfo")
-            .field("headers", &self.headers)
+            .field("info", &self.info.headers)
+            .field("types", &self.types.headers)
             .field("symbol_map", &self.symbol_map)
             .field("address_offset", &self.address_offset)
             .finish()
@@ -1632,8 +1700,8 @@ impl<'s> Iterator for DwarfUnitIterator<'s> {
     type Item = Result<DwarfUnit<'s, 's>, DwarfError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while self.index < self.info.headers.len() {
-            let result = self.info.get_unit(self.index);
+        while self.index < self.info.info.headers.len() {
+            let result = self.info.get_info_unit(self.index);
             self.index += 1;
 
             let unit = match result {
@@ -1711,6 +1779,32 @@ impl<'data> DwarfDebugSession<'data> {
         }
     }
 
+    pub fn lookup_type(&self, ty: &TypeRef) -> Option<Type> {
+        let DwarfTypeRef(ty) = ty.as_dwarf()?;
+
+        let info = self.cell.get();
+
+        let unit = match ty {
+            DwarfTypeRefInner::Offset {
+                section: SectionId::DebugInfo,
+                offset,
+            } => info.find_info_unit_offset(gimli::DebugInfoOffset(offset.0)),
+            DwarfTypeRefInner::Offset {
+                section: SectionId::DebugTypes,
+                offset,
+            } => info.find_types_unit_offset(*offset),
+            DwarfTypeRefInner::Signature(debug_type_signature) => todo!(),
+            _ => todo!(),
+        };
+
+        let (unit, offset) = unit.unwrap();
+        let entry = unit.unit.entry(offset).unwrap();
+
+        dbg!(entry);
+
+        None
+    }
+
     /// See [DebugSession::source_by_path] for more information.
     pub fn source_by_path(
         &self,
@@ -1731,6 +1825,10 @@ impl<'session> DebugSession<'session> for DwarfDebugSession<'_> {
 
     fn files(&'session self) -> Self::FileIterator {
         self.files()
+    }
+
+    fn lookup_type(&'session self, ty: &TypeRef) -> Option<Type> {
+        self.lookup_type(ty)
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor<'_>>, Self::Error> {
