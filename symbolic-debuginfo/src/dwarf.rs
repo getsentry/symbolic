@@ -1299,6 +1299,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         Ok(match op {
             Operation::Register { register } => Some(Location::Register { id: register.0 }),
+            Operation::FrameOffset { offset } => Some(Location::FrameOffset { offset }),
             // Currently more operations are not supported.
             _ => None,
         })

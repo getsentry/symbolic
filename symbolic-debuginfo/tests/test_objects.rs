@@ -98,6 +98,14 @@ impl fmt::Debug for FunctionsDebug<'_> {
                             location.address.saturating_add(location.size),
                             indent = self.1 * 2
                         )?,
+                        Location::FrameOffset { offset } => writeln!(
+                            f,
+                            "{:indent$}      {:#x}..{:#x}: frame base {offset:+}",
+                            "",
+                            location.address,
+                            location.address.saturating_add(location.size),
+                            indent = self.1 * 2
+                        )?,
                     }
                 }
             }
