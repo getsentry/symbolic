@@ -10,6 +10,8 @@ use symbolic_ppdb::EmbeddedSource;
 use symbolic_ppdb::{Document, FormatError, PortablePdb};
 
 use crate::ParseObjectOptions;
+use crate::Type;
+use crate::TypeRef;
 use crate::base::*;
 use crate::sourcebundle::SourceFileDescriptor;
 
@@ -216,6 +218,13 @@ impl<'data> PortablePdbDebugSession<'data> {
         PortablePdbFileIterator::new(&self.ppdb)
     }
 
+    /// Resolves a [`TypeRef`] in this debug file.
+    ///
+    /// See also: [`DebugSession::lookup_type`].
+    pub fn lookup_type(&self, _ty: &TypeRef) -> Result<Option<Type<'_>>, FormatError> {
+        Ok(None)
+    }
+
     /// See [DebugSession::source_by_path] for more information.
     pub fn source_by_path(
         &self,
@@ -251,6 +260,10 @@ impl<'session> DebugSession<'session> for PortablePdbDebugSession<'_> {
 
     fn files(&'session self) -> Self::FileIterator {
         self.files()
+    }
+
+    fn lookup_type(&'session self, ty: &TypeRef) -> Result<Option<Type<'session>>, Self::Error> {
+        self.lookup_type(ty)
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor<'_>>, Self::Error> {

@@ -3,10 +3,12 @@ use std::fmt;
 use std::io::BufWriter;
 
 use symbolic_common::{ByteView, Language};
+use symbolic_debuginfo::ObjectDebugSession;
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
 use symbolic_debuginfo::{
-    FileEntry, Function, LineInfo, Location, Object, ParseObjectOptions, SymbolMap, pe::PeObject,
+    FileEntry, Function, LineInfo, Location, Object, ParseObjectOptions, SymbolMap, Type, TypeRef,
+    TypeSize, pe::PeObject,
 };
 use symbolic_testutils::fixture;
 
@@ -46,11 +48,28 @@ impl fmt::Debug for FilesDebug<'_> {
 }
 
 /// Helper to create neat snapshots for function trees.
-struct FunctionsDebug<'a>(&'a [Function<'a>], usize);
+struct FunctionsDebug<'data, 'session> {
+    session: &'session ObjectDebugSession<'data>,
+    functions: &'session [Function<'session>],
+    depth: usize,
+}
 
-impl fmt::Debug for FunctionsDebug<'_> {
+impl<'data, 'session> FunctionsDebug<'data, 'session> {
+    fn new(
+        session: &'session ObjectDebugSession<'data>,
+        functions: &'session [Function<'session>],
+    ) -> Self {
+        Self {
+            session,
+            functions,
+            depth: 0,
+        }
+    }
+}
+
+impl fmt::Debug for FunctionsDebug<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for function in self.0 {
+        for function in self.functions {
             writeln!(
                 f,
                 "\n{:indent$}> {:#x}: {} ({:#x})",
@@ -58,7 +77,7 @@ impl fmt::Debug for FunctionsDebug<'_> {
                 function.address,
                 function.name,
                 function.size,
-                indent = self.1 * 2
+                indent = self.depth * 2
             )?;
 
             for line in &function.lines {
@@ -70,12 +89,12 @@ impl fmt::Debug for FunctionsDebug<'_> {
                     line.file.name_str(),
                     line.line,
                     line.file.dir_str(),
-                    indent = self.1 * 2
+                    indent = self.depth * 2
                 )?;
             }
 
             if !function.variables.is_empty() {
-                writeln!(f, "{:indent$}  variables:", "", indent = self.1 * 2)?;
+                writeln!(f, "{:indent$}  variables:", "", indent = self.depth * 2)?;
             }
 
             for variable in &function.variables {
@@ -85,8 +104,21 @@ impl fmt::Debug for FunctionsDebug<'_> {
                     "",
                     variable.name,
                     variable.kind,
-                    indent = self.1 * 2
+                    indent = self.depth * 2
                 )?;
+
+                if let Some(ty) = &variable.ty {
+                    writeln!(f, "{:indent$}      type:", "", indent = self.depth * 2)?;
+                    write!(
+                        f,
+                        "{:?}",
+                        TypeDebug {
+                            session: self.session,
+                            ty,
+                            depth: self.depth + 4,
+                        }
+                    )?;
+                }
 
                 for location in &variable.locations {
                     match location.location {
@@ -96,7 +128,7 @@ impl fmt::Debug for FunctionsDebug<'_> {
                             "",
                             location.address,
                             location.address.saturating_add(location.size),
-                            indent = self.1 * 2
+                            indent = self.depth * 2
                         )?,
                         Location::FrameOffset { offset } => writeln!(
                             f,
@@ -104,16 +136,81 @@ impl fmt::Debug for FunctionsDebug<'_> {
                             "",
                             location.address,
                             location.address.saturating_add(location.size),
-                            indent = self.1 * 2
+                            indent = self.depth * 2
                         )?,
                     }
                 }
             }
 
-            write!(f, "{:?}", FunctionsDebug(&function.inlinees, self.1 + 1))?;
+            write!(
+                f,
+                "{:?}",
+                FunctionsDebug {
+                    session: self.session,
+                    functions: &function.inlinees,
+                    depth: self.depth + 1,
+                }
+            )?;
         }
 
         Ok(())
+    }
+}
+
+struct TypeDebug<'data, 'session, 'type_ref> {
+    session: &'session ObjectDebugSession<'data>,
+    ty: &'type_ref TypeRef,
+    depth: usize,
+}
+
+impl fmt::Debug for TypeDebug<'_, '_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Some(ty) = self.session.lookup_type(self.ty).unwrap() else {
+            return writeln!(f, "{:indent$}> Unknown", "", indent = self.depth * 2);
+        };
+
+        match ty {
+            Type::Primitive(ty) => {
+                let TypeSize::Bytes(size) = ty.size;
+                let unit = if size == 1 { "byte" } else { "bytes" };
+                let name = ty.name.as_deref().unwrap_or("<unknown>");
+
+                match ty.encoding {
+                    Some(encoding) => writeln!(
+                        f,
+                        "{:indent$}> Primitive: {name} ({encoding:?}, {size} {unit})",
+                        "",
+                        indent = self.depth * 2
+                    ),
+                    None => writeln!(
+                        f,
+                        "{:indent$}> Primitive: {name} (<unknown encoding>, {size} {unit})",
+                        "",
+                        indent = self.depth * 2
+                    ),
+                }
+            }
+            Type::Pointer(ty) => {
+                let TypeSize::Bytes(size) = ty.size;
+                let unit = if size == 1 { "byte" } else { "bytes" };
+
+                writeln!(
+                    f,
+                    "{:indent$}> Pointer ({size} {unit})",
+                    "",
+                    indent = self.depth * 2
+                )?;
+                write!(
+                    f,
+                    "{:?}",
+                    TypeDebug {
+                        session: self.session,
+                        ty: &ty.pointee,
+                        depth: self.depth + 1,
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -222,7 +319,10 @@ fn test_breakpad_functions() -> Result<(), Error> {
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
     check_functions(&functions);
-    insta::assert_debug_snapshot!("breakpad_functions", FunctionsDebug(&functions[..10], 0));
+    insta::assert_debug_snapshot!(
+        "breakpad_functions",
+        FunctionsDebug::new(&session, &functions[..10])
+    );
 
     Ok(())
 }
@@ -237,7 +337,7 @@ fn test_breakpad_functions_mac_with_inlines() -> Result<(), Error> {
     check_functions(&functions);
     insta::assert_debug_snapshot!(
         "breakpad_functions_mac_with_inlines",
-        FunctionsDebug(&functions[..10], 0)
+        FunctionsDebug::new(&session, &functions[..10])
     );
 
     Ok(())
@@ -390,21 +490,30 @@ fn test_elf_functions() -> Result<(), Error> {
 
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
-    insta::assert_debug_snapshot!("elf_functions", FunctionsDebug(&functions[..10], 0));
+    insta::assert_debug_snapshot!(
+        "elf_functions",
+        FunctionsDebug::new(&session, &functions[..10])
+    );
 
     let view = ByteView::open(fixture("linux/crash.debug-zlib"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
-    insta::assert_debug_snapshot!("elf_functions", FunctionsDebug(&functions[..10], 0));
+    insta::assert_debug_snapshot!(
+        "elf_functions",
+        FunctionsDebug::new(&session, &functions[..10])
+    );
 
     let view = ByteView::open(fixture("linux/crash.debug-zstd"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
-    insta::assert_debug_snapshot!("elf_functions", FunctionsDebug(&functions[..10], 0));
+    insta::assert_debug_snapshot!(
+        "elf_functions",
+        FunctionsDebug::new(&session, &functions[..10])
+    );
 
     Ok(())
 }
@@ -596,7 +705,10 @@ fn test_mach_functions() -> Result<(), Error> {
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
     check_functions(&functions);
-    insta::assert_debug_snapshot!("mach_functions", FunctionsDebug(&functions[..10], 0));
+    insta::assert_debug_snapshot!(
+        "mach_functions",
+        FunctionsDebug::new(&session, &functions[..10])
+    );
 
     Ok(())
 }
@@ -697,7 +809,10 @@ fn test_pe_dwarf_functions() -> Result<(), Error> {
 
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
-    insta::assert_debug_snapshot!("pe_dwarf_functions", FunctionsDebug(&functions[..10], 0));
+    insta::assert_debug_snapshot!(
+        "pe_dwarf_functions",
+        FunctionsDebug::new(&session, &functions[..10])
+    );
 
     Ok(())
 }
@@ -717,7 +832,7 @@ fn test_pe_dwarf_msys2_qglib() -> Result<(), Error> {
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
     insta::assert_debug_snapshot!(
         "pe_dwarf_msys2_qglib_functions",
-        FunctionsDebug(&functions[..10], 0)
+        FunctionsDebug::new(&session, &functions[..10])
     );
 
     Ok(())
@@ -809,7 +924,10 @@ fn test_pdb_functions() -> Result<(), Error> {
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
     check_functions(&functions);
-    insta::assert_debug_snapshot!("pdb_functions", FunctionsDebug(&functions[..10], 0));
+    insta::assert_debug_snapshot!(
+        "pdb_functions",
+        FunctionsDebug::new(&session, &functions[..10])
+    );
 
     Ok(())
 }

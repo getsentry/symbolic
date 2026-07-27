@@ -12,6 +12,8 @@ use thiserror::Error;
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameMangling};
 
 use crate::ParseObjectOptions;
+use crate::Type;
+use crate::TypeRef;
 use crate::base::*;
 use crate::function_builder::FunctionBuilderError;
 use crate::function_builder::FunctionBuilderErrorKind;
@@ -1298,6 +1300,13 @@ impl BreakpadDebugSession<'_> {
         }
     }
 
+    /// Resolves a [`TypeRef`] in this debug file.
+    ///
+    /// See also: [`DebugSession::lookup_type`].
+    pub fn lookup_type(&self, _ty: &TypeRef) -> Result<Option<Type<'_>>, BreakpadError> {
+        Ok(None)
+    }
+
     /// See [DebugSession::source_by_path] for more information.
     pub fn source_by_path(
         &self,
@@ -1318,6 +1327,10 @@ impl<'session> DebugSession<'session> for BreakpadDebugSession<'_> {
 
     fn files(&'session self) -> Self::FileIterator {
         self.files()
+    }
+
+    fn lookup_type(&'session self, ty: &TypeRef) -> Result<Option<Type<'session>>, Self::Error> {
+        self.lookup_type(ty)
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor<'_>>, Self::Error> {

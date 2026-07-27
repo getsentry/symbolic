@@ -6,7 +6,7 @@ use clap::builder::ValueParser;
 use clap::{value_parser, Arg, ArgAction, ArgMatches, Command};
 
 use symbolic::common::{ByteView, Language, Name, NameMangling};
-use symbolic::debuginfo::{DebugSession, Function, Location, Object, ObjectDebugSession};
+use symbolic::debuginfo::{Function, Location, Object, ObjectDebugSession, Type, TypeRef};
 use symbolic::demangle::{Demangle, DemangleOptions};
 
 fn print_name<'a, N: Borrow<Name<'a>>>(name: Option<N>, matches: &ArgMatches) {
@@ -28,6 +28,27 @@ fn print_range(start: u64, len: Option<u64>, matches: &ArgMatches) {
             None => print!("??)"),
         }
     }
+}
+
+fn print_type(session: &ObjectDebugSession<'_>, ty: &TypeRef, max_depth: usize) -> Result<()> {
+    if max_depth == 0 {
+        return Ok(());
+    }
+
+    let Some(ty) = session.lookup_type(ty)? else {
+        print!("<unknown>");
+        return Ok(());
+    };
+
+    match ty {
+        Type::Primitive(t) => print!("{}", t.name.as_deref().unwrap_or("?")),
+        Type::Pointer(t) => {
+            print_type(session, &t.pointee, max_depth - 1)?;
+            print!("*")
+        }
+    }
+
+    Ok(())
 }
 
 fn resolve(
@@ -88,7 +109,7 @@ fn resolve(
             }
 
             for location in locations {
-                print!("      ");
+                print!("      location: ");
                 match location.location {
                     Location::Register { id } => print!("reg:{id}"),
                     Location::FrameOffset { offset } => print!("fbreg:{offset}"),
@@ -97,7 +118,11 @@ fn resolve(
                 println!();
             }
 
-            let ty = variable.ty.as_ref().map(|ty| session.lookup_type(ty));
+            if let Some(ty) = &variable.ty {
+                print!("      type: ");
+                print_type(session, ty, 10)?;
+                println!()
+            }
         }
     }
 

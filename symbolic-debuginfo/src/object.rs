@@ -520,7 +520,13 @@ impl ObjectDebugSession<'_> {
         }
     }
 
-    pub fn lookup_type(&self, ty: &TypeRef) -> Result<Option<Type>, ObjectError> {
+    /// Resolves a single [`TypeRef`] in this debug file.
+    ///
+    /// The [`TypeRef`] must have been acquired from the same session and cannot be re-used across
+    /// multiple sessions.
+    ///
+    /// See also: [`DebugSession::lookup_type`].
+    pub fn lookup_type(&self, ty: &TypeRef) -> Result<Option<Type<'_>>, ObjectError> {
         match *self {
             ObjectDebugSession::Breakpad(_) => Ok(None),
             ObjectDebugSession::Dwarf(ref s) => s.lookup_type(ty).map_err(ObjectError::transparent),
@@ -569,7 +575,7 @@ impl<'session> DebugSession<'session> for ObjectDebugSession<'_> {
         self.files()
     }
 
-    fn lookup_type(&'session self, ty: &TypeRef) -> Result<Option<Type>, Self::Error> {
+    fn lookup_type(&'session self, ty: &TypeRef) -> Result<Option<Type<'session>>, Self::Error> {
         self.lookup_type(ty)
     }
 

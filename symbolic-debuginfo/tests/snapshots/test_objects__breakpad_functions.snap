@@ -1,6 +1,6 @@
 ---
 source: symbolic-debuginfo/tests/test_objects.rs
-expression: "FunctionsDebug(&functions[..10], 0)"
+expression: "FunctionsDebug::new(&session, &functions[..10])"
 ---
 > 0x1000: google_breakpad::CrashGenerationClient::RequestDump(_EXCEPTION_POINTERS *,MDRawAssertionInfo *) (0x114)
   0x1000: crash_generation_client.cc:323 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)

@@ -810,9 +810,11 @@ pub trait DebugSession<'session> {
     /// Returns an iterator over all source files referenced by this debug file.
     fn files(&'session self) -> Self::FileIterator;
 
-    fn lookup_type(&'session self, ty: &TypeRef) -> Result<Option<Type>, Self::Error> {
-        todo!()
-    }
+    /// Resolves a single [`TypeRef`] in this debug file.
+    ///
+    /// The [`TypeRef`] must have been acquired from the same session and cannot be re-used across
+    /// multiple sessions.
+    fn lookup_type(&'session self, ty: &TypeRef) -> Result<Option<Type<'session>>, Self::Error>;
 
     /// Looks up a file's source by its full canonicalized path.
     ///

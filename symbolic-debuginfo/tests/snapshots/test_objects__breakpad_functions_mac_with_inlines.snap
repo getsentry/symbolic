@@ -1,6 +1,6 @@
 ---
 source: symbolic-debuginfo/tests/test_objects.rs
-expression: "FunctionsDebug(&functions[..10], 0)"
+expression: "FunctionsDebug::new(&session, &functions[..10])"
 ---
 > 0xd20: google_breakpad::MinidumpFileWriter::MinidumpFileWriter() (0x1a)
   0xd20: minidump_file_writer.cc:93 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)

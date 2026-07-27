@@ -8,7 +8,7 @@ pub struct TypeRef(NativeTypeRef);
 
 impl TypeRef {
     #[cfg(feature = "dwarf")]
-    pub fn as_dwarf(&self) -> Option<&crate::dwarf::DwarfTypeRef> {
+    pub(crate) fn as_dwarf(&self) -> Option<&crate::dwarf::DwarfTypeRef> {
         match &self.0 {
             NativeTypeRef::Dwarf(dwarf) => Some(dwarf),
         }
@@ -28,7 +28,73 @@ impl From<crate::dwarf::DwarfTypeRef> for TypeRef {
     }
 }
 
-pub struct Type {}
+/// A concrete type.
+#[derive(Debug, Clone)]
+pub enum Type<'data> {
+    /// A primitive type.
+    Primitive(PrimitiveType<'data>),
+    /// A pointer type.
+    Pointer(PointerType),
+}
+
+/// A primitive type.
+///
+/// A primitive type does not link to other types and contains a concrete value, this class contains
+/// integers, floats, booleans, chars, etc.
+#[derive(Debug, Clone)]
+pub struct PrimitiveType<'data> {
+    /// The name of the type.
+    ///
+    /// In rare cases the name may not be available.
+    pub name: Option<Cow<'data, str>>,
+    /// An optional encoding of the type.
+    ///
+    /// The encoding gives additional information how the value of the type is to be interpreted.
+    pub encoding: Option<PrimitiveEncoding>,
+    /// The size of the primitive type.
+    pub size: TypeSize,
+}
+
+/// An encoding for a [`PrimitiveType`].
+///
+/// The encoding provides supplementary information how to interpret the value of a primitive type.
+#[derive(Debug, Clone)]
+pub enum PrimitiveEncoding {
+    /// The value is a boolean.
+    Boolean,
+    /// The value is an address.
+    Address,
+    /// The value is a signed integer.
+    SignedInt,
+    /// The value is an un-signed integer.
+    UnsignedInt,
+    /// The value is a signed char.
+    SignedChar,
+    /// The value is a un-signed char.
+    UnsignedChar,
+    /// The value is a float.
+    Float,
+    /// The value is a complex float.
+    ComplexFloat,
+}
+
+/// A pointer or reference type.
+///
+/// This type always links to another type via a memory address.
+#[derive(Debug, Clone)]
+pub struct PointerType {
+    /// The type the pointer references.
+    pub pointee: TypeRef,
+    /// The size of a pointer.
+    pub size: TypeSize,
+}
+
+/// The size of a type in memory.
+#[derive(Debug, Clone)]
+pub enum TypeSize {
+    /// The size is given in bytes.
+    Bytes(u64),
+}
 
 /// A single variable available in a function scope.
 #[derive(Debug, Clone)]

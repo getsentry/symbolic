@@ -1,6 +1,6 @@
 ---
 source: symbolic-debuginfo/tests/test_objects.rs
-expression: "FunctionsDebug(&functions[..10], 0)"
+expression: "FunctionsDebug::new(&session, &functions[..10])"
 ---
 > 0x1120: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::~basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >() (0x54)
   0x1120: xstring:2424 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)

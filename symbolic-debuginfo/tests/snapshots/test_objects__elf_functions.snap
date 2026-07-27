@@ -1,6 +1,6 @@
 ---
 source: symbolic-debuginfo/tests/test_objects.rs
-expression: "FunctionsDebug(&functions[..10], 0)"
+expression: "FunctionsDebug::new(&session, &functions[..10])"
 ---
 > 0x1ec0: _ZN12_GLOBAL__N_18callbackERKN15google_breakpad18MinidumpDescriptorEPvb (0x3b)
   0x1ec0: main.cpp:9 (../linux)
@@ -103,12 +103,22 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x1dac: main.cpp:33 (../linux)
   variables:
     argc (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
       0x1c70..0x1d2b: register 5
     argv (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Pointer (8 bytes)
+            > Primitive: char (SignedChar, 1 byte)
       0x1c70..0x1cc3: register 4
     descriptor (local)
+      type:
+        > Unknown
       0x1c70..0x1dbc: frame base -416
     eh (local)
+      type:
+        > Unknown
       0x1c70..0x1dbc: frame base -272
 
   > 0x1c89: _ZN15google_breakpad18MinidumpDescriptorC4ERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE (0x7)
@@ -732,12 +742,17 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x29a5: exception_handler.cc:505 (../deps/breakpad/src/client/linux/handler)
   variables:
     this (parameter)
+      type:
+        > Unknown
       0x2520..0x2538: register 5
       0x2538..0x255a: register 3
       0x257f..0x2777: register 3
       0x27c6..0x299d: register 3
       0x29a2..0x29ab: register 3
     context (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0x2520..0x2557: register 4
       0x2557..0x255a: register 6
       0x257f..0x2595: register 4
@@ -747,6 +762,9 @@ expression: "FunctionsDebug(&functions[..10], 0)"
       0x27e2..0x27f6: frame base -88
       0x2996..0x2998: register 6
     stack (local)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0x260d..0x272f: register 15
       0x272f..0x2735: register 4
       0x2735..0x2782: register 15
@@ -754,15 +772,23 @@ expression: "FunctionsDebug(&functions[..10], 0)"
       0x27f6..0x282b: register 4
       0x282b..0x2877: register 15
     thread_arg (local)
+      type:
+        > Unknown
       0x2520..0x29e6: frame base -112
     status (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
       0x2520..0x29e6: frame base -116
     r (local)
+      type:
+        > Unknown
       0x28cd..0x28f1: register 4
       0x28f1..0x28f7: frame base -144
       0x28f7..0x291d: register 4
       0x293f..0x294b: register 4
     success (local)
+      type:
+        > Primitive: bool (Boolean, 1 byte)
       0x291d..0x293a: register 6
 
   > 0x2534: _ZNK15google_breakpad16ExceptionHandler14IsOutOfProcessEv (0x4)
@@ -994,25 +1020,38 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x2dba: exception_handler.cc:409 (../deps/breakpad/src/client/linux/handler)
   variables:
     sig (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
       0x2bd0..0x2c08: register 5
       0x2c08..0x2c2f: register 12
       0x2c34..0x2dbf: register 12
     info (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0x2bd0..0x2c08: register 4
       0x2c08..0x2c0d: register 13
       0x2c34..0x2d43: register 13
       0x2d88..0x2dae: register 13
     uc (parameter)
+      type:
+        > Unknown
       0x2bd0..0x2c08: register 1
       0x2c08..0x2c33: register 14
       0x2c34..0x2dbf: register 14
     cur_handler (local)
+      type:
+        > Unknown
       0x2bd0..0x2dbf: frame base -208
     handled (local)
+      type:
+        > Primitive: bool (Boolean, 1 byte)
       0x2c7f..0x2c8f: register 0
       0x2ca8..0x2cb5: register 0
       0x2d88..0x2d99: register 0
     i (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
       0x2c74..0x2ca8: register 3
       0x2cab..0x2ce7: register 3
       0x2d88..0x2d9f: register 3

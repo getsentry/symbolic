@@ -22,11 +22,11 @@ use symbolic_common::{
     Arch, AsSelf, CodeId, CpuFamily, DebugId, Language, Name, NameMangling, SelfCell, Uuid,
 };
 
-use crate::ParseObjectOptions;
 use crate::base::*;
 use crate::function_stack::FunctionStack;
 use crate::pdb::srcsrv::{SourceServerInfo, SourceServerMappings};
 use crate::sourcebundle::SourceFileDescriptor;
+use crate::{ParseObjectOptions, Type, TypeRef};
 
 mod srcsrv;
 
@@ -679,6 +679,13 @@ impl<'d> PdbDebugSession<'d> {
         }
     }
 
+    /// Resolves a [`TypeRef`] in this debug file.
+    ///
+    /// See also: [`DebugSession::lookup_type`].
+    pub fn lookup_type(&self, _ty: &TypeRef) -> Result<Option<Type<'_>>, PdbError> {
+        Ok(None)
+    }
+
     /// See [DebugSession::source_by_path] for more information.
     pub fn source_by_path(
         &self,
@@ -712,6 +719,10 @@ impl<'session> DebugSession<'session> for PdbDebugSession<'_> {
 
     fn files(&'session self) -> Self::FileIterator {
         self.files()
+    }
+
+    fn lookup_type(&'session self, ty: &TypeRef) -> Result<Option<Type<'session>>, Self::Error> {
+        self.lookup_type(ty)
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor<'_>>, Self::Error> {

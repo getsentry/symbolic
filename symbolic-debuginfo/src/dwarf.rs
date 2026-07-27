@@ -31,10 +31,12 @@ use crate::base::*;
 use crate::function_builder::{
     FunctionBuilder, FunctionBuilderError, FunctionBuilderErrorKind, FunctionBuilderInlinee,
 };
+mod types;
+
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::{Kind, Location, LocationInfo, Type, TypeRef, base::*, variable};
+use crate::{Kind, Location, LocationInfo, Type, TypeRef, variable};
 
 /// This is a fake BcSymbolMap used when macho support is turned off since they are unfortunately
 /// part of the dwarf interface
@@ -1881,7 +1883,12 @@ impl<'data> DwarfDebugSession<'data> {
         }
     }
 
-    pub fn lookup_type(&self, ty: &TypeRef) -> Result<Option<Type>, DwarfError> {
+    /// Resolves a [`TypeRef`] in this debug file.
+    ///
+    /// The [`TypeRef`] must have been previously acquired from the same debug file.
+    ///
+    /// See also: [`DebugSession::lookup_type`].
+    pub fn lookup_type(&self, ty: &TypeRef) -> Result<Option<Type<'_>>, DwarfError> {
         let Some(DwarfTypeRef(ty)) = ty.as_dwarf() else {
             return Ok(None);
         };
@@ -1903,12 +1910,10 @@ impl<'data> DwarfDebugSession<'data> {
             return Ok(None);
         };
 
-        dbg!(unit.unit.entry(offset)?);
-
-        Ok(Some(Type {}))
+        self::types::parse_type(unit, offset)
     }
 
-    /// See [DebugSession::source_by_path] for more information.
+    /// See [`DebugSession::source_by_path`] for more information.
     pub fn source_by_path(
         &self,
         _path: &str,
@@ -1930,7 +1935,7 @@ impl<'session> DebugSession<'session> for DwarfDebugSession<'_> {
         self.files()
     }
 
-    fn lookup_type(&'session self, ty: &TypeRef) -> Result<Option<Type>, Self::Error> {
+    fn lookup_type(&'session self, ty: &TypeRef) -> Result<Option<Type<'session>>, Self::Error> {
         self.lookup_type(ty)
     }
 
