@@ -13,6 +13,8 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameManglin
 
 use crate::ParseObjectOptions;
 use crate::base::*;
+use crate::function_builder::FunctionBuilderError;
+use crate::function_builder::FunctionBuilderErrorKind;
 use crate::function_builder::{FunctionBuilder, FunctionBuilderInlinee};
 use crate::sourcebundle::SourceFileDescriptor;
 
@@ -144,6 +146,10 @@ pub enum BreakpadErrorKind {
 
     /// The architecture is invalid.
     InvalidArchitecture,
+
+    /// A resource limit was reached while operating on the DWARF file.  See the source
+    /// for more details.
+    ExhaustedResourceLimit,
 }
 
 impl fmt::Display for BreakpadErrorKind {
@@ -154,6 +160,7 @@ impl fmt::Display for BreakpadErrorKind {
             Self::Parse(_) => write!(f, "parsing error"),
             Self::InvalidModuleId => write!(f, "invalid module id"),
             Self::InvalidArchitecture => write!(f, "invalid architecture"),
+            Self::ExhaustedResourceLimit => write!(f, "exhausted resource limit"),
         }
     }
 }
@@ -199,6 +206,16 @@ impl From<str::Utf8Error> for BreakpadError {
 impl From<parsing::ParseBreakpadError> for BreakpadError {
     fn from(e: parsing::ParseBreakpadError) -> Self {
         Self::new(BreakpadErrorKind::Parse(""), e)
+    }
+}
+
+impl From<FunctionBuilderError> for BreakpadError {
+    fn from(value: FunctionBuilderError) -> Self {
+        match value.kind {
+            FunctionBuilderErrorKind::TooManyInlineeNestings => {
+                BreakpadError::new(BreakpadErrorKind::ExhaustedResourceLimit, value)
+            }
+        }
     }
 }
 
@@ -1473,7 +1490,7 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
             );
         }
 
-        Some(Ok(builder.finish()))
+        Some(builder.finish().map_err(Into::into))
     }
 }
 
@@ -2597,4 +2614,19 @@ mod tests {
         (7, b"world"),
         (13, b"yo")
     );
+
+    #[test]
+    fn test_inlinee_nesting_bounds() {
+        use symbolic_common::ByteView;
+
+        let buffer = ByteView::open("tests/fixtures/quadratic_inlinee.sym").unwrap();
+        let obj = BreakpadObject::parse(&buffer).expect("parse breakpad");
+
+        let session = obj.debug_session().expect("session");
+        let _ = session
+            .functions()
+            .next()
+            .unwrap()
+            .expect_err("should have seen an error");
+    }
 }

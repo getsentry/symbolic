@@ -1,13 +1,42 @@
 //! Contains [`FunctionBuilder`], which can be used to create a [`Function`]
 //! with inlinees and line records in the right structure.
 
-use std::{cmp::Reverse, collections::BinaryHeap};
+use std::{cmp::Reverse, collections::BinaryHeap, fmt};
 
 use crate::{
     Variable,
     base::{FileInfo, Function, LineInfo},
 };
 use symbolic_common::Name;
+use thiserror::Error;
+
+/// An error originating in the FunctionBuilder.
+#[derive(Debug, Error)]
+#[error("{kind}")]
+pub struct FunctionBuilderError {
+    pub(crate) kind: FunctionBuilderErrorKind,
+}
+
+/// The kind of error origination in the FunctionBuilder.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum FunctionBuilderErrorKind {
+    /// We generated too many nestings (address splits) for an inlinee.
+    TooManyInlineeNestings,
+}
+
+impl fmt::Display for FunctionBuilderErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::TooManyInlineeNestings => write!(f, "too many inlinee address splits"),
+        }
+    }
+}
+
+impl From<FunctionBuilderErrorKind> for FunctionBuilderError {
+    fn from(kind: FunctionBuilderErrorKind) -> Self {
+        Self { kind }
+    }
+}
 
 /// Allows creating a [`Function`] from unordered line and inlinee records.
 ///
@@ -103,7 +132,7 @@ impl<'s> FunctionBuilder<'s> {
     }
 
     /// Create the `Function`, consuming the builder.
-    pub fn finish(self) -> Function<'s> {
+    pub fn finish(self) -> Result<Function<'s>, FunctionBuilderError> {
         // Convert our data into the right shape.
         // There are two big differences between what we have and what we want:
         //  - We have all inlinees in a flat list, but we want to create nested functions for them,
@@ -122,7 +151,7 @@ impl<'s> FunctionBuilder<'s> {
             max_inline_depth: _,
         } = self;
 
-        let inlinees = ensure_proper_nesting(inlinees);
+        let inlinees = ensure_proper_nesting(inlinees)?;
 
         // Sort the lines by address.
         lines.sort_by_key(|line| line.address);
@@ -228,7 +257,7 @@ impl<'s> FunctionBuilder<'s> {
             break;
         }
 
-        stack.finish()
+        Ok(stack.finish())
     }
 }
 
@@ -333,6 +362,9 @@ impl<'s> FunctionBuilderStack<'s> {
     }
 }
 
+/// Bounds to ensure that the maximum number of inlinees does not get too large.
+const MAX_NESTED_INLINEES: usize = 100000;
+
 /// Converts the `BinaryHeap` of inlinees into a sorted `Vec` of inlinees, while ensuring proper
 /// inlinee nesting.
 ///
@@ -370,7 +402,7 @@ impl<'s> FunctionBuilderStack<'s> {
 /// Representation B: Improperly nested, but unambiguous and compact
 ///  - b() called from a.cpp:10 at 0x0..0x8
 ///    - c() called from b.cpp:20 at 0x0..0xd   <-- extends beyond parent
-///  - b() called from a.cpp:10 at 0x0..0x8
+///  - b() called from a.cpp:15 at 0x8..0xd
 ///
 /// In Representation B, the two c() inlinees were merged into one, even though they have different
 /// parents. This is valid input.
@@ -387,7 +419,7 @@ impl<'s> FunctionBuilderStack<'s> {
 ///    node at depth N.
 fn ensure_proper_nesting(
     mut inlinees: BinaryHeap<Reverse<FunctionBuilderInlinee>>,
-) -> Vec<FunctionBuilderInlinee> {
+) -> Result<Vec<FunctionBuilderInlinee>, FunctionBuilderError> {
     let mut result = Vec::with_capacity(inlinees.len());
 
     // This stack contains, at index i, the end address of the most recent inlinee at depth i.
@@ -475,9 +507,15 @@ fn ensure_proper_nesting(
         });
 
         result.push(inlinee);
+
+        if result.len() > MAX_NESTED_INLINEES {
+            return Err(FunctionBuilderErrorKind::TooManyInlineeNestings.into());
+        }
+
         end_address_stack.push(end_address); // this goes into end_address_stack[depth]
     }
-    result
+
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -491,7 +529,7 @@ mod tests {
         // 0x10 - 0x40: foo in foo.c on line 1
         let mut builder = FunctionBuilder::new(Name::from("foo"), &[], 0x10, 0x30);
         builder.add_leaf_line(0x10, Some(0x30), FileInfo::from_filename(b"foo.c"), 1);
-        let func = builder.finish();
+        let func = builder.finish().unwrap();
 
         assert_eq!(func.name.as_str(), "foo");
         assert_eq!(&func.lines, &[LineInfo::new(0x10, 0x30, b"foo.c", 1)]);
@@ -514,7 +552,7 @@ mod tests {
         });
         builder.add_leaf_line(0x10, Some(0x10), FileInfo::from_filename(b"foo.c"), 1);
         builder.add_leaf_line(0x20, Some(0x20), FileInfo::from_filename(b"bar.c"), 1);
-        let func = builder.finish();
+        let func = builder.finish().unwrap();
 
         // the outer function has two line records, one for itself, the other for the inlined call
         assert_eq!(func.name.as_str(), "foo");
@@ -558,7 +596,7 @@ mod tests {
             variables: vec![variable],
         });
 
-        let function = builder.finish();
+        let function = builder.finish().unwrap();
 
         insta::assert_debug_snapshot!(function, @r#"
         Function {
@@ -677,7 +715,7 @@ mod tests {
         builder.add_leaf_line(0x10, Some(0x10), FileInfo::from_filename(b"parent.c"), 1);
         builder.add_leaf_line(0x20, Some(0x20), FileInfo::from_filename(b"child2.c"), 1);
         builder.add_leaf_line(0x40, Some(0x10), FileInfo::from_filename(b"parent.c"), 1);
-        let func = builder.finish();
+        let func = builder.finish().unwrap();
 
         assert_eq!(func.name.as_str(), "parent");
         assert_eq!(
