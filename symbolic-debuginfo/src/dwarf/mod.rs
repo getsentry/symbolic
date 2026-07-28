@@ -36,7 +36,7 @@ mod types;
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::{Kind, Location, LocationInfo, Type, TypeRef, variable};
+use crate::{Kind, Location, LocationInfo, Type, TypeRef, Variable};
 
 /// This is a fake BcSymbolMap used when macho support is turned off since they are unfortunately
 /// part of the dwarf interface
@@ -1282,7 +1282,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         &self,
         variable: &ParsedVariable<'d>,
         range: Range,
-    ) -> Option<variable::Variable<'d>> {
+    ) -> Option<Variable<'d>> {
         let mut locations = match &variable.locations {
             Locations::Single(location) => vec![LocationInfo {
                 address: offset(range.begin, self.inner.info.address_offset),
@@ -1312,7 +1312,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         }
 
         locations.sort_unstable_by_key(|location| location.address);
-        Some(variable::Variable {
+        Some(Variable {
             name: variable.name.clone(),
             ty: variable.ty.clone(),
             kind: variable.kind,
@@ -1395,7 +1395,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 /// A variable before its locations are restricted to a concrete range.
 struct ParsedVariable<'data> {
     name: Cow<'data, str>,
-    ty: Option<variable::TypeRef>,
+    ty: Option<TypeRef>,
     kind: Kind,
     locations: Locations,
 }
