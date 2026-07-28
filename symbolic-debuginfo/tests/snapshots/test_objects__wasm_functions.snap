@@ -69,9 +69,12 @@ expression: r
                         TypeRef(
                             Dwarf(
                                 DwarfTypeRef(
-                                    UnitSectionOffset(
-                                        687,
-                                    ),
+                                    Offset {
+                                        section: DebugInfo,
+                                        offset: UnitSectionOffset(
+                                            687,
+                                        ),
+                                    },
                                 ),
                             ),
                         ),
@@ -93,9 +96,12 @@ expression: r
                         TypeRef(
                             Dwarf(
                                 DwarfTypeRef(
-                                    UnitSectionOffset(
-                                        687,
-                                    ),
+                                    Offset {
+                                        section: DebugInfo,
+                                        offset: UnitSectionOffset(
+                                            687,
+                                        ),
+                                    },
                                 ),
                             ),
                         ),
@@ -589,9 +595,12 @@ expression: r
                         TypeRef(
                             Dwarf(
                                 DwarfTypeRef(
-                                    UnitSectionOffset(
-                                        9384,
-                                    ),
+                                    Offset {
+                                        section: DebugInfo,
+                                        offset: UnitSectionOffset(
+                                            9384,
+                                        ),
+                                    },
                                 ),
                             ),
                         ),
@@ -710,9 +719,12 @@ expression: r
                         TypeRef(
                             Dwarf(
                                 DwarfTypeRef(
-                                    UnitSectionOffset(
-                                        11615,
-                                    ),
+                                    Offset {
+                                        section: DebugInfo,
+                                        offset: UnitSectionOffset(
+                                            11615,
+                                        ),
+                                    },
                                 ),
                             ),
                         ),

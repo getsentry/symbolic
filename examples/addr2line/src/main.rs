@@ -6,7 +6,7 @@ use clap::builder::ValueParser;
 use clap::{value_parser, Arg, ArgAction, ArgMatches, Command};
 
 use symbolic::common::{ByteView, Language, Name, NameMangling};
-use symbolic::debuginfo::{Function, Location, Object};
+use symbolic::debuginfo::{Function, Location, Object, ObjectDebugSession, Type, TypeRef};
 use symbolic::demangle::{Demangle, DemangleOptions};
 
 fn print_name<'a, N: Borrow<Name<'a>>>(name: Option<N>, matches: &ArgMatches) {
@@ -30,14 +30,40 @@ fn print_range(start: u64, len: Option<u64>, matches: &ArgMatches) {
     }
 }
 
-fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches) -> Result<bool> {
+fn print_type(session: &ObjectDebugSession<'_>, ty: &TypeRef, max_depth: usize) -> Result<()> {
+    if max_depth == 0 {
+        return Ok(());
+    }
+
+    let Some(ty) = session.lookup_type(ty)? else {
+        print!("<unknown>");
+        return Ok(());
+    };
+
+    match ty {
+        Type::Primitive(t) => print!("{}", t.name.as_deref().unwrap_or("?")),
+        Type::Pointer(t) => {
+            print_type(session, &t.pointee, max_depth - 1)?;
+            print!("*")
+        }
+    }
+
+    Ok(())
+}
+
+fn resolve(
+    session: &ObjectDebugSession<'_>,
+    function: &Function<'_>,
+    addr: u64,
+    matches: &ArgMatches,
+) -> Result<bool> {
     if function.address > addr || function.address + function.size <= addr {
         return Ok(false);
     }
 
     if *matches.get_one("inlinees").unwrap() {
         for il in &function.inlinees {
-            resolve(il, addr, matches)?;
+            resolve(session, il, addr, matches)?;
         }
     }
 
@@ -83,13 +109,19 @@ fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches) -> Result<b
             }
 
             for location in locations {
-                print!("      ");
+                print!("      location: ");
                 match location.location {
                     Location::Register { id } => print!("reg:{id}"),
                     Location::FrameOffset { offset } => print!("fbreg:{offset}"),
                 }
                 print_range(location.address, Some(location.size), matches);
                 println!();
+            }
+
+            if let Some(ty) = &variable.ty {
+                print!("      type: ");
+                print_type(session, ty, 10)?;
+                println!()
             }
         }
     }
@@ -110,7 +142,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
     'addrs: for &addr in matches.get_many::<u64>("addrs").unwrap_or_default() {
         for function in session.functions() {
             let function = function.context("failed to read function")?;
-            if resolve(&function, addr, matches)? {
+            if resolve(&session, &function, addr, matches)? {
                 continue 'addrs;
             }
         }

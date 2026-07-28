@@ -63,11 +63,11 @@ use zip::{ZipWriter, write::SimpleFileOptions};
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, SourceLinkMappings};
 
 use self::utf8_reader::Utf8Reader;
-use crate::ParseObjectOptions;
 use crate::base::*;
 use crate::js::{
     discover_debug_id, discover_sourcemap_embedded_debug_id, discover_sourcemaps_location,
 };
+use crate::{ParseObjectOptions, Type, TypeRef};
 
 /// Magic bytes of a source bundle. They are prepended to the ZIP file.
 static BUNDLE_MAGIC: [u8; 4] = *b"SYSB";
@@ -948,6 +948,13 @@ impl SourceBundleDebugSession<'_> {
         std::iter::empty()
     }
 
+    /// Resolves a [`TypeRef`] in this debug file.
+    ///
+    /// See also: [`DebugSession::lookup_type`].
+    pub fn lookup_type(&self, _ty: &TypeRef) -> Result<Option<Type<'_>>, SourceBundleError> {
+        Ok(None)
+    }
+
     /// Get source by the path of a file in the bundle.
     fn source_by_zip_path(
         &self,
@@ -1054,6 +1061,10 @@ impl<'session> DebugSession<'session> for SourceBundleDebugSession<'_> {
 
     fn files(&'session self) -> Self::FileIterator {
         self.files()
+    }
+
+    fn lookup_type(&'session self, ty: &TypeRef) -> Result<Option<Type<'session>>, Self::Error> {
+        self.lookup_type(ty)
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor<'_>>, Self::Error> {

@@ -1,6 +1,6 @@
 ---
 source: symbolic-debuginfo/tests/test_objects.rs
-expression: "FunctionsDebug(&functions[..10], 0)"
+expression: "FunctionsDebug::new(&session, &functions[..10])"
 ---
 > 0xd20: _ZN15google_breakpad18MinidumpFileWriterC2Ev (0x1a)
   0xd20: minidump_file_writer.cc:93 (../deps/breakpad/src/client)
@@ -14,6 +14,9 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0xd59: minidump_file_writer.cc:97 (../deps/breakpad/src/client)
   variables:
     this (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0xd40..0xd5a: register 5
 
   > 0xd40: _ZN15google_breakpad18MinidumpFileWriterC2Ev (0x19)
@@ -59,6 +62,9 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0xe0c: minidump_file_writer.cc:99 (../deps/breakpad/src/client)
   variables:
     this (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0xde0..0xde4: register 5
       0xde4..0xe0b: register 3
       0xe0c..0xe14: register 3
@@ -90,10 +96,16 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0xe4a: minidump_file_writer.cc:105 (../deps/breakpad/src/client)
   variables:
     this (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0xe20..0xe27: register 5
       0xe27..0xe49: register 3
       0xe4a..0xe69: register 3
     path (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0xe20..0xe24: register 4
       0xe24..0xe40: register 2
       0xe4a..0xe5f: register 2
@@ -106,6 +118,9 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0xe7e: minidump_file_writer.cc:116 (../deps/breakpad/src/client)
   variables:
     this (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0xe70..0xe85: register 5
 
 > 0xea0: _ZN15google_breakpad18MinidumpFileWriter20CopyStringToMDStringEPKwjPNS_10TypedMDRVAI8MDStringEE (0x147)
@@ -128,19 +143,32 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0xfa9: minidump_file_writer.cc:174 (../deps/breakpad/src/client)
   variables:
     this (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0xea0..0xed2: register 5
     str (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0xea0..0xeb6: register 4
       0xeb6..0xf23: register 3
       0xf76..0xf94: register 3
       0xfa9..0xfe7: register 3
     mdstring (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0xea0..0xeb1: register 2
       0xeb1..0xf41: register 12
       0xfa9..0xfe7: register 12
     out (local)
+      type:
+        > Unknown
       0xea0..0xfe7: frame base +16
     out_size (local)
+      type:
+        > Unknown
       0xf23..0xf72: register 3
 
   > 0xefa: _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm (0x25)
@@ -191,18 +219,31 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x10f9: minidump_file_writer.cc:201 (../deps/breakpad/src/client)
   variables:
     this (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0xff0..0x1023: register 5
     str (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0xff0..0x1006: register 4
       0x1006..0x10ef: register 3
       0x10f9..0x1137: register 3
     mdstring (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0xff0..0x1001: register 2
       0x1001..0x107b: register 14
       0x10f9..0x1137: register 14
     out (local)
+      type:
+        > Unknown
       0xff0..0x1137: frame base +8
     out_size (local)
+      type:
+        > Unknown
       0x106b..0x10b7: register 6
 
   > 0x1049: _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm (0x1e)
@@ -239,8 +280,17 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x1140: minidump_file_writer.cc:245 (../deps/breakpad/src/client)
   variables:
     this (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0x1140..0x1145: register 5
     str (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0x1140..0x1145: register 4
     location (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0x1140..0x1145: register 2

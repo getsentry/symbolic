@@ -1,6 +1,6 @@
 ---
 source: symbolic-debuginfo/tests/test_objects.rs
-expression: "FunctionsDebug(&functions[..10], 0)"
+expression: "FunctionsDebug::new(&session, &functions[..10])"
 ---
 > 0x14f0: atexit (0x14)
   0x14f0: crtexe.c:418 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
@@ -9,6 +9,8 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x14ff: crtexe.c:420 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   variables:
     func (parameter)
+      type:
+        > Unknown
       0x14f0..0x14f8: register 2
 
 > 0x1180: __tmainCRTStartup (0x326)
@@ -100,20 +102,33 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x149e: crtexe.c:324 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   variables:
     lpszCommandLine (local)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0x1291..0x12fd: register 0
     StartupInfo (local)
+      type:
+        > Unknown
       0x1180..0x14a6: frame base -176
     inDoubleQuote (local)
+      type:
+        > Unknown
       0x1298..0x12a7: register 2
       0x12ae..0x12c8: register 2
     lock_free (local)
+      type:
+        > Unknown
       0x11d3..0x11e8: register 0
       0x11f1..0x1201: register 0
       0x13f2..0x1406: register 0
     fiberid (local)
+      type:
+        > Unknown
       0x11c8..0x11fd: register 4
       0x13f2..0x13ff: register 4
     nested (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
       0x11ff..0x1315: register 6
       0x13e3..0x13f2: register 6
       0x1404..0x144f: register 6
@@ -163,6 +178,8 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x14e8: crtexe.c:213 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   variables:
     ret (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
       0x14e6..0x14ed: register 0
 
 > 0x14b0: WinMainCRTStartup (0x1d)
@@ -173,6 +190,8 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x14c8: crtexe.c:187 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   variables:
     ret (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
       0x14c6..0x14cd: register 0
 
 > 0x1130: pre_cpp_init (0x49)
@@ -230,14 +249,27 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x1000: crtexe.c:123 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   variables:
     expression (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0x1000..0x1001: register 2
     function (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0x1000..0x1001: register 1
     file (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0x1000..0x1001: register 8
     line (parameter)
+      type:
+        > Primitive: unsigned int (UnsignedInt, 4 bytes)
       0x1000..0x1001: register 9
     pReserved (parameter)
+      type:
+        > Unknown
       0x1000..0x1001: frame base +32
 
 > 0x1572: main (0x1f)
@@ -247,8 +279,14 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x1587: hello.c:5 (/src)
   variables:
     argc (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
       0x1572..0x157a: register 2
     argv (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Pointer (8 bytes)
+            > Primitive: char (SignedChar, 1 byte)
       0x1572..0x157a: register 1
 
 > 0x1530: printf (0x42)
@@ -260,11 +298,19 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x1570: stdio.h:375 (/mxe/usr/x86_64-w64-mingw32.static/include)
   variables:
     __format (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
       0x1530..0x1557: register 2
       0x1557..0x1570: register 3
     __retval (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
       0x156b..0x1572: register 0
     __local_argv (local)
+      type:
+        > Pointer (8 bytes)
+          > Primitive: char (SignedChar, 1 byte)
       0x1530..0x1572: frame base -40
 
 > 0x1650: __main (0x1f)
