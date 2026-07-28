@@ -5,6 +5,7 @@
 **Breaking Changes**
 
 - Change the MSRV version to 1.85 and Rust Edition 2024. ([#1028](https://github.com/getsentry/symbolic/pull/1028))
+- Remove support for symcache version 7 and 8. ([#1033](https://github.com/getsentry/symbolic/pull/1033))
 - Adds variables to functions. ([#1025](https://github.com/getsentry/symbolic/pull/1025))
 
 **Dependencies**

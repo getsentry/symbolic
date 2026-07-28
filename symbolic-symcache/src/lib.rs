@@ -107,7 +107,6 @@ mod error;
 mod lookup;
 mod raw;
 pub mod transform;
-mod v7;
 mod v9;
 mod writer;
 
@@ -120,7 +119,6 @@ pub use error::{Error, ErrorKind};
 pub use lookup::*;
 pub use writer::SymCacheConverter;
 
-use crate::v7::{SymCacheV7, SymCacheV8};
 use crate::v9::SymCacheV9;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -153,8 +151,6 @@ pub struct SymCache<'data> {
 impl std::fmt::Debug for SymCache<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.inner {
-            SymCacheInner::V7(ref sym_cache_v7) => sym_cache_v7.fmt(f),
-            SymCacheInner::V8(ref sym_cache_v8) => sym_cache_v8.fmt(f),
             SymCacheInner::V9(ref sym_cache_v9) => sym_cache_v9.fmt(f),
         }
     }
@@ -174,8 +170,6 @@ impl<'data> SymCache<'data> {
         }
 
         let inner = match version.version {
-            7 => SymCacheInner::V7(SymCacheV7::parse(rest)?),
-            8 => SymCacheInner::V8(SymCacheV8::parse(rest)?),
             9 => SymCacheInner::V9(SymCacheV9::parse(rest)?),
             _ => return Err(ErrorKind::WrongVersion.into()),
         };
@@ -196,8 +190,6 @@ impl<'data> SymCache<'data> {
     /// The architecture of the symbol file.
     pub fn arch(&self) -> Arch {
         match &self.inner {
-            SymCacheInner::V7(cache) => Arch::from_u32(cache.header.arch),
-            SymCacheInner::V8(cache) => Arch::from_u32(cache.header.arch),
             SymCacheInner::V9(cache) => Arch::from_u32(cache.header.arch),
         }
     }
@@ -205,8 +197,6 @@ impl<'data> SymCache<'data> {
     /// The debug identifier of the cache file.
     pub fn debug_id(&self) -> DebugId {
         match &self.inner {
-            SymCacheInner::V7(cache) => cache.header.debug_id,
-            SymCacheInner::V8(cache) => cache.header.debug_id,
             SymCacheInner::V9(cache) => cache.header.debug_id,
         }
     }
@@ -222,7 +212,5 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for SymCache<'d> {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum SymCacheInner<'data> {
-    V7(SymCacheV7<'data>),
-    V8(SymCacheV8<'data>),
     V9(SymCacheV9<'data>),
 }

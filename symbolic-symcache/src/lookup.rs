@@ -3,10 +3,6 @@ use std::fmt;
 use symbolic_common::{Language, Name, NameMangling};
 
 use crate::SymCacheInner;
-use crate::v7::lookup::{
-    FilesV7, FilesV8, FunctionsV7, FunctionsV8, SourceLocationV7, SourceLocationV8,
-    SourceLocationsV7, SourceLocationsV8,
-};
 use crate::v9::lookup::{FilesV9, FunctionsV9, SourceLocationV9, SourceLocationsV9};
 
 use super::SymCache;
@@ -16,8 +12,6 @@ impl<'data> SymCache<'data> {
     /// representing a hierarchy of inlined function calls.
     pub fn lookup(&self, addr: u64) -> SourceLocations<'data, '_> {
         match self.inner {
-            SymCacheInner::V7(ref cache) => cache.lookup(addr).into(),
-            SymCacheInner::V8(ref cache) => cache.lookup(addr).into(),
             SymCacheInner::V9(ref cache) => cache.lookup(addr).into(),
         }
     }
@@ -30,8 +24,6 @@ impl<'data> SymCache<'data> {
     /// but in insertion order, which is essentially random.
     pub fn functions(&self) -> Functions<'data> {
         match self.inner {
-            SymCacheInner::V7(ref cache) => cache.functions().into(),
-            SymCacheInner::V8(ref cache) => cache.functions().into(),
             SymCacheInner::V9(ref cache) => cache.functions().into(),
         }
     }
@@ -42,8 +34,6 @@ impl<'data> SymCache<'data> {
     /// but in insertion order, which is essentially random.
     pub fn files(&self) -> Files<'data> {
         match self.inner {
-            SymCacheInner::V7(ref cache) => cache.files().into(),
-            SymCacheInner::V8(ref cache) => cache.files().into(),
             SymCacheInner::V9(ref cache) => cache.files().into(),
         }
     }
@@ -147,8 +137,6 @@ impl Default for Function<'_> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum SourceLocationInner<'data, 'cache> {
-    V7(SourceLocationV7<'data, 'cache>),
-    V8(SourceLocationV8<'data, 'cache>),
     V9(SourceLocationV9<'data, 'cache>),
 }
 
@@ -165,8 +153,6 @@ impl<'data> SourceLocation<'data, '_> {
     /// 0 denotes an unknown line number.
     pub fn line(&self) -> u32 {
         match self.0 {
-            SourceLocationInner::V7(ref loc) => loc.line(),
-            SourceLocationInner::V8(ref loc) => loc.line(),
             SourceLocationInner::V9(ref loc) => loc.line(),
         }
     }
@@ -174,8 +160,6 @@ impl<'data> SourceLocation<'data, '_> {
     /// The source file corresponding to the instruction.
     pub fn file(&self) -> Option<File<'data>> {
         match self.0 {
-            SourceLocationInner::V7(ref loc) => loc.file(),
-            SourceLocationInner::V8(ref loc) => loc.file(),
             SourceLocationInner::V9(ref loc) => loc.file(),
         }
     }
@@ -183,26 +167,12 @@ impl<'data> SourceLocation<'data, '_> {
     /// The function corresponding to the instruction.
     pub fn function(&self) -> Function<'data> {
         match self.0 {
-            SourceLocationInner::V7(ref loc) => loc.function(),
-            SourceLocationInner::V8(ref loc) => loc.function(),
             SourceLocationInner::V9(ref loc) => loc.function(),
         }
     }
 
     // TODO: maybe forward some of the `File` and `Function` accessors, such as:
     // `function_name` or `full_path` for convenience.
-}
-
-impl<'data, 'cache> From<SourceLocationV7<'data, 'cache>> for SourceLocation<'data, 'cache> {
-    fn from(value: SourceLocationV7<'data, 'cache>) -> Self {
-        Self(SourceLocationInner::V7(value))
-    }
-}
-
-impl<'data, 'cache> From<SourceLocationV8<'data, 'cache>> for SourceLocation<'data, 'cache> {
-    fn from(value: SourceLocationV8<'data, 'cache>) -> Self {
-        Self(SourceLocationInner::V8(value))
-    }
 }
 
 impl<'data, 'cache> From<SourceLocationV9<'data, 'cache>> for SourceLocation<'data, 'cache> {
@@ -213,8 +183,6 @@ impl<'data, 'cache> From<SourceLocationV9<'data, 'cache>> for SourceLocation<'da
 
 #[derive(Debug, Clone)]
 enum SourceLocationsInner<'data, 'cache> {
-    V7(SourceLocationsV7<'data, 'cache>),
-    V8(SourceLocationsV8<'data, 'cache>),
     V9(SourceLocationsV9<'data, 'cache>),
 }
 
@@ -227,28 +195,10 @@ impl<'data, 'cache> Iterator for SourceLocations<'data, 'cache> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.0 {
-            SourceLocationsInner::V7(ref mut locations) => {
-                locations.next().map(SourceLocation::from)
-            }
-            SourceLocationsInner::V8(ref mut locations) => {
-                locations.next().map(SourceLocation::from)
-            }
             SourceLocationsInner::V9(ref mut locations) => {
                 locations.next().map(SourceLocation::from)
             }
         }
-    }
-}
-
-impl<'data, 'cache> From<SourceLocationsV7<'data, 'cache>> for SourceLocations<'data, 'cache> {
-    fn from(value: SourceLocationsV7<'data, 'cache>) -> Self {
-        Self(SourceLocationsInner::V7(value))
-    }
-}
-
-impl<'data, 'cache> From<SourceLocationsV8<'data, 'cache>> for SourceLocations<'data, 'cache> {
-    fn from(value: SourceLocationsV8<'data, 'cache>) -> Self {
-        Self(SourceLocationsInner::V8(value))
     }
 }
 
@@ -260,8 +210,6 @@ impl<'data, 'cache> From<SourceLocationsV9<'data, 'cache>> for SourceLocations<'
 
 #[derive(Debug, Clone)]
 enum FunctionsInner<'data> {
-    V7(FunctionsV7<'data>),
-    V8(FunctionsV8<'data>),
     V9(FunctionsV9<'data>),
 }
 
@@ -274,22 +222,8 @@ impl<'data> Iterator for Functions<'data> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.0 {
-            FunctionsInner::V7(ref mut functions) => functions.next(),
-            FunctionsInner::V8(ref mut functions) => functions.next(),
             FunctionsInner::V9(ref mut functions) => functions.next(),
         }
-    }
-}
-
-impl<'data> From<FunctionsV7<'data>> for Functions<'data> {
-    fn from(value: FunctionsV7<'data>) -> Self {
-        Self(FunctionsInner::V7(value))
-    }
-}
-
-impl<'data> From<FunctionsV8<'data>> for Functions<'data> {
-    fn from(value: FunctionsV8<'data>) -> Self {
-        Self(FunctionsInner::V8(value))
     }
 }
 
@@ -321,8 +255,6 @@ impl fmt::Debug for FunctionsDebug<'_> {
 
 #[derive(Debug, Clone)]
 enum FilesInner<'data> {
-    V7(FilesV7<'data>),
-    V8(FilesV8<'data>),
     V9(FilesV9<'data>),
 }
 
@@ -335,22 +267,8 @@ impl<'data> Iterator for Files<'data> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.0 {
-            FilesInner::V7(ref mut files) => files.next(),
-            FilesInner::V8(ref mut files) => files.next(),
             FilesInner::V9(ref mut files) => files.next(),
         }
-    }
-}
-
-impl<'data> From<FilesV7<'data>> for Files<'data> {
-    fn from(value: FilesV7<'data>) -> Self {
-        Self(FilesInner::V7(value))
-    }
-}
-
-impl<'data> From<FilesV8<'data>> for Files<'data> {
-    fn from(value: FilesV8<'data>) -> Self {
-        Self(FilesInner::V8(value))
     }
 }
 
