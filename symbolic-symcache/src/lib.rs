@@ -119,8 +119,6 @@ pub use error::{Error, ErrorKind};
 pub use lookup::*;
 pub use writer::SymCacheConverter;
 
-use crate::v9::SymCacheV9;
-
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// The latest version of the file format.
@@ -170,7 +168,7 @@ impl<'data> SymCache<'data> {
         }
 
         let inner = match version.version {
-            9 => SymCacheInner::V9(SymCacheV9::parse(rest)?),
+            9 => SymCacheInner::V9(v9::SymCache::parse(rest)?),
             _ => return Err(ErrorKind::WrongVersion.into()),
         };
 
@@ -212,5 +210,5 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for SymCache<'d> {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum SymCacheInner<'data> {
-    V9(SymCacheV9<'data>),
+    V9(v9::SymCache<'data>),
 }

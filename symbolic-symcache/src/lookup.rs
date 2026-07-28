@@ -2,10 +2,7 @@ use std::fmt;
 
 use symbolic_common::{Language, Name, NameMangling};
 
-use crate::SymCacheInner;
-use crate::v9::lookup::{FilesV9, FunctionsV9, SourceLocationV9, SourceLocationsV9};
-
-use super::SymCache;
+use crate::{SymCache, SymCacheInner};
 
 impl<'data> SymCache<'data> {
     /// Looks up an instruction address in the SymCache, yielding an iterator of [`SourceLocation`]s
@@ -135,11 +132,6 @@ impl Default for Function<'_> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum SourceLocationInner<'data, 'cache> {
-    V9(SourceLocationV9<'data, 'cache>),
-}
-
 /// A source location as included in the SymCache.
 ///
 /// A `SourceLocation` represents source information about a particular instruction.
@@ -147,91 +139,13 @@ enum SourceLocationInner<'data, 'cache> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceLocation<'data, 'cache>(SourceLocationInner<'data, 'cache>);
 
-impl<'data> SourceLocation<'data, '_> {
-    /// The source line corresponding to the instruction.
-    ///
-    /// 0 denotes an unknown line number.
-    pub fn line(&self) -> u32 {
-        match self.0 {
-            SourceLocationInner::V9(ref loc) => loc.line(),
-        }
-    }
-
-    /// The source file corresponding to the instruction.
-    pub fn file(&self) -> Option<File<'data>> {
-        match self.0 {
-            SourceLocationInner::V9(ref loc) => loc.file(),
-        }
-    }
-
-    /// The function corresponding to the instruction.
-    pub fn function(&self) -> Function<'data> {
-        match self.0 {
-            SourceLocationInner::V9(ref loc) => loc.function(),
-        }
-    }
-
-    // TODO: maybe forward some of the `File` and `Function` accessors, such as:
-    // `function_name` or `full_path` for convenience.
-}
-
-impl<'data, 'cache> From<SourceLocationV9<'data, 'cache>> for SourceLocation<'data, 'cache> {
-    fn from(value: SourceLocationV9<'data, 'cache>) -> Self {
-        Self(SourceLocationInner::V9(value))
-    }
-}
-
-#[derive(Debug, Clone)]
-enum SourceLocationsInner<'data, 'cache> {
-    V9(SourceLocationsV9<'data, 'cache>),
-}
-
 /// An Iterator that yields [`SourceLocation`]s, representing an inlining hierarchy.
 #[derive(Debug, Clone)]
 pub struct SourceLocations<'data, 'cache>(SourceLocationsInner<'data, 'cache>);
 
-impl<'data, 'cache> Iterator for SourceLocations<'data, 'cache> {
-    type Item = SourceLocation<'data, 'cache>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.0 {
-            SourceLocationsInner::V9(ref mut locations) => {
-                locations.next().map(SourceLocation::from)
-            }
-        }
-    }
-}
-
-impl<'data, 'cache> From<SourceLocationsV9<'data, 'cache>> for SourceLocations<'data, 'cache> {
-    fn from(value: SourceLocationsV9<'data, 'cache>) -> Self {
-        Self(SourceLocationsInner::V9(value))
-    }
-}
-
-#[derive(Debug, Clone)]
-enum FunctionsInner<'data> {
-    V9(FunctionsV9<'data>),
-}
-
 /// Iterator returned by [`SymCache::functions`]; see documentation there.
 #[derive(Debug, Clone)]
 pub struct Functions<'data>(FunctionsInner<'data>);
-
-impl<'data> Iterator for Functions<'data> {
-    type Item = Function<'data>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.0 {
-            FunctionsInner::V9(ref mut functions) => functions.next(),
-        }
-    }
-}
-
-impl<'data> From<FunctionsV9<'data>> for Functions<'data> {
-    fn from(value: FunctionsV9<'data>) -> Self {
-        Self(FunctionsInner::V9(value))
-    }
-}
 
 /// A helper struct for printing the functions contained in a symcache.
 ///
@@ -253,30 +167,9 @@ impl fmt::Debug for FunctionsDebug<'_> {
     }
 }
 
-#[derive(Debug, Clone)]
-enum FilesInner<'data> {
-    V9(FilesV9<'data>),
-}
-
 /// Iterator returned by [`SymCache::files`]; see documentation there.
 #[derive(Debug, Clone)]
 pub struct Files<'data>(FilesInner<'data>);
-
-impl<'data> Iterator for Files<'data> {
-    type Item = File<'data>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.0 {
-            FilesInner::V9(ref mut files) => files.next(),
-        }
-    }
-}
-
-impl<'data> From<FilesV9<'data>> for Files<'data> {
-    fn from(value: FilesV9<'data>) -> Self {
-        Self(FilesInner::V9(value))
-    }
-}
 
 /// A helper struct for printing the files contained in a symcache.
 ///
@@ -296,3 +189,114 @@ impl fmt::Debug for FilesDebug<'_> {
         Ok(())
     }
 }
+
+macro_rules! impl_version {
+    ($([$version:ident, $module:ident]),+) => {
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        enum SourceLocationInner<'data, 'cache> {
+            $($version(crate::$module::lookup::SourceLocation<'data, 'cache>),)+
+        }
+
+        impl<'data> SourceLocation<'data, '_> {
+            /// The source line corresponding to the instruction.
+            ///
+            /// 0 denotes an unknown line number.
+            pub fn line(&self) -> u32 {
+                match self.0 {
+                    $(SourceLocationInner::$version(ref loc) => loc.line(),)+
+                }
+            }
+
+            /// The source file corresponding to the instruction.
+            pub fn file(&self) -> Option<File<'data>> {
+                match self.0 {
+                    $(SourceLocationInner::$version(ref loc) => loc.file(),)+
+                }
+            }
+
+            /// The function corresponding to the instruction.
+            pub fn function(&self) -> Function<'data> {
+                match self.0 {
+                    $(SourceLocationInner::$version(ref loc) => loc.function(),)+
+                }
+            }
+        }
+
+        #[derive(Debug, Clone)]
+        enum SourceLocationsInner<'data, 'cache> {
+            $($version(crate::$module::lookup::SourceLocations<'data, 'cache>),)+
+        }
+
+        impl<'data, 'cache> Iterator for SourceLocations<'data, 'cache> {
+            type Item = SourceLocation<'data, 'cache>;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                match self.0 {
+                    $(SourceLocationsInner::$version(ref mut locations) => locations.next().map(From::from),)+
+                }
+            }
+        }
+
+        #[derive(Debug, Clone)]
+        enum FunctionsInner<'data> {
+            $($version(crate::$module::lookup::Functions<'data>),)+
+        }
+
+        impl<'data> Iterator for Functions<'data> {
+            type Item = Function<'data>;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                match self.0 {
+                    $(FunctionsInner::$version(ref mut functions) => functions.next().map(From::from),)+
+                }
+            }
+        }
+
+        #[derive(Debug, Clone)]
+        enum FilesInner<'data> {
+            $($version(crate::$module::lookup::Files<'data>),)+
+        }
+
+        impl<'data> Iterator for Files<'data> {
+            type Item = File<'data>;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                match self.0 {
+                    $(FilesInner::$version(ref mut files) => files.next().map(From::from),)+
+                }
+            }
+        }
+
+        $(
+            impl<'data, 'cache> From<crate::$module::lookup::SourceLocations<'data, 'cache>>
+                for SourceLocations<'data, 'cache>
+            {
+                fn from(value: crate::$module::lookup::SourceLocations<'data, 'cache>) -> Self {
+                    Self(SourceLocationsInner::$version(value))
+                }
+            }
+
+            impl<'data, 'cache> From<crate::$module::lookup::SourceLocation<'data, 'cache>>
+                for SourceLocation<'data, 'cache>
+            {
+                fn from(value: crate::$module::lookup::SourceLocation<'data, 'cache>) -> Self {
+                    Self(SourceLocationInner::$version(value))
+                }
+            }
+
+            impl<'data> From<crate::$module::lookup::Functions<'data>> for Functions<'data> {
+                fn from(value: crate::$module::lookup::Functions<'data>) -> Self {
+                    Self(FunctionsInner::$version(value))
+                }
+            }
+
+            impl<'data> From<crate::$module::lookup::Files<'data>> for Files<'data> {
+                fn from(value: crate::$module::lookup::Files<'data>) -> Self {
+                    Self(FilesInner::$version(value))
+                }
+            }
+        )+
+    };
+}
+
+impl_version!([V9, v9]);

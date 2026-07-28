@@ -1,17 +1,16 @@
 use symbolic_common::Language;
 
-use crate::raw::v9 as raw;
-use crate::v9::SymCacheV9;
+use crate::v9::{SymCache, raw};
 use crate::{File, Function};
 
-impl<'data> SymCacheV9<'data> {
-    /// Looks up an instruction address in the SymCacheV9, yielding an iterator of [`SourceLocationV9`]s
+impl<'data> SymCache<'data> {
+    /// Looks up an instruction address in the v9 `SymCache`, yielding an iterator of [`SourceLocation`]s
     /// representing a hierarchy of inlined function calls.
-    pub(crate) fn lookup(&self, addr: u64) -> SourceLocationsV9<'data, '_> {
+    pub fn lookup(&self, addr: u64) -> SourceLocations<'data, '_> {
         let addr = match u32::try_from(addr) {
             Ok(addr) => addr,
             Err(_) => {
-                return SourceLocationsV9 {
+                return SourceLocations {
                     cache: self,
                     source_location_idx: u32::MAX,
                 };
@@ -31,13 +30,13 @@ impl<'data> SymCacheV9<'data> {
             }
         }
 
-        SourceLocationsV9 {
+        SourceLocations {
             cache: self,
             source_location_idx,
         }
     }
 
-    pub(crate) fn get_file(&self, file_idx: u32) -> Option<File<'data>> {
+    pub fn get_file(&self, file_idx: u32) -> Option<File<'data>> {
         let raw_file = self.files.get(file_idx as usize)?;
         Some(File {
             comp_dir: self.get_string(raw_file.comp_dir_offset),
@@ -49,7 +48,7 @@ impl<'data> SymCacheV9<'data> {
         })
     }
 
-    pub(crate) fn get_function(&self, function_idx: u32) -> Option<Function<'data>> {
+    pub fn get_function(&self, function_idx: u32) -> Option<Function<'data>> {
         let raw_function = self.functions.get(function_idx as usize)?;
         Some(Function {
             name: self.get_string(raw_function.name_offset).unwrap_or("?"),
@@ -58,71 +57,71 @@ impl<'data> SymCacheV9<'data> {
         })
     }
 
-    /// An iterator over the functions in this SymCacheV9.
+    /// An iterator over the functions in this SymCache.
     ///
     /// Only functions with a valid entry pc, i.e., one not equal to `u32::MAX`,
     /// will be returned.
     /// Note that functions are *not* returned ordered by name or entry pc,
     /// but in insertion order, which is essentially random.
-    pub(crate) fn functions(&self) -> FunctionsV9<'data> {
-        FunctionsV9 {
+    pub fn functions(&self) -> Functions<'data> {
+        Functions {
             cache: self.clone(),
             function_idx: 0,
         }
     }
 
-    /// An iterator over the files in this SymCacheV9.
+    /// An iterator over the files in this SymCache.
     ///
     /// Note that files are *not* returned ordered by name or full path,
     /// but in insertion order, which is essentially random.
-    pub(crate) fn files(&self) -> FilesV9<'data> {
-        FilesV9 {
+    pub fn files(&self) -> Files<'data> {
+        Files {
             cache: self.clone(),
             file_idx: 0,
         }
     }
 }
 
-/// A source location as included in the SymCacheV9.
+/// A source location as included in the SymCache.
 ///
 /// A `SourceLocation` represents source information about a particular instruction.
 /// It always has a `[Function]` associated with it and may also have a `[File]` and a line number.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct SourceLocationV9<'data, 'cache> {
-    pub(crate) cache: &'cache SymCacheV9<'data>,
-    pub(crate) source_location: &'data raw::SourceLocation,
+pub struct SourceLocation<'data, 'cache> {
+    pub cache: &'cache SymCache<'data>,
+    pub source_location: &'data raw::SourceLocation,
 }
 
-impl<'data> SourceLocationV9<'data, '_> {
+impl<'data> SourceLocation<'data, '_> {
     /// The source line corresponding to the instruction.
     ///
     /// 0 denotes an unknown line number.
-    pub(crate) fn line(&self) -> u32 {
+    pub fn line(&self) -> u32 {
         self.source_location.line
     }
 
     /// The source file corresponding to the instruction.
-    pub(crate) fn file(&self) -> Option<File<'data>> {
+    pub fn file(&self) -> Option<File<'data>> {
         self.cache.get_file(self.source_location.file_idx)
     }
 
     /// The function corresponding to the instruction.
-    pub(crate) fn function(&self) -> Function<'data> {
+    pub fn function(&self) -> Function<'data> {
         self.cache
             .get_function(self.source_location.function_idx)
             .unwrap_or_default()
     }
 }
 
-/// An Iterator that yields [`SourceLocationV9`]s, representing an inlining hierarchy.
+/// An Iterator that yields [`SourceLocation`]s, representing an inlining hierarchy.
 #[derive(Debug, Clone)]
-pub(crate) struct SourceLocationsV9<'data, 'cache> {
-    pub(crate) cache: &'cache SymCacheV9<'data>,
-    pub(crate) source_location_idx: u32,
+pub struct SourceLocations<'data, 'cache> {
+    pub cache: &'cache SymCache<'data>,
+    pub source_location_idx: u32,
 }
 
-impl<'data, 'cache> Iterator for SourceLocationsV9<'data, 'cache> {
-    type Item = SourceLocationV9<'data, 'cache>;
+impl<'data, 'cache> Iterator for SourceLocations<'data, 'cache> {
+    type Item = SourceLocation<'data, 'cache>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.source_location_idx == u32::MAX {
@@ -133,7 +132,7 @@ impl<'data, 'cache> Iterator for SourceLocationsV9<'data, 'cache> {
             .get(self.source_location_idx as usize)
             .map(|source_location| {
                 self.source_location_idx = source_location.inlined_into_idx;
-                SourceLocationV9 {
+                SourceLocation {
                     cache: self.cache,
                     source_location,
                 }
@@ -141,14 +140,14 @@ impl<'data, 'cache> Iterator for SourceLocationsV9<'data, 'cache> {
     }
 }
 
-/// Iterator returned by [`SymCacheV9::functions`]; see documentation there.
+/// Iterator returned by [`SymCache::functions`]; see documentation there.
 #[derive(Debug, Clone)]
-pub(crate) struct FunctionsV9<'data> {
-    cache: SymCacheV9<'data>,
+pub struct Functions<'data> {
+    cache: SymCache<'data>,
     function_idx: u32,
 }
 
-impl<'data> Iterator for FunctionsV9<'data> {
+impl<'data> Iterator for Functions<'data> {
     type Item = Function<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -171,14 +170,14 @@ impl<'data> Iterator for FunctionsV9<'data> {
     }
 }
 
-/// Iterator returned by [`SymCacheV9::files`]; see documentation there.
+/// Iterator returned by [`SymCache::files`]; see documentation there.
 #[derive(Debug, Clone)]
-pub(crate) struct FilesV9<'data> {
-    cache: SymCacheV9<'data>,
+pub struct Files<'data> {
+    cache: SymCache<'data>,
     file_idx: u32,
 }
 
-impl<'data> Iterator for FilesV9<'data> {
+impl<'data> Iterator for Files<'data> {
     type Item = File<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {

@@ -9,7 +9,7 @@ use symbolic_common::{Arch, DebugId};
 use symbolic_debuginfo::{DebugSession, FileFormat, Function, ObjectLike, Symbol};
 use watto::{Pod, StringTable, Writer};
 
-use crate::raw::v9::NO_SOURCE_LOCATION;
+use crate::v9;
 use crate::{Error, ErrorKind};
 use crate::{raw, transform};
 
@@ -32,18 +32,18 @@ pub struct SymCacheConverter<'a> {
     transformers: transform::Transformers<'a>,
 
     string_table: StringTable,
-    /// The set of all [`raw::v9::File`]s that have been added to this `Converter`.
-    files: IndexSet<raw::v9::File>,
-    /// The set of all [`raw::v9::Function`]s that have been added to this `Converter`.
-    functions: IndexSet<raw::v9::Function>,
-    /// The set of [`raw::v9::SourceLocation`]s used in this `Converter` that are only used as
+    /// The set of all [`v9::raw::File`]s that have been added to this `Converter`.
+    files: IndexSet<v9::raw::File>,
+    /// The set of all [`v9::raw::Function`]s that have been added to this `Converter`.
+    functions: IndexSet<v9::raw::Function>,
+    /// The set of [`v9::raw::SourceLocation`]s used in this `Converter` that are only used as
     /// "call locations", i.e. which are only referred to from `inlined_into_idx`.
-    call_locations: IndexSet<raw::v9::SourceLocation>,
-    /// A map from code ranges to the [`raw::v9::SourceLocation`]s they correspond to.
+    call_locations: IndexSet<v9::raw::SourceLocation>,
+    /// A map from code ranges to the [`v9::raw::SourceLocation`]s they correspond to.
     ///
     /// Only the starting address of a range is saved, the end address is given implicitly
     /// by the start address of the next range.
-    ranges: BTreeMap<u32, raw::v9::SourceLocation>,
+    ranges: BTreeMap<u32, v9::raw::SourceLocation>,
 
     /// This is highest addr that we know is outside of a valid function.
     /// Functions have an explicit end, while Symbols implicitly extend to infinity.
@@ -160,7 +160,7 @@ impl<'a> SymCacheConverter<'a> {
             let name_offset = string_table.insert(function_name) as u32;
 
             let lang = language as u32;
-            let (fun_idx, _) = self.functions.insert_full(raw::v9::Function {
+            let (fun_idx, _) = self.functions.insert_full(v9::raw::Function {
                 name_offset,
                 _comp_dir_offset: u32::MAX,
                 entry_pc,
@@ -260,7 +260,7 @@ impl<'a> SymCacheConverter<'a> {
                 .srcsrv_revision
                 .map_or(u32::MAX, |r| string_table.insert(&r) as u32);
 
-            let (file_idx, _) = self.files.insert_full(raw::v9::File {
+            let (file_idx, _) = self.files.insert_full(v9::raw::File {
                 name_offset,
                 directory_offset,
                 comp_dir_offset,
@@ -269,7 +269,7 @@ impl<'a> SymCacheConverter<'a> {
                 srcsrv_revision_offset,
             });
 
-            let source_location = raw::v9::SourceLocation {
+            let source_location = v9::raw::SourceLocation {
                 file_idx: file_idx as u32,
                 line: location.line,
                 function_idx,
@@ -371,7 +371,7 @@ impl<'a> SymCacheConverter<'a> {
 
         if !function.inline {
             // add the bare minimum of information for the function if there isn't any.
-            insert_source_location(&mut self.ranges, entry_pc, || raw::v9::SourceLocation {
+            insert_source_location(&mut self.ranges, entry_pc, || v9::raw::SourceLocation {
                 file_idx: u32::MAX,
                 line: 0,
                 function_idx,
@@ -404,7 +404,7 @@ impl<'a> SymCacheConverter<'a> {
         // If the next function starts right at this function's end, that's no trouble,
         // it will just overwrite this mapping with one of its ranges.
         if let btree_map::Entry::Vacant(vacant_entry) = self.ranges.entry(function_end) {
-            vacant_entry.insert(NO_SOURCE_LOCATION);
+            vacant_entry.insert(v9::raw::NO_SOURCE_LOCATION);
         }
     }
 
@@ -434,7 +434,7 @@ impl<'a> SymCacheConverter<'a> {
         // Insert a source location for the symbol, overwriting `NO_SOURCE_LOCATION` sentinel
         // values but not actual source locations coming from e.g. functions.
         insert_source_location(&mut self.ranges, symbol.address as u32, || {
-            let function = raw::v9::Function {
+            let function = v9::raw::Function {
                 name_offset: name_idx,
                 _comp_dir_offset: u32::MAX,
                 entry_pc: symbol.address as u32,
@@ -442,7 +442,7 @@ impl<'a> SymCacheConverter<'a> {
             };
             let function_idx = self.functions.insert_full(function).0 as u32;
 
-            raw::v9::SourceLocation {
+            v9::raw::SourceLocation {
                 file_idx: u32::MAX,
                 line: 0,
                 function_idx,
@@ -467,7 +467,7 @@ impl<'a> SymCacheConverter<'a> {
         if symbol.size > 0 {
             let end_address = (symbol.address + symbol.size) as u32;
             if let btree_map::Entry::Vacant(vacant_entry) = self.ranges.entry(end_address) {
-                vacant_entry.insert(NO_SOURCE_LOCATION);
+                vacant_entry.insert(v9::raw::NO_SOURCE_LOCATION);
             }
         }
     }
@@ -487,7 +487,7 @@ impl<'a> SymCacheConverter<'a> {
             // the largest range at some point.
             match self.ranges.entry(last_addr) {
                 btree_map::Entry::Vacant(entry) => {
-                    entry.insert(NO_SOURCE_LOCATION);
+                    entry.insert(v9::raw::NO_SOURCE_LOCATION);
                 }
                 btree_map::Entry::Occupied(_entry) => {
                     // BUG:
@@ -510,7 +510,7 @@ impl<'a> SymCacheConverter<'a> {
         writer.write_all(version_info.as_bytes())?;
 
         // Write v9 Header
-        let header = raw::v9::Header {
+        let header = v9::raw::Header {
             debug_id: self.debug_id,
             arch: self.arch as u32,
             num_files,
@@ -561,16 +561,16 @@ impl<'a> SymCacheConverter<'a> {
 /// starting at that same address, we want to evict that sentinel, but we wouldn't want to
 /// evict source locations carrying actual information.
 fn insert_source_location<K, F>(
-    source_locations: &mut BTreeMap<K, raw::v9::SourceLocation>,
+    source_locations: &mut BTreeMap<K, v9::raw::SourceLocation>,
     key: K,
     val: F,
 ) where
     K: Ord,
-    F: FnOnce() -> raw::v9::SourceLocation,
+    F: FnOnce() -> v9::raw::SourceLocation,
 {
     if source_locations
         .get(&key)
-        .is_none_or(|sl| *sl == NO_SOURCE_LOCATION)
+        .is_none_or(|sl| *sl == v9::raw::NO_SOURCE_LOCATION)
     {
         source_locations.insert(key, val());
     }
