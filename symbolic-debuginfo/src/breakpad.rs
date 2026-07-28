@@ -11,14 +11,12 @@ use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameMangling};
 
-use crate::ParseObjectOptions;
-use crate::Type;
-use crate::TypeRef;
 use crate::base::*;
-use crate::function_builder::FunctionBuilderError;
-use crate::function_builder::FunctionBuilderErrorKind;
-use crate::function_builder::{FunctionBuilder, FunctionBuilderInlinee};
+use crate::function_builder::{
+    FunctionBuilder, FunctionBuilderError, FunctionBuilderErrorKind, FunctionBuilderInlinee,
+};
 use crate::sourcebundle::SourceFileDescriptor;
+use crate::{ParseObjectOptions, Type, TypeRef};
 
 #[derive(Clone, Debug)]
 struct LineOffsets<'data> {

@@ -493,7 +493,7 @@ impl<'d> UnitRef<'d, '_> {
         }
     }
 
-    /// Resolves a attribute unit ref or debug info ref to a [`UnitSectionOffset`].
+    /// Resolves a attribute unit ref or debug info ref to a [`DwarfTypeRef`].
     ///
     /// Returns `None` for attributes not containing a reference or unsupported references.
     fn to_type_ref(self, attr: Attribute<'d>) -> Option<DwarfTypeRef> {
@@ -1886,6 +1886,8 @@ impl<'data> DwarfDebugSession<'data> {
     /// Resolves a [`TypeRef`] in this debug file.
     ///
     /// The [`TypeRef`] must have been previously acquired from the same debug file.
+    /// This is a more lenient constraint than [`DebugSession::lookup_type`] which requires the [`TypeRef`]
+    /// to be acquired from the same session.
     ///
     /// See also: [`DebugSession::lookup_type`].
     pub fn lookup_type(&self, ty: &TypeRef) -> Result<Option<Type<'_>>, DwarfError> {
