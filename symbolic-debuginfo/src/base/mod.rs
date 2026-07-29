@@ -5,9 +5,12 @@ use std::str::FromStr;
 
 use symbolic_common::{Arch, CodeId, DebugId, Name, clean_path, join_path};
 
+use crate::ParseObjectOptions;
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::{ParseObjectOptions, TypeRef};
-use crate::{Type, variable};
+
+mod variable;
+
+pub use self::variable::*;
 
 pub(crate) trait Parse<'data>: Sized {
     type Error;
