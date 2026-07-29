@@ -1,7 +1,6 @@
-pub(crate) mod lookup;
+pub mod lookup;
+pub mod raw;
 
-// V9 uses its own raw format with revision support.
-use crate::raw::v9 as raw;
 use crate::{ErrorKind, Result};
 
 use symbolic_common::Arch;
@@ -9,16 +8,16 @@ use watto::{Pod, StringTable, align_to};
 
 /// The serialized SymCache V9 binary format.
 #[derive(Clone, PartialEq, Eq)]
-pub(crate) struct SymCacheV9<'data> {
-    pub(crate) header: &'data raw::Header,
-    pub(crate) files: &'data [raw::File],
-    pub(crate) functions: &'data [raw::Function],
-    pub(crate) source_locations: &'data [raw::SourceLocation],
-    pub(crate) ranges: &'data [raw::Range],
-    pub(crate) string_bytes: &'data [u8],
+pub struct SymCache<'data> {
+    pub header: &'data raw::Header,
+    pub files: &'data [raw::File],
+    pub functions: &'data [raw::Function],
+    pub source_locations: &'data [raw::SourceLocation],
+    pub ranges: &'data [raw::Range],
+    pub string_bytes: &'data [u8],
 }
 
-impl std::fmt::Debug for SymCacheV9<'_> {
+impl std::fmt::Debug for SymCache<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SymCache")
             .field("version", &9)
@@ -33,7 +32,7 @@ impl std::fmt::Debug for SymCacheV9<'_> {
     }
 }
 
-impl<'data> SymCacheV9<'data> {
+impl<'data> SymCache<'data> {
     pub fn parse(buf: &'data [u8]) -> Result<Self> {
         let (header, rest) = raw::Header::ref_from_prefix(buf).ok_or(ErrorKind::InvalidHeader)?;
 

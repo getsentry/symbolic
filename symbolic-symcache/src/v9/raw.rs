@@ -1,6 +1,7 @@
 //! The raw SymCache V9 binary file format internals.
 //!
 //! V9 adds source server information support to the File structure.
+
 use watto::Pod;
 
 use symbolic_common::DebugId;
@@ -8,7 +9,7 @@ use symbolic_common::DebugId;
 /// This [`SourceLocation`] is a sentinel value that says that no source location is present here.
 /// This is used to push an "end" range that does not resolve to a valid source location.
 /// Otherwise, the ranges would implicitly extend to infinity.
-pub(crate) const NO_SOURCE_LOCATION: SourceLocation = SourceLocation {
+pub const NO_SOURCE_LOCATION: SourceLocation = SourceLocation {
     file_idx: u32::MAX,
     line: u32::MAX,
     function_idx: u32::MAX,
@@ -18,69 +19,69 @@ pub(crate) const NO_SOURCE_LOCATION: SourceLocation = SourceLocation {
 /// The header of a symcache file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[repr(C)]
-pub(crate) struct Header {
+pub struct Header {
     /// Debug identifier of the object file.
-    pub(crate) debug_id: DebugId,
+    pub debug_id: DebugId,
     /// CPU architecture of the object file.
     ///
     /// This cannot be [`symbolic_common::Arch`] because
     /// not every bit pattern is valid for that type.
-    pub(crate) arch: u32,
+    pub arch: u32,
     /// Number of included [`File`]s.
-    pub(crate) num_files: u32,
+    pub num_files: u32,
     /// Number of included [`Function`]s.
-    pub(crate) num_functions: u32,
+    pub num_functions: u32,
     /// Number of included [`SourceLocation`]s.
-    pub(crate) num_source_locations: u32,
+    pub num_source_locations: u32,
     /// Number of included [`Range`]s.
-    pub(crate) num_ranges: u32,
+    pub num_ranges: u32,
     /// Total number of bytes used for string data.
-    pub(crate) string_bytes: u32,
+    pub string_bytes: u32,
 
     /// Some reserved space in the header for future extensions that would not require a
     /// completely new parsing method.
-    pub(crate) _reserved: [u8; 16],
+    pub _reserved: [u8; 16],
 }
 
 /// Serialized Function metadata in the SymCache.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[repr(C)]
-pub(crate) struct Function {
+pub struct Function {
     /// The functions name (reference to a [`String`]).
-    pub(crate) name_offset: u32,
+    pub name_offset: u32,
     /// The compilation directory (reference to a [`String`]).
     ///
     /// This is retained for binary compatibility; all path information
     /// is contained in [`File`].
-    pub(crate) _comp_dir_offset: u32,
+    pub _comp_dir_offset: u32,
     /// The first address covered by this function.
-    pub(crate) entry_pc: u32,
+    pub entry_pc: u32,
     /// The language of the function.
-    pub(crate) lang: u32,
+    pub lang: u32,
 }
 
 /// Serialized File in the SymCache (V9 format with revision support).
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[repr(C)]
-pub(crate) struct File {
+pub struct File {
     /// The optional compilation directory prefix (reference to a [`String`]).
-    pub(crate) comp_dir_offset: u32,
+    pub comp_dir_offset: u32,
     /// The optional directory prefix (reference to a [`String`]).
-    pub(crate) directory_offset: u32,
+    pub directory_offset: u32,
     /// The file path (reference to a [`String`]).
-    pub(crate) name_offset: u32,
+    pub name_offset: u32,
     /// The optional base name on the source server (reference to a [`String`]).
     ///
     /// This field was added in version 9.
-    pub(crate) srcsrv_name_offset: u32,
+    pub srcsrv_name_offset: u32,
     /// The optional path to the file on the source server (reference to a [`String`]).
     ///
     /// This field was added in version 9.
-    pub(crate) srcsrv_dir_offset: u32,
+    pub srcsrv_dir_offset: u32,
     /// The optional VCS revision (reference to a [`String`]).
     ///
     /// This field was added in version 9.
-    pub(crate) srcsrv_revision_offset: u32,
+    pub srcsrv_revision_offset: u32,
 }
 
 /// A location in a source file, comprising a file, a line, a function, and
@@ -92,16 +93,16 @@ pub(crate) struct File {
 /// but have different inline information.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 #[repr(C)]
-pub(crate) struct SourceLocation {
+pub struct SourceLocation {
     /// The optional source file (reference to a [`File`]).
-    pub(crate) file_idx: u32,
+    pub file_idx: u32,
     /// The line number.
-    pub(crate) line: u32,
+    pub line: u32,
     /// The function (reference to a [`Function`]).
-    pub(crate) function_idx: u32,
+    pub function_idx: u32,
     /// The caller source location in case this location was inlined
     /// (reference to another [`SourceLocation`]).
-    pub(crate) inlined_into_idx: u32,
+    pub inlined_into_idx: u32,
 }
 
 /// A representation of a code range in the SymCache.
@@ -110,7 +111,7 @@ pub(crate) struct SourceLocation {
 /// by the next range's start.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[repr(C)]
-pub(crate) struct Range(pub(crate) u32);
+pub struct Range(pub u32);
 
 unsafe impl Pod for Header {}
 unsafe impl Pod for Function {}

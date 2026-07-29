@@ -1,7 +1,4 @@
 //! The raw SymCache binary file format internals.
-//!
-
-pub(crate) mod v9;
 
 use watto::Pod;
 
