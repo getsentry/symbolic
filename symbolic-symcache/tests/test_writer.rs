@@ -355,6 +355,62 @@ fn test_trailing_marker() -> Result<(), Error> {
     Ok(())
 }
 
+fn serialize_fixture_with_variables(path: &str) -> Result<Vec<u8>, Error> {
+    let buffer = ByteView::open(fixture(path))?;
+    let object = Object::parse(&buffer)?;
+
+    let mut symcache = Vec::new();
+    let mut converter = SymCacheConverter::new();
+    converter.set_collect_variables(true);
+    converter.process_object(&object)?;
+    converter.serialize(&mut Cursor::new(&mut symcache))?;
+    Ok(symcache)
+}
+
+/// This test can catch padding in the raw types.
+#[test]
+fn test_variable_serialization_is_deterministic() -> Result<(), Error> {
+    let first = serialize_fixture_with_variables("linux/crash.debug")?;
+    let second = serialize_fixture_with_variables("linux/crash.debug")?;
+    assert_eq!(first, second);
+    Ok(())
+}
+
+#[test]
+fn test_empty_variable_sections() -> Result<(), Error> {
+    let buffer = serialize_fixture_with_variables("windows/crash.sym")?;
+    let symcache = SymCache::parse(&buffer)?;
+
+    insta::assert_debug_snapshot!(symcache, @r#"
+    SymCache {
+        version: 9,
+        debug_id: DebugId {
+            uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
+            appendix: 1,
+        },
+        arch: X86,
+        files: 36,
+        functions: 127,
+        source_locations: 805,
+        ranges: 805,
+        string_bytes: 7118,
+        variables: 0,
+        variable_locations: 0,
+        types: 0,
+    }
+    "#);
+
+    Ok(())
+}
+
+#[test]
+fn test_variable_cache_with_trailing_marker() -> Result<(), Error> {
+    let mut buffer = serialize_fixture_with_variables("linux/crash.debug")?;
+    buffer.extend_from_slice(b"WITH_SYMBOLMAP");
+    SymCache::parse(&buffer)?;
+    Ok(())
+}
+
 /// Tests that addresses between functions are unmapped. See
 /// <https://github.com/getsentry/symbolic/pull/897>.
 #[test]

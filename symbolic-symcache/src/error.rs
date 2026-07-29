@@ -58,6 +58,24 @@ pub enum ErrorKind {
         /// Number of string bytes actually found in the cache file.
         found: usize,
     },
+    /// The variable header could not be parsed from the cache file.
+    #[error("could not read variable header")]
+    InvalidVariableHeader,
+    /// Function variables could not be parsed from the cache file.
+    #[error("could not read function variables")]
+    InvalidFunctionVariables,
+    /// Variables could not be parsed from the cache file.
+    #[error("could not read variables")]
+    InvalidVariables,
+    /// Variable locations could not be parsed from the cache file.
+    #[error("could not read variable locations")]
+    InvalidVariableLocations,
+    /// Types could not be parsed from the cache file.
+    #[error("could not read types")]
+    InvalidTypes,
+    /// The cache contains unexpected trailing data and is therefor considered invalid.
+    #[error("the cache contains trailing data")]
+    TrailingData,
 }
 
 /// An error returned when handling a [`SymCache`](crate::SymCache).

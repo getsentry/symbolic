@@ -6,7 +6,9 @@ use std::io::Write;
 
 use indexmap::IndexSet;
 use symbolic_common::{Arch, DebugId};
-use symbolic_debuginfo::{DebugSession, FileFormat, Function, ObjectLike, Symbol};
+use symbolic_debuginfo::{
+    self as di, DebugSession, FileFormat, Function, ObjectLike, Symbol, TypeRef,
+};
 use watto::{Pod, StringTable, Writer};
 
 use crate::v9;
@@ -28,6 +30,9 @@ pub struct SymCacheConverter<'a> {
     /// will inform us if we should undecorate function names.
     is_windows_object: bool,
 
+    /// A flag whether variable information from functions should be embedded into the symcache.
+    collect_variables: bool,
+
     /// A list of transformers that are used to transform each function / source location.
     transformers: transform::Transformers<'a>,
 
@@ -44,6 +49,18 @@ pub struct SymCacheConverter<'a> {
     /// Only the starting address of a range is saved, the end address is given implicitly
     /// by the start address of the next range.
     ranges: BTreeMap<u32, v9::raw::SourceLocation>,
+
+    /// The set of variables tied to a function.
+    ///
+    /// This is keyed with the function id and contains a list of variables associated with that function,
+    /// importantly the variables from inlined functions are attributed to their base function.
+    function_variables: BTreeMap<u32, Vec<v9::raw::Variable>>,
+    /// A list of all variable locations.
+    ///
+    /// Variable locations are stored in continous chunks per variable.
+    variable_locations: Vec<v9::raw::VariableLocation>,
+    /// The set of all types referenced from variables.
+    types: IndexSet<v9::raw::Type>,
 
     /// This is highest addr that we know is outside of a valid function.
     /// Functions have an explicit end, while Symbols implicitly extend to infinity.
@@ -79,6 +96,11 @@ impl<'a> SymCacheConverter<'a> {
         self.debug_id = debug_id;
     }
 
+    /// Sets whether the symcache should store function variable information.
+    pub fn set_collect_variables(&mut self, variables: bool) {
+        self.collect_variables = variables;
+    }
+
     // Methods processing symbolic-debuginfo [`ObjectLike`] below:
     // Feel free to move these to a separate file.
 
@@ -102,7 +124,7 @@ impl<'a> SymCacheConverter<'a> {
         for function in session.functions() {
             let function = function.map_err(|e| Error::new(ErrorKind::BadDebugFile, e))?;
 
-            self.process_symbolic_function(&function);
+            self.process_symbolic_function_recursive(&session, &function, &[(0x0, u32::MAX)], 0, 0);
         }
 
         for symbol in object.symbols() {
@@ -116,7 +138,13 @@ impl<'a> SymCacheConverter<'a> {
 
     /// Processes an individual [`Function`], adding its line information to the converter.
     pub fn process_symbolic_function(&mut self, function: &Function<'_>) {
-        self.process_symbolic_function_recursive(function, &[(0x0, u32::MAX)]);
+        self.process_symbolic_function_recursive(
+            &NoopTypeResolver,
+            function,
+            &[(0x0, u32::MAX)],
+            0,
+            0,
+        );
     }
 
     /// Processes an individual [`Function`], adding its line information to the converter.
@@ -124,10 +152,12 @@ impl<'a> SymCacheConverter<'a> {
     /// `call_locations` is a non-empty sorted list of `(address, call_location index)` pairs.
     fn process_symbolic_function_recursive(
         &mut self,
+        tr: &dyn TypeResolver,
         function: &Function<'_>,
         call_locations: &[(u32, u32)],
+        base_idx: u32,
+        fn_depth: u16,
     ) {
-        let string_table = &mut self.string_table;
         // skip over empty functions or functions whose address is too large to fit in a u32
         if function.size == 0 || function.address > u32::MAX as u64 {
             return;
@@ -157,7 +187,7 @@ impl<'a> SymCacheConverter<'a> {
                 &function.name
             };
 
-            let name_offset = string_table.insert(function_name) as u32;
+            let name_offset = self.string_table.insert(function_name) as u32;
 
             let lang = language as u32;
             let (fun_idx, _) = self.functions.insert_full(v9::raw::Function {
@@ -168,6 +198,16 @@ impl<'a> SymCacheConverter<'a> {
             });
             fun_idx as u32
         };
+
+        let base_idx = match fn_depth {
+            // If the depth is zero, the current function is a 'base' function,
+            // it has not been inlined into another function.
+            0 => function_idx,
+            // If the depth is non-zero, it means were are N levels deep in resolving
+            // inlinees. So keep the existing base.
+            _ => base_idx,
+        };
+        self.process_symbolic_variables(tr, function, base_idx, fn_depth);
 
         // We can divide the instructions in a function into two buckets:
         //  (1) Instructions which are part of an inlined function call, and
@@ -210,6 +250,8 @@ impl<'a> SymCacheConverter<'a> {
         // This will be the list we pass to our inlinees as the call_locations argument.
         // This list is ordered by address by construction.
         let mut callee_call_locations = Vec::new();
+
+        let string_table = &mut self.string_table;
 
         // Iterate over the line records.
         while let Some(line) = next_line.take() {
@@ -384,7 +426,13 @@ impl<'a> SymCacheConverter<'a> {
         // Process our inlinees.
         if !callee_call_locations.is_empty() {
             for inlinee in &function.inlinees {
-                self.process_symbolic_function_recursive(inlinee, &callee_call_locations);
+                self.process_symbolic_function_recursive(
+                    tr,
+                    inlinee,
+                    &callee_call_locations,
+                    base_idx,
+                    fn_depth + 1,
+                );
             }
         }
 
@@ -406,6 +454,114 @@ impl<'a> SymCacheConverter<'a> {
         if let btree_map::Entry::Vacant(vacant_entry) = self.ranges.entry(function_end) {
             vacant_entry.insert(v9::raw::NO_SOURCE_LOCATION);
         }
+    }
+
+    /// Collects all variables from a [`Function`].
+    ///
+    /// This takes the current `function`, which may have been inlined into an `outer` function.
+    /// If the passed function is not inlined, then `base_idx` must point to the index of `function`
+    /// and depth is `0`.
+    fn process_symbolic_variables(
+        &mut self,
+        tr: &dyn TypeResolver,
+        function: &Function<'_>,
+        base_idx: u32,
+        fn_depth: u16,
+    ) {
+        if !self.collect_variables || fn_depth > u8::MAX.into() {
+            return;
+        }
+
+        for variable in &function.variables {
+            let location_idx = self.variable_locations.len();
+            for location in &variable.locations {
+                // If the end address fits into a `u32` its components also fit.
+                if location
+                    .address
+                    .checked_add(location.size)
+                    .is_none_or(|v| v > u32::MAX as u64)
+                {
+                    continue;
+                }
+
+                let (kind, data) = match location.location {
+                    di::Location::Register { id } => (0, id.into()),
+                    di::Location::FrameOffset { offset } => (1, offset as i32),
+                };
+
+                self.variable_locations.push(v9::raw::VariableLocation {
+                    start: location.address as u32,
+                    size: location.size as u32,
+                    kind,
+                    data,
+                    _reserved: [0; _],
+                });
+            }
+
+            let num_locations = self.variable_locations.len() - location_idx;
+            if num_locations == 0 {
+                // No locations, no need to keep the variable around.
+                continue;
+            }
+
+            // Locations must already be sorted, this is an invariant on the `Function`.
+            debug_assert!(self.variable_locations[location_idx..].is_sorted_by_key(|v| v.start));
+
+            let type_idx = match &variable.ty {
+                Some(ty) => self.process_symbolic_type(tr, ty, 0),
+                None => u32::MAX,
+            };
+
+            let name_offset = self.string_table.insert(&variable.name) as u32;
+
+            self.function_variables
+                .entry(base_idx)
+                .or_default()
+                .push(v9::raw::Variable {
+                    name_offset,
+                    type_idx,
+                    location_idx: location_idx as u32,
+                    num_locations: num_locations as u32,
+                    depth: fn_depth as u8,
+                    kind: variable.kind as u8,
+                    _reserved: [0; _],
+                });
+        }
+    }
+
+    fn process_symbolic_type(&mut self, tr: &dyn TypeResolver, ty: &TypeRef, depth: usize) -> u32 {
+        // This really is just a preliminary limit. In the future we need to currently
+        // be able to handle recursive types such as `Foo(Option<Box<Foo>>)`. For the moment
+        // there is only support for primitive types and pointers which shouldn't be recursive.
+        const MAX_DEPTH: usize = 5;
+
+        if depth >= MAX_DEPTH {
+            return u32::MAX;
+        }
+
+        let Some(ty) = tr.lookup_type(ty) else {
+            return u32::MAX;
+        };
+
+        let ty = match ty {
+            symbolic_debuginfo::Type::Primitive(ty) => v9::raw::PrimitiveType {
+                name_offset: ty
+                    .name
+                    .map_or(u32::MAX, |n| self.string_table.insert(&n) as u32),
+                size: size(ty.size),
+                encoding: ty.encoding.map_or(u8::MAX, |e| e as u8),
+                _reserved: [0; _],
+            }
+            .into(),
+            symbolic_debuginfo::Type::Pointer(ty) => v9::raw::PointerType {
+                pointee_idx: self.process_symbolic_type(tr, &ty.pointee, depth + 1),
+                size: size(ty.size),
+                _reserved: [0; _],
+            }
+            .into(),
+        };
+
+        self.types.insert_full(ty).0 as u32
     }
 
     /// Processes an individual [`Symbol`].
@@ -518,36 +674,100 @@ impl<'a> SymCacheConverter<'a> {
             num_source_locations,
             num_ranges,
             string_bytes: string_bytes.len() as u32,
-            _reserved: [0; 16],
+            variable_header: match self.collect_variables {
+                true => v9::raw::VARIABLE_HEADER_VERSION,
+                false => 0,
+            },
+            _reserved: [0; 14],
         };
 
         writer.write_all(header.as_bytes())?;
-        writer.align_to(8)?;
 
+        writer.align_to(8)?;
         for f in self.files {
             writer.write_all(f.as_bytes())?;
         }
-        writer.align_to(8)?;
 
+        writer.align_to(8)?;
         for f in self.functions {
             writer.write_all(f.as_bytes())?;
         }
-        writer.align_to(8)?;
 
+        writer.align_to(8)?;
         for s in self.call_locations {
             writer.write_all(s.as_bytes())?;
         }
         for s in self.ranges.values() {
             writer.write_all(s.as_bytes())?;
         }
-        writer.align_to(8)?;
 
+        writer.align_to(8)?;
         for r in self.ranges.keys() {
             writer.write_all(r.as_bytes())?;
         }
-        writer.align_to(8)?;
 
+        writer.align_to(8)?;
         writer.write_all(&string_bytes)?;
+
+        if !self.collect_variables {
+            return Ok(());
+        }
+
+        let num_variables: u32 = self
+            .function_variables
+            .values()
+            .map(|v| v.len() as u32)
+            .sum();
+
+        writer.align_to(8)?;
+        writer.write_all(
+            v9::raw::VariableHeader {
+                num_variables,
+                num_variable_locations: self.variable_locations.len() as u32,
+                num_types: self.types.len() as u32,
+            }
+            .as_bytes(),
+        )?;
+
+        let function_variables = (0..header.num_functions).scan(0u32, |next_idx, function_idx| {
+            let variables = self
+                .function_variables
+                .get(&function_idx)
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]);
+
+            if variables.is_empty() {
+                return Some(v9::raw::NO_VARIABLES);
+            }
+
+            let res = v9::raw::FunctionVariables {
+                variable_idx: *next_idx,
+                num_variables: variables.len() as u32,
+            };
+            *next_idx += res.num_variables;
+            Some(res)
+        });
+        writer.align_to(8)?;
+        for fv in function_variables {
+            writer.write_all(fv.as_bytes())?;
+        }
+
+        writer.align_to(8)?;
+        for vars in self.function_variables.values() {
+            for v in vars {
+                writer.write_all(v.as_bytes())?;
+            }
+        }
+
+        writer.align_to(8)?;
+        for l in &self.variable_locations {
+            writer.write_all(l.as_bytes())?;
+        }
+
+        writer.align_to(8)?;
+        for t in self.types {
+            writer.write_all(t.as_bytes())?;
+        }
 
         Ok(())
     }
@@ -631,6 +851,38 @@ fn take_if<T>(opt: &mut Option<T>, predicate: impl FnOnce(&mut T) -> bool) -> Op
     if opt.as_mut().is_some_and(predicate) {
         opt.take()
     } else {
+        None
+    }
+}
+
+fn size(s: di::TypeSize) -> u32 {
+    match s {
+        di::TypeSize::Bytes(bytes) => bytes as u32,
+    }
+}
+
+/// A tiny helper which only exposes type information from a debug session.
+///
+/// This makes passing around a debug session much more convenient and also allows
+/// code to deal with no debug session [`NoopTypeResolver`].
+trait TypeResolver {
+    fn lookup_type(&self, ty: &TypeRef) -> Option<di::Type<'_>>;
+}
+
+impl<S> TypeResolver for S
+where
+    S: for<'session> DebugSession<'session>,
+{
+    fn lookup_type(&self, ty: &TypeRef) -> Option<di::Type<'_>> {
+        DebugSession::lookup_type(self, ty).ok().flatten()
+    }
+}
+
+/// A [`TypeResolver`] which never resolves a type.
+struct NoopTypeResolver;
+
+impl TypeResolver for NoopTypeResolver {
+    fn lookup_type(&self, _ty: &TypeRef) -> Option<di::Type<'_>> {
         None
     }
 }

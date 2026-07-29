@@ -2,9 +2,22 @@
 //!
 //! V9 adds source server information support to the File structure.
 
+use core::fmt;
+
 use watto::Pod;
 
 use symbolic_common::DebugId;
+
+/// The current [`Header::variable_header`] version.
+///
+/// On a version mismatch, the sections referenced in the [`VariableHeader`] must not be parsed.
+pub const VARIABLE_HEADER_VERSION: u16 = 1;
+
+/// This [`FunctionVariables`] is a sentinel for functions without variables.
+pub const NO_VARIABLES: FunctionVariables = FunctionVariables {
+    variable_idx: u32::MAX,
+    num_variables: 0,
+};
 
 /// This [`SourceLocation`] is a sentinel value that says that no source location is present here.
 /// This is used to push an "end" range that does not resolve to a valid source location.
@@ -38,9 +51,30 @@ pub struct Header {
     /// Total number of bytes used for string data.
     pub string_bytes: u32,
 
+    /// Version of the optional [`VariableHeader`].
+    ///
+    /// The version is `0` there is no variable header. This allows incompatible changes
+    /// to variable and type information in a symcache without requiring a new symcache version.
+    ///
+    /// Once the format is stable, the variable header will no longer be optional in symcache
+    /// version 10.
+    pub variable_header: u16,
+
     /// Some reserved space in the header for future extensions that would not require a
     /// completely new parsing method.
-    pub _reserved: [u8; 16],
+    pub _reserved: [u8; 14],
+}
+
+/// Optional header appended to the [`Header`] if the symcache contains variable information.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[repr(C)]
+pub struct VariableHeader {
+    /// Number of included [`Variable`]'s.
+    pub num_variables: u32,
+    /// Number of included [`VariableLocation`]'s.
+    pub num_variable_locations: u32,
+    /// Number of included [`Type`]'s.
+    pub num_types: u32,
 }
 
 /// Serialized Function metadata in the SymCache.
@@ -58,6 +92,19 @@ pub struct Function {
     pub entry_pc: u32,
     /// The language of the function.
     pub lang: u32,
+}
+
+/// Function variable metadata stored in a separate section.
+///
+/// An index into [`Function`]'s can also be used to lookup function variable information from this
+/// section.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct FunctionVariables {
+    /// The variable index of the first variable.
+    pub variable_idx: u32,
+    /// The amount of variables associated with the function.
+    pub num_variables: u32,
 }
 
 /// Serialized File in the SymCache (V9 format with revision support).
@@ -113,11 +160,181 @@ pub struct SourceLocation {
 #[repr(C)]
 pub struct Range(pub u32);
 
+/// A representation of a variable.
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct Variable {
+    /// The variable name (reference to a [`String`]).
+    pub name_offset: u32,
+    /// The type (reference to a [`Type`]).
+    pub type_idx: u32,
+    /// The first location associated with the variable (reference to a [`VariableLocation`]).
+    pub location_idx: u32,
+    /// The amount of locations.
+    pub num_locations: u32,
+    /// The inlined depth of the owning function.
+    ///
+    /// If `0` the variable belongs to the outermost function. This is essentially a way to track
+    /// scopes, limited to function scopes. Each level of depth is a newly nested scope.
+    ///
+    /// The depth can be recovered by tracing [`SourceLocation::inlined_into_idx`] entries.
+    pub depth: u8,
+    /// The variable kind.
+    pub kind: u8,
+    pub _reserved: [u8; 2],
+}
+
+/// A representation of a variable location.
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct VariableLocation {
+    /// First instruction address (pc) where this location is valid.
+    pub start: u32,
+    /// Size of the location, indicating the last instruction address where this location is valid.
+    pub size: u32,
+    /// The location data.
+    ///
+    /// Carries different meaning based on [`Self::kind`].
+    pub data: i32,
+    /// The location kind.
+    pub kind: u8,
+    pub _reserved: [u8; 3],
+}
+
+/// A representation of a type.
+#[derive(Clone)]
+#[repr(C)]
+pub struct Type {
+    /// The concrete type.
+    pub ty: TypeImpl,
+    /// Discriminator for [`Self::ty`].
+    pub kind: u8,
+    pub _reserved: [u8; 3],
+}
+
+impl From<PrimitiveType> for Type {
+    fn from(primitive: PrimitiveType) -> Self {
+        Self {
+            kind: 0,
+            ty: TypeImpl { primitive },
+            _reserved: [0; _],
+        }
+    }
+}
+
+impl From<PointerType> for Type {
+    fn from(pointer: PointerType) -> Self {
+        Self {
+            kind: 1,
+            ty: TypeImpl { pointer },
+            _reserved: [0; _],
+        }
+    }
+}
+
+impl fmt::Debug for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.kind {
+            0 => unsafe { &self.ty.primitive }.fmt(f),
+            1 => unsafe { &self.ty.pointer }.fmt(f),
+            k => write!(f, "<invalid type {k}>"),
+        }
+    }
+}
+
+impl PartialEq for Type {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            kind,
+            ty,
+            _reserved,
+        } = other;
+
+        if self.kind != *kind {
+            return false;
+        }
+
+        match self.kind {
+            0 => unsafe { self.ty.primitive == ty.primitive },
+            1 => unsafe { self.ty.pointer == ty.pointer },
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Type {}
+
+impl std::hash::Hash for Type {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.kind.hash(state);
+        match self.kind {
+            0 => unsafe { self.ty.primitive.hash(state) },
+            1 => unsafe { self.ty.pointer.hash(state) },
+            _ => {}
+        }
+    }
+}
+
+/// Any possible type.
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union TypeImpl {
+    /// A primitive type.
+    pub primitive: PrimitiveType,
+    /// A pointer type.
+    pub pointer: PointerType,
+}
+
+// For the [`TypeImpl`] union to be a safe `pod`, all of its members must be pods and the same size.
+// Any bit representation of the union must be valid and initialized in all other variants.
+const _: () = {
+    const SIZE: usize = 12;
+    assert!(std::mem::size_of::<TypeImpl>() == SIZE);
+    assert!(std::mem::size_of::<PrimitiveType>() == SIZE);
+    assert!(std::mem::size_of::<PointerType>() == SIZE);
+
+    assert!(std::mem::align_of::<TypeImpl>() == 4);
+};
+
+/// A representation of a primitive type.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct PrimitiveType {
+    /// The type name (reference to a [`String`]).
+    pub name_offset: u32,
+    /// The size of the type in memory.
+    pub size: u32,
+    /// The encoding of the type.
+    pub encoding: u8,
+    /// Padding.
+    pub _reserved: [u8; 3],
+}
+
+/// A representation of a pointer type.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct PointerType {
+    /// The type this pointer points to (reference to a [`Type`]).
+    pub pointee_idx: u32,
+    /// The size/width of the pointer.
+    pub size: u32,
+    /// Padding.
+    pub _reserved: [u8; 4],
+}
+
 unsafe impl Pod for Header {}
+unsafe impl Pod for VariableHeader {}
 unsafe impl Pod for Function {}
+unsafe impl Pod for FunctionVariables {}
 unsafe impl Pod for File {}
 unsafe impl Pod for SourceLocation {}
 unsafe impl Pod for Range {}
+unsafe impl Pod for Variable {}
+unsafe impl Pod for VariableLocation {}
+unsafe impl Pod for Type {}
+unsafe impl Pod for TypeImpl {}
+unsafe impl Pod for PrimitiveType {}
+unsafe impl Pod for PointerType {}
 
 #[cfg(test)]
 mod tests {
@@ -142,6 +359,21 @@ mod tests {
 
         assert_eq!(mem::size_of::<Range>(), 4);
         assert_eq!(mem::align_of::<Range>(), 4);
+
+        assert_eq!(mem::size_of::<FunctionVariables>(), 8);
+        assert_eq!(mem::align_of::<FunctionVariables>(), 4);
+
+        assert_eq!(mem::size_of::<VariableHeader>(), 12);
+        assert_eq!(mem::align_of::<VariableHeader>(), 4);
+
+        assert_eq!(mem::size_of::<Variable>(), 20);
+        assert_eq!(mem::align_of::<Variable>(), 4);
+
+        assert_eq!(mem::size_of::<VariableLocation>(), 16);
+        assert_eq!(mem::align_of::<VariableLocation>(), 4);
+
+        assert_eq!(mem::size_of::<Type>(), 16);
+        assert_eq!(mem::align_of::<Type>(), 4);
     }
 
     #[test]
