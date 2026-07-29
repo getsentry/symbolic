@@ -143,14 +143,12 @@ pub const SYMCACHE_VERSION: u32 = 9;
 #[derive(Clone, PartialEq, Eq)]
 pub struct SymCache<'data> {
     version: &'data raw::VersionInfo,
-    inner: SymCacheInner<'data>,
+    inner: lookup::SymCacheInner<'data>,
 }
 
 impl std::fmt::Debug for SymCache<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.inner {
-            SymCacheInner::V9(ref sym_cache_v9) => sym_cache_v9.fmt(f),
-        }
+        self.inner.fmt(f)
     }
 }
 
@@ -206,9 +204,4 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for SymCache<'d> {
     fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum SymCacheInner<'data> {
-    V9(v9::SymCache<'data>),
 }

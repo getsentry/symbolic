@@ -2,39 +2,7 @@ use std::fmt;
 
 use symbolic_common::{Language, Name, NameMangling};
 
-use crate::{SymCache, SymCacheInner};
-
-impl<'data> SymCache<'data> {
-    /// Looks up an instruction address in the SymCache, yielding an iterator of [`SourceLocation`]s
-    /// representing a hierarchy of inlined function calls.
-    pub fn lookup(&self, addr: u64) -> SourceLocations<'data, '_> {
-        match self.inner {
-            SymCacheInner::V9(ref cache) => cache.lookup(addr).into(),
-        }
-    }
-
-    /// An iterator over the functions in this SymCache.
-    ///
-    /// Only functions with a valid entry pc, i.e., one not equal to `u32::MAX`,
-    /// will be returned.
-    /// Note that functions are *not* returned ordered by name or entry pc,
-    /// but in insertion order, which is essentially random.
-    pub fn functions(&self) -> Functions<'data> {
-        match self.inner {
-            SymCacheInner::V9(ref cache) => cache.functions().into(),
-        }
-    }
-
-    /// An iterator over the files in this SymCache.
-    ///
-    /// Note that files are *not* returned ordered by name or full path,
-    /// but in insertion order, which is essentially random.
-    pub fn files(&self) -> Files<'data> {
-        match self.inner {
-            SymCacheInner::V9(ref cache) => cache.files().into(),
-        }
-    }
-}
+use crate::SymCache;
 
 /// A source File included in the SymCache.
 #[derive(Debug, Clone)]
@@ -192,6 +160,51 @@ impl fmt::Debug for FilesDebug<'_> {
 
 macro_rules! impl_version {
     ($([$version:ident, $module:ident]),+) => {
+        #[derive(Clone, PartialEq, Eq)]
+        pub(crate) enum SymCacheInner<'data> {
+            $($version(crate::$module::SymCache<'data>),)+
+        }
+
+        impl std::fmt::Debug for SymCacheInner<'_> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $(SymCacheInner::$version(cache) => cache.fmt(f),)+
+                }
+            }
+        }
+
+        impl<'data> SymCache<'data> {
+            /// Looks up an instruction address in the SymCache, yielding an iterator of [`SourceLocation`]s
+            /// representing a hierarchy of inlined function calls.
+            pub fn lookup(&self, addr: u64) -> SourceLocations<'data, '_> {
+                match self.inner {
+                    $(SymCacheInner::$version(ref cache) => cache.lookup(addr).into(),)+
+                }
+            }
+
+            /// An iterator over the functions in this SymCache.
+            ///
+            /// Only functions with a valid entry pc, i.e., one not equal to `u32::MAX`,
+            /// will be returned.
+            /// Note that functions are *not* returned ordered by name or entry pc,
+            /// but in insertion order, which is essentially random.
+            pub fn functions(&self) -> Functions<'data> {
+                match self.inner {
+                    $(SymCacheInner::$version(ref cache) => cache.functions().into(),)+
+                }
+            }
+
+            /// An iterator over the files in this SymCache.
+            ///
+            /// Note that files are *not* returned ordered by name or full path,
+            /// but in insertion order, which is essentially random.
+            pub fn files(&self) -> Files<'data> {
+                match self.inner {
+                    $(SymCacheInner::$version(ref cache) => cache.files().into(),)+
+                }
+            }
+        }
+
         #[derive(Debug, Clone, PartialEq, Eq)]
         enum SourceLocationInner<'data, 'cache> {
             $($version(crate::$module::lookup::SourceLocation<'data, 'cache>),)+
