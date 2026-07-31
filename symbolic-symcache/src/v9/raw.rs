@@ -2,7 +2,7 @@
 //!
 //! V9 adds source server information support to the File structure.
 
-use core::fmt;
+use std::fmt;
 
 use watto::Pod;
 
