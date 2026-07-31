@@ -14,6 +14,7 @@
 
 **Features**
 
+- Adds variable information to symcaches. ([#1036](https://github.com/getsentry/symbolic/pull/1036))
 - Implements variables at a frame offset. ([#1026](https://github.com/getsentry/symbolic/pull/1026))
 - Implement resolution for primitive and pointer type references contained in variables. ([#1032](https://github.com/getsentry/symbolic/pull/1032))
 

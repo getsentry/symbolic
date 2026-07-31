@@ -13,6 +13,11 @@
 //! 3. Source Locations
 //! 4. Address Ranges
 //! 5. String Data
+//! 6. Variable Header
+//! 7. Function Variables
+//! 8. Variables
+//! 9. Variable Locations
+//! 10. Types
 //!
 //! The format uses `u32`s to represent line numbers, addresses, references, and string offsets.
 //! Line numbers use `0` to represent an unknown or invalid value. Addresses, references, and string
@@ -110,9 +115,7 @@ pub mod transform;
 mod v9;
 mod writer;
 
-use symbolic_common::Arch;
-use symbolic_common::AsSelf;
-use symbolic_common::DebugId;
+use symbolic_common::{Arch, AsSelf, DebugId};
 use watto::Pod;
 
 pub use error::{Error, ErrorKind};

@@ -75,6 +75,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
             .transpose()?;
 
         let mut converter = SymCacheConverter::new();
+        converter.set_collect_variables(true);
 
         if let Some(bcsymbolmap) = bcsymbolmap_transformer {
             converter.add_transformer(bcsymbolmap);

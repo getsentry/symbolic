@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use std::{fmt::Write as _, io::Cursor};
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
@@ -7,15 +7,21 @@ use symbolic_testutils::fixture;
 
 type Error = Box<dyn std::error::Error>;
 
-#[test]
-fn test_write_header_linux() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture("linux/crash.debug"))?;
+fn serialize_fixture(path: &str, with_variables: bool) -> Result<Vec<u8>, Error> {
+    let buffer = ByteView::open(fixture(path))?;
     let object = Object::parse(&buffer)?;
 
-    let mut buffer = Vec::new();
+    let mut symcache = Vec::new();
     let mut converter = SymCacheConverter::new();
+    converter.set_collect_variables(with_variables);
     converter.process_object(&object)?;
-    converter.serialize(&mut Cursor::new(&mut buffer))?;
+    converter.serialize(&mut Cursor::new(&mut symcache))?;
+    Ok(symcache)
+}
+
+#[test]
+fn test_write_header_linux() -> Result<(), Error> {
+    let buffer = serialize_fixture("linux/crash.debug", false)?;
 
     #[cfg(target_endian = "little")]
     {
@@ -44,13 +50,7 @@ fn test_write_header_linux() -> Result<(), Error> {
 
 #[test]
 fn test_write_functions_linux() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture("linux/crash.debug"))?;
-    let object = Object::parse(&buffer)?;
-
-    let mut buffer = Vec::new();
-    let mut converter = SymCacheConverter::new();
-    converter.process_object(&object)?;
-    converter.serialize(&mut Cursor::new(&mut buffer))?;
+    let buffer = serialize_fixture("linux/crash.debug", false)?;
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!("functions_linux", FunctionsDebug(&symcache));
 
@@ -59,13 +59,7 @@ fn test_write_functions_linux() -> Result<(), Error> {
 
 #[test]
 fn test_write_header_macos() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash"))?;
-    let object = Object::parse(&buffer)?;
-
-    let mut buffer = Vec::new();
-    let mut converter = SymCacheConverter::new();
-    converter.process_object(&object)?;
-    converter.serialize(&mut Cursor::new(&mut buffer))?;
+    let buffer = serialize_fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash", false)?;
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!(symcache, @r#"
     SymCache {
@@ -88,13 +82,7 @@ fn test_write_header_macos() -> Result<(), Error> {
 
 #[test]
 fn test_write_functions_macos() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash"))?;
-    let object = Object::parse(&buffer)?;
-
-    let mut buffer = Vec::new();
-    let mut converter = SymCacheConverter::new();
-    converter.process_object(&object)?;
-    converter.serialize(&mut Cursor::new(&mut buffer))?;
+    let buffer = serialize_fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash", false)?;
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!("functions_macos", FunctionsDebug(&symcache));
 
@@ -107,15 +95,10 @@ fn test_write_functions_macos() -> Result<(), Error> {
 // compilation directory. See the overlapping_funcs directory in sentry-testutils for related files.
 #[test]
 fn test_write_functions_overlapping_funcs() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture(
+    let buffer = serialize_fixture(
         "macos/overlapping_funcs.dSYM/Contents/Resources/DWARF/overlapping_funcs",
-    ))?;
-    let object = Object::parse(&buffer)?;
-
-    let mut buffer = Vec::new();
-    let mut converter = SymCacheConverter::new();
-    converter.process_object(&object)?;
-    converter.serialize(&mut Cursor::new(&mut buffer))?;
+        false,
+    )?;
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!("overlapping_funcs", FunctionsDebug(&symcache));
 
@@ -124,13 +107,7 @@ fn test_write_functions_overlapping_funcs() -> Result<(), Error> {
 
 #[test]
 fn test_write_large_symbol_names() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture("regression/large_symbol.sym"))?;
-    let object = Object::parse(&buffer)?;
-
-    let mut buffer = Vec::new();
-    let mut converter = SymCacheConverter::new();
-    converter.process_object(&object)?;
-    converter.serialize(&mut Cursor::new(&mut buffer))?;
+    let buffer = serialize_fixture("regression/large_symbol.sym", false)?;
     SymCache::parse(&buffer)?;
 
     Ok(())
@@ -140,13 +117,7 @@ fn test_write_large_symbol_names() -> Result<(), Error> {
 /// https://github.com/getsentry/symbolic/issues/284#issue-726898083
 #[test]
 fn test_lookup_no_lines() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture("xul.sym"))?;
-    let object = Object::parse(&buffer)?;
-
-    let mut buffer = Vec::new();
-    let mut converter = SymCacheConverter::new();
-    converter.process_object(&object)?;
-    converter.serialize(&mut Cursor::new(&mut buffer))?;
+    let buffer = serialize_fixture("xul.sym", false)?;
     let symcache = SymCache::parse(&buffer)?;
     let symbols = symcache.lookup(0xc6dd98).collect::<Vec<_>>();
 
@@ -167,13 +138,7 @@ fn test_lookup_no_lines() -> Result<(), Error> {
 /// https://github.com/getsentry/symbolic/issues/284#issuecomment-715587454.
 #[test]
 fn test_lookup_no_size() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture("libgallium_dri.sym"))?;
-    let object = Object::parse(&buffer)?;
-
-    let mut buffer = Vec::new();
-    let mut converter = SymCacheConverter::new();
-    converter.process_object(&object)?;
-    converter.serialize(&mut Cursor::new(&mut buffer))?;
+    let buffer = serialize_fixture("libgallium_dri.sym", false)?;
     let symcache = SymCache::parse(&buffer)?;
     let symbols = symcache.lookup(0x1489adf).collect::<Vec<_>>();
 
@@ -189,13 +154,7 @@ fn test_lookup_no_size() -> Result<(), Error> {
 /// https://github.com/getsentry/symbolic/issues/285.
 #[test]
 fn test_lookup_modulo_u16() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture("xul2.sym"))?;
-    let object = Object::parse(&buffer)?;
-
-    let mut buffer = Vec::new();
-    let mut converter = SymCacheConverter::new();
-    converter.process_object(&object)?;
-    converter.serialize(&mut Cursor::new(&mut buffer))?;
+    let buffer = serialize_fixture("xul2.sym", false)?;
     let symcache = SymCache::parse(&buffer)?;
     let symbols = symcache.lookup(0x3c105a1).collect::<Vec<_>>();
 
@@ -211,13 +170,7 @@ fn test_lookup_modulo_u16() -> Result<(), Error> {
 /// https://github.com/getsentry/symbolic/issues/646.
 #[test]
 fn test_lookup_second_line_in_inlinee() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash"))?;
-    let object = Object::parse(&buffer)?;
-
-    let mut buffer = Vec::new();
-    let mut converter = SymCacheConverter::new();
-    converter.process_object(&object)?;
-    converter.serialize(&mut Cursor::new(&mut buffer))?;
+    let buffer = serialize_fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash", false)?;
     let symcache = SymCache::parse(&buffer)?;
 
     // Test an address at the second line of an inlinee.
@@ -322,13 +275,7 @@ fn test_lookup_gap_inlinee() -> Result<(), Error> {
 
 #[test]
 fn test_undecorate_windows_symbols() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture("windows/crash.pdb"))?;
-    let object = Object::parse(&buffer)?;
-
-    let mut buffer = Vec::new();
-    let mut converter = SymCacheConverter::new();
-    converter.process_object(&object)?;
-    converter.serialize(&mut Cursor::new(&mut buffer))?;
+    let buffer = serialize_fixture("windows/crash.pdb", false)?;
     let symcache = SymCache::parse(&buffer)?;
 
     let symbols = symcache.lookup(0x3756).collect::<Vec<_>>();
@@ -341,16 +288,79 @@ fn test_undecorate_windows_symbols() -> Result<(), Error> {
 /// Tests that the cache is lenient toward adding additional flags at the end.
 #[test]
 fn test_trailing_marker() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash"))?;
-    let object = Object::parse(&buffer)?;
-
-    let mut buffer = Vec::new();
-    let mut converter = SymCacheConverter::new();
-    converter.process_object(&object)?;
-    converter.serialize(&mut Cursor::new(&mut buffer))?;
+    let mut buffer = serialize_fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash", false)?;
     buffer.extend(b"WITH_SYMBOLMAP");
 
     SymCache::parse(&buffer)?;
+
+    Ok(())
+}
+
+/// This test can catch padding in the raw types.
+#[test]
+fn test_variable_serialization_is_deterministic() -> Result<(), Error> {
+    let first = serialize_fixture("linux/crash.debug", true)?;
+    let second = serialize_fixture("linux/crash.debug", true)?;
+    assert_eq!(first, second);
+    Ok(())
+}
+
+#[test]
+fn test_empty_variable_sections() -> Result<(), Error> {
+    let buffer = serialize_fixture("windows/crash.sym", true)?;
+    let symcache = SymCache::parse(&buffer)?;
+
+    insta::assert_debug_snapshot!(symcache, @r#"
+    SymCache {
+        version: 9,
+        debug_id: DebugId {
+            uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
+            appendix: 1,
+        },
+        arch: X86,
+        files: 36,
+        functions: 127,
+        source_locations: 805,
+        ranges: 805,
+        string_bytes: 7118,
+        variables: 0,
+        variable_locations: 0,
+        types: 0,
+    }
+    "#);
+
+    Ok(())
+}
+
+#[test]
+fn test_variable_cache_with_trailing_marker() -> Result<(), Error> {
+    let mut buffer = serialize_fixture("linux/crash.debug", true)?;
+    buffer.extend_from_slice(b"WITH_SYMBOLMAP");
+    SymCache::parse(&buffer)?;
+    Ok(())
+}
+
+/// This really is just a test so we can track changes to the symcache size.
+///
+/// Any modification to the cache will be visible here and give an idea of how it impacts the size.
+/// An increase in size is not necessarily a bad thing.
+#[test]
+fn test_variable_cache_size() -> Result<(), Error> {
+    let no_vars = serialize_fixture("linux/crash.debug", false)?.len() as f64 / 1024.;
+    let with_vars = serialize_fixture("linux/crash.debug", true)?.len() as f64 / 1024.;
+    let delta = with_vars - no_vars;
+    let perc = delta / with_vars * 100.;
+
+    let mut s = String::new();
+    writeln!(&mut s, "no variables  : {no_vars:.2} KiB")?;
+    writeln!(&mut s, "with variables: {with_vars:.2} KiB")?;
+    writeln!(&mut s, "variables     : {delta:.2} KiB ({perc:.2}%)")?;
+
+    insta::assert_snapshot!(s, @r"
+    no variables  : 219.95 KiB
+    with variables: 262.50 KiB
+    variables     : 42.55 KiB (16.21%)
+    ");
 
     Ok(())
 }
