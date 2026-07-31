@@ -53,7 +53,7 @@ pub struct Header {
 
     /// Version of the optional [`VariableHeader`].
     ///
-    /// The version is `0` there is no variable header. This allows incompatible changes
+    /// If the version is `0` there is no variable header. This allows incompatible changes
     /// to variable and type information in a symcache without requiring a new symcache version.
     ///
     /// Once the format is stable, the variable header will no longer be optional in symcache
@@ -177,7 +177,11 @@ pub struct Variable {
     /// If `0` the variable belongs to the outermost function. This is essentially a way to track
     /// scopes, limited to function scopes. Each level of depth is a newly nested scope.
     ///
-    /// The depth can be recovered by tracing [`SourceLocation::inlined_into_idx`] entries.
+    /// To recover which variables belong to a [`SourceLocation`], the depth of the source location
+    /// must first be computed by following [`SourceLocation::inlined_into_idx`], each step increases
+    /// the depth by one.
+    /// Knowing the depth and the outermost function, the list of variables can then be filtered down
+    /// to only variables at this depth.
     pub depth: u8,
     /// The variable kind.
     pub kind: u8,
@@ -190,7 +194,7 @@ pub struct Variable {
 pub struct VariableLocation {
     /// First instruction address (pc) where this location is valid.
     pub start: u32,
-    /// Size of the location, indicating the last instruction address where this location is valid.
+    /// Size of the location, indicating the first instruction address where this location is no longer valid.
     pub size: u32,
     /// The location data.
     ///
