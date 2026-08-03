@@ -395,6 +395,13 @@ macro_rules! impl_version {
         }
 
         impl<'data, 'cache> Variable<'data, 'cache> {
+            /// The variable name.
+            pub fn name(&self) -> Option<&'data str> {
+                match self.0 {
+                    $(VariableInner::$version(ref var) => var.name(),)+
+                }
+            }
+
             /// The kind of the variable.
             pub fn kind(&self) -> VariableKind {
                 match self.0 {
