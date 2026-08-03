@@ -638,7 +638,7 @@ mod tests {
                             ty: None,
                             kind: Local,
                             locations: [
-                                LocationInfo {
+                                VariableLocationInfo {
                                     address: 0x20,
                                     size: 0x10,
                                     location: Register {

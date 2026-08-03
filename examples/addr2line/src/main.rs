@@ -6,7 +6,7 @@ use clap::builder::ValueParser;
 use clap::{value_parser, Arg, ArgAction, ArgMatches, Command};
 
 use symbolic::common::{ByteView, Language, Name, NameMangling};
-use symbolic::debuginfo::{Function, VariableLocation, Object, ObjectDebugSession, Type, TypeRef};
+use symbolic::debuginfo::{Function, Object, ObjectDebugSession, Type, TypeRef, VariableLocation};
 use symbolic::demangle::{Demangle, DemangleOptions};
 
 fn print_name<'a, N: Borrow<Name<'a>>>(name: Option<N>, matches: &ArgMatches) {

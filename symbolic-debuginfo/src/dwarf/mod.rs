@@ -36,7 +36,7 @@ mod types;
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::{VariableKind, VariableLocation, VariableLocationInfo, Type, TypeRef, Variable};
+use crate::{Type, TypeRef, Variable, VariableKind, VariableLocation, VariableLocationInfo};
 
 /// This is a fake BcSymbolMap used when macho support is turned off since they are unfortunately
 /// part of the dwarf interface

@@ -7,8 +7,8 @@ use symbolic_debuginfo::ObjectDebugSession;
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
 use symbolic_debuginfo::{
-    FileEntry, Function, LineInfo, VariableLocation, Object, ParseObjectOptions, SymbolMap, Type, TypeRef,
-    TypeSize, pe::PeObject,
+    FileEntry, Function, LineInfo, Object, ParseObjectOptions, SymbolMap, Type, TypeRef, TypeSize,
+    VariableLocation, pe::PeObject,
 };
 use symbolic_testutils::fixture;
 

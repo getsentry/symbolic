@@ -69,7 +69,7 @@ impl<'data> SymCache<'data> {
         let raw_ty = self.types.get(ty_idx as usize)?;
 
         if let Some(primitive) = raw_ty.as_primitive() {
-            Some(Type::Primitive(PrimitiveType {
+            return Some(Type::Primitive(PrimitiveType {
                 name: self.get_string(primitive.name_offset),
                 size: TypeSize::Bytes(primitive.size.into()),
                 encoding: match primitive.encoding {
@@ -83,15 +83,17 @@ impl<'data> SymCache<'data> {
                     7 => Some(PrimitiveTypeEncoding::ComplexFloat),
                     _ => None,
                 },
-            }))
-        } else if let Some(pointer) = raw_ty.as_pointer() {
-            Some(Type::Pointer(PointerType {
+            }));
+        }
+
+        if let Some(pointer) = raw_ty.as_pointer() {
+            return Some(Type::Pointer(PointerType {
                 size: TypeSize::Bytes(pointer.size.into()),
                 pointee: (pointer.pointee_idx != u32::MAX).then_some(TypeId(pointer.pointee_idx)),
-            }))
-        } else {
-            None
+            }));
         }
+
+        None
     }
 
     /// An iterator over the functions in this SymCache.
@@ -207,9 +209,9 @@ impl<'data, 'cache> SourceLocation<'data, 'cache> {
 /// An Iterator that yields [`SourceLocation`]s, representing an inlining hierarchy.
 #[derive(Debug, Clone)]
 pub struct SourceLocations<'data, 'cache> {
-    pub cache: &'cache SymCache<'data>,
-    pub source_location_idx: u32,
-    pub addr: u32,
+    cache: &'cache SymCache<'data>,
+    source_location_idx: u32,
+    addr: u32,
 }
 
 impl<'data, 'cache> Iterator for SourceLocations<'data, 'cache> {
@@ -373,7 +375,7 @@ impl<'data, 'cache> Variable<'data, 'cache> {
         let locations = self.cache.variable_locations.get(start..end).unwrap_or(&[]);
 
         VariableLocations {
-            locations: locations.into_iter(),
+            locations: locations.iter(),
             addr: self.addr,
         }
     }
@@ -389,7 +391,7 @@ impl<'data> Iterator for VariableLocations<'data> {
     type Item = VariableLocationInfo;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(location) = self.locations.next() {
+        for location in self.locations.by_ref() {
             // Start is past the search address, it cannot match
             if location.start > self.addr {
                 return None;

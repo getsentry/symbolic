@@ -109,7 +109,7 @@ pub struct Variable<'data> {
     pub kind: VariableKind,
     /// Possible locations at runtime of the variable.
     ///
-    /// Locations are stored in ascending order based on their [`LocationInfo::address`].
+    /// Locations are stored in ascending order based on their [`VariableLocationInfo::address`].
     ///
     /// There may be multiple overlapping locations for the same pc range, if the variable
     /// can be sourced from multiple locations.
