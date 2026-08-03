@@ -520,7 +520,7 @@ fn ensure_proper_nesting(
 
 #[cfg(test)]
 mod tests {
-    use crate::{Kind, Location, LocationInfo};
+    use crate::{VariableKind, VariableLocation, VariableLocationInfo};
 
     use super::*;
 
@@ -577,11 +577,11 @@ mod tests {
         let variable = Variable {
             name: "value".into(),
             ty: None,
-            kind: Kind::Local,
-            locations: vec![LocationInfo {
+            kind: VariableKind::Local,
+            locations: vec![VariableLocationInfo {
                 address: 0x10,
                 size: 0x40,
-                location: Location::Register { id: 0 },
+                location: VariableLocation::Register { id: 0 },
             }],
         };
 

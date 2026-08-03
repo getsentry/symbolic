@@ -36,7 +36,7 @@ mod types;
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::{Kind, Location, LocationInfo, Type, TypeRef, Variable};
+use crate::{VariableKind, VariableLocation, VariableLocationInfo, Type, TypeRef, Variable};
 
 /// This is a fake BcSymbolMap used when macho support is turned off since they are unfortunately
 /// part of the dwarf interface
@@ -1266,8 +1266,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         };
 
         let kind = match abbrev.tag() {
-            constants::DW_TAG_formal_parameter => Kind::Parameter,
-            _ => Kind::Local,
+            constants::DW_TAG_formal_parameter => VariableKind::Parameter,
+            _ => VariableKind::Local,
         };
 
         Ok(Some(ParsedVariable {
@@ -1284,7 +1284,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         range: Range,
     ) -> Option<Variable<'d>> {
         let mut locations = match &variable.locations {
-            Locations::Single(location) => vec![LocationInfo {
+            Locations::Single(location) => vec![VariableLocationInfo {
                 address: offset(range.begin, self.inner.info.address_offset),
                 size: range.end - range.begin,
                 location: location.clone(),
@@ -1298,7 +1298,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 // everything a bit nicer to look at and deal with.
                 .map(|(lr, location)| {
                     let address = lr.begin.max(range.begin);
-                    LocationInfo {
+                    VariableLocationInfo {
                         address: offset(address, self.inner.info.address_offset),
                         size: lr.end.min(range.end) - address,
                         location: location.location.clone(),
@@ -1342,7 +1342,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 continue;
             };
 
-            let location = LocationInfo {
+            let location = VariableLocationInfo {
                 address,
                 size,
                 location: match self.parse_location_expression(location.data)? {
@@ -1361,7 +1361,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     fn parse_location_expression(
         &self,
         expr: Expression<Slice<'d>>,
-    ) -> Result<Option<Location>, DwarfError> {
+    ) -> Result<Option<VariableLocation>, DwarfError> {
         let mut operations = expr.operations(self.inner.unit.encoding());
 
         let Some(op) = operations.next()? else {
@@ -1373,8 +1373,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         }
 
         Ok(match op {
-            Operation::Register { register } => Some(Location::Register { id: register.0 }),
-            Operation::FrameOffset { offset } => Some(Location::FrameOffset { offset }),
+            Operation::Register { register } => Some(VariableLocation::Register { id: register.0 }),
+            Operation::FrameOffset { offset } => Some(VariableLocation::FrameOffset { offset }),
             // Currently more operations are not supported.
             _ => None,
         })
@@ -1396,16 +1396,16 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 struct ParsedVariable<'data> {
     name: Cow<'data, str>,
     ty: Option<TypeRef>,
-    kind: Kind,
+    kind: VariableKind,
     locations: Locations,
 }
 
 /// Return value of [`DwarfUnit::parse_locations`].
 enum Locations {
     /// A single location.
-    Single(Location),
+    Single(VariableLocation),
     /// Many locations, dependent on the PC at runtime.
-    Many(Vec<(Range, LocationInfo)>),
+    Many(Vec<(Range, VariableLocationInfo)>),
 }
 
 /// The state we pass around during function parsing.

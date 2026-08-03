@@ -4,6 +4,10 @@ use symbolic_common::{Language, Name, NameMangling};
 
 use crate::SymCache;
 
+pub use symbolic_debuginfo::{
+    PrimitiveTypeEncoding, TypeSize, VariableKind, VariableLocation, VariableLocationInfo,
+};
+
 /// A source File included in the SymCache.
 #[derive(Debug, Clone)]
 pub struct File<'data> {
@@ -100,6 +104,76 @@ impl Default for Function<'_> {
     }
 }
 
+/// A type referenced in the SymCache.
+#[derive(Copy, Clone, Debug)]
+pub struct TypeId(pub(crate) u32);
+
+/// A type in the SymCache.
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub enum Type<'data> {
+    /// A primitive type.
+    Primitive(PrimitiveType<'data>),
+    /// A pointer type.
+    Pointer(PointerType),
+}
+
+/// A primitive type contained in the SymCache.
+#[derive(Clone, Debug)]
+pub struct PrimitiveType<'data> {
+    pub(crate) name: Option<&'data str>,
+    pub(crate) size: TypeSize,
+    pub(crate) encoding: Option<PrimitiveTypeEncoding>,
+}
+
+impl<'data> PrimitiveType<'data> {
+    /// The name of this primitive type.
+    ///
+    /// For example: `int`.
+    pub fn name(&self) -> Option<&'data str> {
+        self.name
+    }
+
+    /// The size of this primitive type in memory.
+    pub fn size(&self) -> TypeSize {
+        self.size
+    }
+
+    /// The encoding of this primitive type.
+    pub fn encoding(&self) -> Option<PrimitiveTypeEncoding> {
+        self.encoding
+    }
+}
+
+/// A pointer type contained in the SymCache.
+#[derive(Clone, Debug)]
+pub struct PointerType {
+    pub(crate) size: TypeSize,
+    pub(crate) pointee: Option<TypeId>,
+}
+
+impl PointerType {
+    /// The size of this pointer type in bytes.
+    pub fn size(&self) -> TypeSize {
+        self.size
+    }
+
+    /// The referenced type.
+    ///
+    /// This returns `None` for pointers without a referenced type, like `void*`.
+    pub fn pointee(&self) -> Option<TypeId> {
+        self.pointee
+    }
+}
+
+/// A variable contained in the SymCache.
+#[derive(Clone, Debug)]
+pub struct Variable<'data, 'cache>(VariableInner<'data, 'cache>);
+
+/// An Iterator that yields [`Variable`]s.
+#[derive(Clone, Debug)]
+pub struct VariableLocations<'data>(VariableLocationsInner<'data>);
+
 /// A source location as included in the SymCache.
 ///
 /// A `SourceLocation` represents source information about a particular instruction.
@@ -158,6 +232,10 @@ impl fmt::Debug for FilesDebug<'_> {
     }
 }
 
+/// Iterator returned by [`SourceLocation::variables`]; see documentation there.
+#[derive(Debug, Clone)]
+pub struct Variables<'data, 'cache>(VariablesInner<'data, 'cache>);
+
 macro_rules! impl_version {
     ($([$version:ident, $module:ident]),+) => {
         #[derive(Clone, PartialEq, Eq)]
@@ -203,6 +281,15 @@ macro_rules! impl_version {
                     $(SymCacheInner::$version(ref cache) => cache.files().into(),)+
                 }
             }
+
+            /// Looks up a [`TypeId`] in the SymCache.
+            ///
+            /// Types are obtained through [`Variable`]s and need to be resolved with this method.
+            pub fn lookup_type(&self, ty: TypeId) -> Option<Type<'data>> {
+                match self.inner {
+                    $(SymCacheInner::$version(ref cache) => cache.get_type(ty.0),)+
+                }
+            }
         }
 
         #[derive(Debug, Clone, PartialEq, Eq)]
@@ -210,7 +297,7 @@ macro_rules! impl_version {
             $($version(crate::$module::lookup::SourceLocation<'data, 'cache>),)+
         }
 
-        impl<'data> SourceLocation<'data, '_> {
+        impl<'data, 'cache> SourceLocation<'data, 'cache> {
             /// The source line corresponding to the instruction.
             ///
             /// 0 denotes an unknown line number.
@@ -231,6 +318,13 @@ macro_rules! impl_version {
             pub fn function(&self) -> Function<'data> {
                 match self.0 {
                     $(SourceLocationInner::$version(ref loc) => loc.function(),)+
+                }
+            }
+
+            /// The variables available at this instruction.
+            pub fn variables(&self) -> Variables<'data, 'cache> {
+                match self.0 {
+                    $(SourceLocationInner::$version(ref loc) => loc.variables().into(),)+
                 }
             }
         }
@@ -280,6 +374,64 @@ macro_rules! impl_version {
             }
         }
 
+        #[derive(Debug, Clone)]
+        enum VariablesInner<'data, 'cache> {
+            $($version(crate::$module::lookup::Variables<'data, 'cache>),)+
+        }
+
+        impl<'data, 'cache> Iterator for Variables<'data, 'cache> {
+            type Item = Variable<'data, 'cache>;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                match self.0 {
+                    $(VariablesInner::$version(ref mut variables) => variables.next().map(From::from),)+
+                }
+            }
+        }
+
+        #[derive(Debug, Clone)]
+        enum VariableInner<'data, 'cache> {
+            $($version(crate::$module::lookup::Variable<'data, 'cache>),)+
+        }
+
+        impl<'data, 'cache> Variable<'data, 'cache> {
+            /// The kind of the variable.
+            pub fn kind(&self) -> VariableKind {
+                match self.0 {
+                    $(VariableInner::$version(ref var) => var.kind(),)+
+                }
+            }
+
+            /// All valid and active locations of this variable at the current instruction.
+            pub fn ty(&self) -> Option<Type<'data>> {
+                match self.0 {
+                    $(VariableInner::$version(ref var) => var.ty(),)+
+                }
+            }
+
+            /// All valid and active locations of this variable at the current instruction.
+            pub fn locations(&self) -> VariableLocations<'data> {
+                match self.0 {
+                    $(VariableInner::$version(ref var) => var.locations().into(),)+
+                }
+            }
+        }
+
+        #[derive(Debug, Clone)]
+        enum VariableLocationsInner<'data> {
+            $($version(crate::$module::lookup::VariableLocations<'data>),)+
+        }
+
+        impl<'data> Iterator for VariableLocations<'data> {
+            type Item = VariableLocationInfo;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                match self.0 {
+                    $(VariableLocationsInner::$version(ref mut loc) => loc.next().map(From::from),)+
+                }
+            }
+        }
+
         $(
             impl<'data, 'cache> From<crate::$module::lookup::SourceLocations<'data, 'cache>>
                 for SourceLocations<'data, 'cache>
@@ -306,6 +458,24 @@ macro_rules! impl_version {
             impl<'data> From<crate::$module::lookup::Files<'data>> for Files<'data> {
                 fn from(value: crate::$module::lookup::Files<'data>) -> Self {
                     Self(FilesInner::$version(value))
+                }
+            }
+
+            impl<'data, 'cache> From<crate::$module::lookup::Variables<'data, 'cache>> for Variables<'data, 'cache> {
+                fn from(value: crate::$module::lookup::Variables<'data, 'cache>) -> Self {
+                    Self(VariablesInner::$version(value))
+                }
+            }
+
+            impl<'data, 'cache> From<crate::$module::lookup::Variable<'data, 'cache>> for Variable<'data, 'cache> {
+                fn from(value: crate::$module::lookup::Variable<'data, 'cache>) -> Self {
+                    Self(VariableInner::$version(value))
+                }
+            }
+
+            impl<'data> From<crate::$module::lookup::VariableLocations<'data>> for VariableLocations<'data> {
+                fn from(value: crate::$module::lookup::VariableLocations<'data>) -> Self {
+                    Self(VariableLocationsInner::$version(value))
                 }
             }
         )+

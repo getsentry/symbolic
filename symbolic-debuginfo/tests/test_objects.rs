@@ -7,7 +7,7 @@ use symbolic_debuginfo::ObjectDebugSession;
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
 use symbolic_debuginfo::{
-    FileEntry, Function, LineInfo, Location, Object, ParseObjectOptions, SymbolMap, Type, TypeRef,
+    FileEntry, Function, LineInfo, VariableLocation, Object, ParseObjectOptions, SymbolMap, Type, TypeRef,
     TypeSize, pe::PeObject,
 };
 use symbolic_testutils::fixture;
@@ -122,7 +122,7 @@ impl fmt::Debug for FunctionsDebug<'_, '_> {
 
                 for location in &variable.locations {
                     match location.location {
-                        Location::Register { id } => writeln!(
+                        VariableLocation::Register { id } => writeln!(
                             f,
                             "{:indent$}      {:#x}..{:#x}: register {id}",
                             "",
@@ -130,7 +130,7 @@ impl fmt::Debug for FunctionsDebug<'_, '_> {
                             location.address.saturating_add(location.size),
                             indent = self.depth * 2
                         )?,
-                        Location::FrameOffset { offset } => writeln!(
+                        VariableLocation::FrameOffset { offset } => writeln!(
                             f,
                             "{:indent$}      {:#x}..{:#x}: frame base {offset:+}",
                             "",
