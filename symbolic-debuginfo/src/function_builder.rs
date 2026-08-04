@@ -63,12 +63,18 @@ pub struct FunctionBuilder<'s> {
     lines: Vec<LineInfo<'s>>,
     /// All variables found inside the function.
     variables: Vec<Variable<'s>>,
-    max_inline_depth: Option<u32>,
+    max_inline_depth: u32,
 }
 
 impl<'s> FunctionBuilder<'s> {
     /// Create a new builder for a given outer function.
-    pub fn new(name: Name<'s>, compilation_dir: &'s [u8], address: u64, size: u64) -> Self {
+    pub fn new(
+        name: Name<'s>,
+        compilation_dir: &'s [u8],
+        address: u64,
+        size: u64,
+        max_inline_depth: u32,
+    ) -> Self {
         Self {
             name,
             compilation_dir,
@@ -77,16 +83,8 @@ impl<'s> FunctionBuilder<'s> {
             inlinees: BinaryHeap::new(),
             lines: Vec::new(),
             variables: Vec::new(),
-            max_inline_depth: None,
+            max_inline_depth,
         }
-    }
-
-    /// Sets the maximum inline nesting depth to process.
-    ///
-    /// Inline records nested deeper than this are dropped.
-    pub fn max_inline_depth(mut self, max_inline_depth: Option<u32>) -> Self {
-        self.max_inline_depth = max_inline_depth;
-        self
     }
 
     /// Add an inlinee record. This method can be called in any order.
@@ -95,9 +93,7 @@ impl<'s> FunctionBuilder<'s> {
     pub fn add_inlinee(&mut self, inlinee: FunctionBuilderInlinee<'s>) {
         // An inlinee that starts before the function is obviously bogus same for an inlinee that
         // has a depth deeper than the limit.
-        if inlinee.address < self.address
-            || inlinee.depth > self.max_inline_depth.unwrap_or(u32::MAX)
-        {
+        if inlinee.address < self.address || inlinee.depth > self.max_inline_depth {
             return;
         }
 
@@ -527,7 +523,7 @@ mod tests {
     #[test]
     fn test_simple() {
         // 0x10 - 0x40: foo in foo.c on line 1
-        let mut builder = FunctionBuilder::new(Name::from("foo"), &[], 0x10, 0x30);
+        let mut builder = FunctionBuilder::new(Name::from("foo"), &[], 0x10, 0x30, 255);
         builder.add_leaf_line(0x10, Some(0x30), FileInfo::from_filename(b"foo.c"), 1);
         let func = builder.finish().unwrap();
 
@@ -540,7 +536,7 @@ mod tests {
         // 0x10 - 0x20: foo in foo.c on line 1
         // 0x20 - 0x40: bar in bar.c on line 1
         // - inlined into: foo in foo.c on line 2
-        let mut builder = FunctionBuilder::new(Name::from("foo"), &[], 0x10, 0x30);
+        let mut builder = FunctionBuilder::new(Name::from("foo"), &[], 0x10, 0x30, 255);
         builder.add_inlinee(FunctionBuilderInlinee {
             depth: 0,
             name: Name::from("bar"),
@@ -585,7 +581,7 @@ mod tests {
             }],
         };
 
-        let mut builder = FunctionBuilder::new(Name::from("outer"), &[], 0x10, 0x40);
+        let mut builder = FunctionBuilder::new(Name::from("outer"), &[], 0x10, 0x40, 255);
         builder.add_inlinee(FunctionBuilderInlinee {
             depth: 0,
             address: 0x20,
@@ -684,7 +680,7 @@ mod tests {
         //          |----|         |----| (parent.c line 1)
         //               |---------|      (child2.c line 1)
 
-        let mut builder = FunctionBuilder::new(Name::from("parent"), &[], 0x10, 0x40);
+        let mut builder = FunctionBuilder::new(Name::from("parent"), &[], 0x10, 0x40, 255);
         builder.add_inlinee(FunctionBuilderInlinee {
             depth: 0,
             name: Name::from("child1"),
