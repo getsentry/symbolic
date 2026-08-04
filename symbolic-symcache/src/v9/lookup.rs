@@ -127,10 +127,10 @@ impl<'data> SymCache<'data> {
 /// It always has a `[Function]` associated with it and may also have a `[File]` and a line number.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceLocation<'data, 'cache> {
-    pub cache: &'cache SymCache<'data>,
-    pub source_location: &'data raw::SourceLocation,
-    pub addr: u32,
-    pub depth: Cell<Option<u8>>,
+    cache: &'cache SymCache<'data>,
+    source_location: &'data raw::SourceLocation,
+    addr: u32,
+    base_fn: Cell<Option<(u32, u8)>>,
 }
 
 impl<'data, 'cache> SourceLocation<'data, 'cache> {
@@ -155,10 +155,12 @@ impl<'data, 'cache> SourceLocation<'data, 'cache> {
 
     /// The variables available at this instruction.
     pub fn variables(&self) -> Variables<'data, 'cache> {
+        let (base_fn_idx, depth) = self.resolve_base();
+
         let (current, remaining) = self
             .cache
             .function_variables
-            .get(self.source_location.function_idx as usize)
+            .get(base_fn_idx as usize)
             // We can potentially optimize here and use a binary search as variables are
             // sorted by their depth. This likely requires some minimum `num_variables` breakpoint
             // to beat the linear search though.
@@ -170,7 +172,7 @@ impl<'data, 'cache> SourceLocation<'data, 'cache> {
             current,
             remaining,
             addr: self.addr,
-            depth: self.depth(),
+            depth,
         }
     }
 
@@ -180,9 +182,9 @@ impl<'data, 'cache> SourceLocation<'data, 'cache> {
     /// if the location was inlined into an outermost function it is at depth 1.
     ///
     /// Returns `u8::MAX` if the depth cannot be resolved, because the inlinee chain is too deep.
-    fn depth(&self) -> u8 {
-        if let Some(depth) = self.depth.get() {
-            return depth;
+    fn resolve_base(&self) -> (u32, u8) {
+        if let Some(cached) = self.base_fn.get() {
+            return cached;
         }
 
         let mut current = self.source_location;
@@ -201,8 +203,8 @@ impl<'data, 'cache> SourceLocation<'data, 'cache> {
             }
         }
 
-        self.depth.set(Some(depth));
-        depth
+        self.base_fn.set(Some((current.function_idx, depth)));
+        (current.function_idx, depth)
     }
 }
 
@@ -230,7 +232,7 @@ impl<'data, 'cache> Iterator for SourceLocations<'data, 'cache> {
                     cache: self.cache,
                     source_location,
                     addr: self.addr,
-                    depth: None.into(),
+                    base_fn: None.into(),
                 }
             })
     }
