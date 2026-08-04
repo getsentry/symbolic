@@ -125,7 +125,7 @@ impl<'data> SymCache<'data> {
 ///
 /// A `SourceLocation` represents source information about a particular instruction.
 /// It always has a `[Function]` associated with it and may also have a `[File]` and a line number.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct SourceLocation<'data, 'cache> {
     cache: &'cache SymCache<'data>,
     source_location: &'data raw::SourceLocation,
@@ -207,6 +207,16 @@ impl<'data, 'cache> SourceLocation<'data, 'cache> {
         (current.function_idx, depth)
     }
 }
+
+impl PartialEq for SourceLocation<'_, '_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.cache == other.cache
+            && self.source_location == other.source_location
+            && self.addr == other.addr
+    }
+}
+
+impl Eq for SourceLocation<'_, '_> {}
 
 /// An Iterator that yields [`SourceLocation`]s, representing an inlining hierarchy.
 #[derive(Debug, Clone)]
