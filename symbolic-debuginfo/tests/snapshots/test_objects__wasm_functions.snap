@@ -81,7 +81,7 @@ expression: r
                     ),
                     kind: Parameter,
                     locations: [
-                        LocationInfo {
+                        VariableLocationInfo {
                             address: 0x1a6,
                             size: 0x29,
                             location: FrameOffset {
@@ -108,7 +108,7 @@ expression: r
                     ),
                     kind: Parameter,
                     locations: [
-                        LocationInfo {
+                        VariableLocationInfo {
                             address: 0x1a6,
                             size: 0x29,
                             location: FrameOffset {
@@ -607,7 +607,7 @@ expression: r
                     ),
                     kind: Local,
                     locations: [
-                        LocationInfo {
+                        VariableLocationInfo {
                             address: 0x10000019e,
                             size: 0xd7,
                             location: FrameOffset {
@@ -731,7 +731,7 @@ expression: r
                     ),
                     kind: Local,
                     locations: [
-                        LocationInfo {
+                        VariableLocationInfo {
                             address: 0x10000019e,
                             size: 0xc7,
                             location: FrameOffset {

@@ -216,6 +216,22 @@ pub struct Type {
     pub _reserved: [u8; 3],
 }
 
+impl Type {
+    pub fn as_primitive(&self) -> Option<&PrimitiveType> {
+        match self.kind {
+            0 => Some(unsafe { &self.ty.primitive }),
+            _ => None,
+        }
+    }
+
+    pub fn as_pointer(&self) -> Option<&PointerType> {
+        match self.kind {
+            1 => Some(unsafe { &self.ty.pointer }),
+            _ => None,
+        }
+    }
+}
+
 impl From<PrimitiveType> for Type {
     fn from(primitive: PrimitiveType) -> Self {
         Self {

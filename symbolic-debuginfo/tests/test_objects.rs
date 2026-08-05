@@ -7,8 +7,8 @@ use symbolic_debuginfo::ObjectDebugSession;
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
 use symbolic_debuginfo::{
-    FileEntry, Function, LineInfo, Location, Object, ParseObjectOptions, SymbolMap, Type, TypeRef,
-    TypeSize, pe::PeObject,
+    FileEntry, Function, LineInfo, Object, ParseObjectOptions, SymbolMap, Type, TypeRef, TypeSize,
+    VariableLocation, pe::PeObject,
 };
 use symbolic_testutils::fixture;
 
@@ -207,13 +207,13 @@ fn write_variables(
             let end = start.saturating_add(location.size);
 
             match location.location {
-                Location::Register { id } => writeln!(
+                VariableLocation::Register { id } => writeln!(
                     f,
                     "{:indent$}      {start:#x}..{end:#x}: register {id}",
                     "",
                     indent = depth * 2
                 )?,
-                Location::FrameOffset { offset } => writeln!(
+                VariableLocation::FrameOffset { offset } => writeln!(
                     f,
                     "{:indent$}      {start:#x}..{end:#x}: frame base {offset:+}",
                     "",
