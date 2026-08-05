@@ -485,8 +485,8 @@ impl<'a> SymCacheConverter<'a> {
                 }
 
                 let (kind, data) = match location.location {
-                    di::Location::Register { id } => (0, id.into()),
-                    di::Location::FrameOffset { offset } => (1, offset as i32),
+                    di::VariableLocation::Register { id } => (0, id.into()),
+                    di::VariableLocation::FrameOffset { offset } => (1, offset as i32),
                 };
 
                 self.variable_locations.push(v9::raw::VariableLocation {
@@ -732,13 +732,15 @@ impl<'a> SymCacheConverter<'a> {
         let function_variables = (0..header.num_functions).scan(0u32, |next_idx, function_idx| {
             let variables = self
                 .function_variables
-                .get(&function_idx)
-                .map(|v| v.as_slice())
-                .unwrap_or(&[]);
+                .get_mut(&function_idx)
+                .map(|v| v.as_mut_slice());
 
-            if variables.is_empty() {
+            let Some(variables) = variables.filter(|v| !v.is_empty()) else {
                 return Some(v9::raw::NO_VARIABLES);
-            }
+            };
+
+            // Sort by depth, to allow a more efficient lookup/scan.
+            variables.sort_unstable_by_key(|v| v.depth);
 
             let res = v9::raw::FunctionVariables {
                 variable_idx: *next_idx,

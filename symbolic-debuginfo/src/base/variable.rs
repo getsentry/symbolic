@@ -50,7 +50,7 @@ pub struct PrimitiveType<'data> {
     /// An optional encoding of the type.
     ///
     /// The encoding gives additional information how the value of the type is to be interpreted.
-    pub encoding: Option<PrimitiveEncoding>,
+    pub encoding: Option<PrimitiveTypeEncoding>,
     /// The size of the primitive type.
     pub size: TypeSize,
 }
@@ -58,8 +58,8 @@ pub struct PrimitiveType<'data> {
 /// An encoding for a [`PrimitiveType`].
 ///
 /// The encoding provides supplementary information how to interpret the value of a primitive type.
-#[derive(Debug, Clone)]
-pub enum PrimitiveEncoding {
+#[derive(Debug, Copy, Clone)]
+pub enum PrimitiveTypeEncoding {
     /// The value is a boolean.
     Boolean,
     /// The value is an address.
@@ -90,7 +90,7 @@ pub struct PointerType {
 }
 
 /// The size of a type in memory.
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum TypeSize {
     /// The size is given in bytes.
     Bytes(u64),
@@ -106,26 +106,26 @@ pub struct Variable<'data> {
     /// May be `None` if the variable had no type information attached or it could not be parsed.
     pub ty: Option<TypeRef>,
     /// The kind of the variable.
-    pub kind: Kind,
+    pub kind: VariableKind,
     /// Possible locations at runtime of the variable.
     ///
-    /// Locations are stored in ascending order based on their [`LocationInfo::address`].
+    /// Locations are stored in ascending order based on their [`VariableLocationInfo::address`].
     ///
     /// There may be multiple overlapping locations for the same pc range, if the variable
     /// can be sourced from multiple locations.
-    pub locations: Vec<LocationInfo>,
+    pub locations: Vec<VariableLocationInfo>,
 }
 
 /// The variable kind.
 #[derive(Debug, Copy, Clone)]
-pub enum Kind {
+pub enum VariableKind {
     /// The variable is a function parameter.
     Parameter,
     /// The variable is a local.
     Local,
 }
 
-impl fmt::Display for Kind {
+impl fmt::Display for VariableKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Parameter => f.write_str("parameter"),
@@ -136,18 +136,18 @@ impl fmt::Display for Kind {
 
 /// Contains metadata describing the location of a variable at runtime.
 #[derive(Clone)]
-pub struct LocationInfo {
+pub struct VariableLocationInfo {
     /// Start of the address range of this location's validity.
     pub address: u64,
     /// Size of the range marking the end of the location's validity.
     pub size: u64,
     /// The location of the variable at runtime.
-    pub location: Location,
+    pub location: VariableLocation,
 }
 
-impl fmt::Debug for LocationInfo {
+impl fmt::Debug for VariableLocationInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("LocationInfo")
+        f.debug_struct("VariableLocationInfo")
             .field("address", &format_args!("{:#x}", self.address))
             .field("size", &format_args!("{:#x}", self.size))
             .field("location", &self.location)
@@ -157,7 +157,7 @@ impl fmt::Debug for LocationInfo {
 
 /// Describes the location of a variable at runtime.
 #[derive(Debug, Clone)]
-pub enum Location {
+pub enum VariableLocation {
     /// The variable can be found in a register.
     Register {
         /// An architecture dependent id of the register.

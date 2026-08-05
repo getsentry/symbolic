@@ -1,7 +1,7 @@
 use gimli::{AttributeValue, DebuggingInformationEntry, UnitOffset, constants};
 
 use crate::dwarf::{DwarfError, Slice, UnitRef};
-use crate::{PointerType, PrimitiveEncoding, PrimitiveType, Type, TypeRef, TypeSize};
+use crate::{PointerType, PrimitiveType, PrimitiveTypeEncoding, Type, TypeRef, TypeSize};
 
 pub fn parse_type<'d>(
     unit: UnitRef<'d, '_>,
@@ -40,14 +40,18 @@ fn parse_base_type<'d>(
             constants::DW_AT_encoding => {
                 use AttributeValue::Encoding;
                 encoding = Some(match attr.value() {
-                    Encoding(constants::DW_ATE_boolean) => PrimitiveEncoding::Boolean,
-                    Encoding(constants::DW_ATE_address) => PrimitiveEncoding::Address,
-                    Encoding(constants::DW_ATE_signed) => PrimitiveEncoding::SignedInt,
-                    Encoding(constants::DW_ATE_unsigned) => PrimitiveEncoding::UnsignedInt,
-                    Encoding(constants::DW_ATE_signed_char) => PrimitiveEncoding::SignedChar,
-                    Encoding(constants::DW_ATE_unsigned_char) => PrimitiveEncoding::UnsignedChar,
-                    Encoding(constants::DW_ATE_float) => PrimitiveEncoding::Float,
-                    Encoding(constants::DW_ATE_complex_float) => PrimitiveEncoding::ComplexFloat,
+                    Encoding(constants::DW_ATE_boolean) => PrimitiveTypeEncoding::Boolean,
+                    Encoding(constants::DW_ATE_address) => PrimitiveTypeEncoding::Address,
+                    Encoding(constants::DW_ATE_signed) => PrimitiveTypeEncoding::SignedInt,
+                    Encoding(constants::DW_ATE_unsigned) => PrimitiveTypeEncoding::UnsignedInt,
+                    Encoding(constants::DW_ATE_signed_char) => PrimitiveTypeEncoding::SignedChar,
+                    Encoding(constants::DW_ATE_unsigned_char) => {
+                        PrimitiveTypeEncoding::UnsignedChar
+                    }
+                    Encoding(constants::DW_ATE_float) => PrimitiveTypeEncoding::Float,
+                    Encoding(constants::DW_ATE_complex_float) => {
+                        PrimitiveTypeEncoding::ComplexFloat
+                    }
                     _ => continue,
                 });
             }
