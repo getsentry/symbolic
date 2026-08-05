@@ -71,7 +71,7 @@ pub struct Header {
 pub struct VariableHeader {
     /// Number of included [`Variable`]'s.
     pub num_variables: u32,
-    /// Number of included [`VariableLocation`]'s.
+    /// Number of included [`VariableLocationInfo`]'s.
     pub num_variable_locations: u32,
     /// Number of included [`Type`]'s.
     pub num_types: u32,
@@ -168,7 +168,7 @@ pub struct Variable {
     pub name_offset: u32,
     /// The type (reference to a [`Type`]).
     pub type_idx: u32,
-    /// The first location associated with the variable (reference to a [`VariableLocation`]).
+    /// The first location associated with the variable (reference to a [`VariableLocationInfo`]).
     pub location_idx: u32,
     /// The amount of locations.
     pub num_locations: u32,
@@ -184,137 +184,65 @@ pub struct Variable {
     /// to only variables at this depth.
     pub depth: u8,
     /// The variable kind.
+    ///
+    /// The variable kind is required and must not be [`u8::MAX`].
     pub kind: u8,
     pub _reserved: [u8; 2],
 }
 
-/// A representation of a variable location.
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 #[repr(C)]
-pub struct VariableLocation {
+pub struct RegisterLocation {
+    pub id: u16,
+    pub _reserved: [u8; 2],
+}
+
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct FrameOffsetLocation {
+    pub offset: i32,
+}
+
+pub mod location {
+    use super::*;
+
+    crate::utils::tagged_union! {
+        register: RegisterLocation,
+        frame_offset: FrameOffsetLocation,
+    }
+}
+
+/// A representation of a variable location.
+#[derive(Clone)]
+#[repr(C)]
+pub struct VariableLocationInfo {
     /// First instruction address (pc) where this location is valid.
     pub start: u32,
     /// Size of the location, indicating the first instruction address where this location is no longer valid.
     pub size: u32,
     /// The location data.
-    ///
-    /// Carries different meaning based on [`Self::kind`].
-    pub data: i32,
+    pub location: location::Impl,
     /// The location kind.
     pub kind: u8,
     pub _reserved: [u8; 3],
 }
 
-/// A representation of a type.
-#[derive(Clone)]
-#[repr(C)]
-pub struct Type {
-    /// The concrete type.
-    pub ty: TypeImpl,
-    /// Discriminator for [`Self::ty`].
-    pub kind: u8,
-    pub _reserved: [u8; 3],
-}
-
-impl Type {
-    pub fn as_primitive(&self) -> Option<&PrimitiveType> {
-        match self.kind {
-            0 => Some(unsafe { &self.ty.primitive }),
-            _ => None,
-        }
-    }
-
-    pub fn as_pointer(&self) -> Option<&PointerType> {
-        match self.kind {
-            1 => Some(unsafe { &self.ty.pointer }),
-            _ => None,
-        }
+impl VariableLocationInfo {
+    pub fn location(&self) -> Option<location::Enum> {
+        self.location.into_enum(self.kind)
     }
 }
 
-impl From<PrimitiveType> for Type {
-    fn from(primitive: PrimitiveType) -> Self {
-        Self {
-            kind: 0,
-            ty: TypeImpl { primitive },
-            _reserved: [0; _],
-        }
+impl fmt::Debug for VariableLocationInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("VariableLocationInfo")
+            .field("start", &self.start)
+            .field("size", &self.size)
+            .field("location", &self.location.tagged(self.kind))
+            .field("_reserved", &self._reserved)
+            .finish()
     }
 }
-
-impl From<PointerType> for Type {
-    fn from(pointer: PointerType) -> Self {
-        Self {
-            kind: 1,
-            ty: TypeImpl { pointer },
-            _reserved: [0; _],
-        }
-    }
-}
-
-impl fmt::Debug for Type {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.kind {
-            0 => unsafe { &self.ty.primitive }.fmt(f),
-            1 => unsafe { &self.ty.pointer }.fmt(f),
-            k => write!(f, "<invalid type {k}>"),
-        }
-    }
-}
-
-impl PartialEq for Type {
-    fn eq(&self, other: &Self) -> bool {
-        let Self {
-            kind,
-            ty,
-            _reserved,
-        } = other;
-
-        if self.kind != *kind {
-            return false;
-        }
-
-        match self.kind {
-            0 => unsafe { self.ty.primitive == ty.primitive },
-            1 => unsafe { self.ty.pointer == ty.pointer },
-            _ => false,
-        }
-    }
-}
-
-impl Eq for Type {}
-
-impl std::hash::Hash for Type {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.kind.hash(state);
-        match self.kind {
-            0 => unsafe { self.ty.primitive.hash(state) },
-            1 => unsafe { self.ty.pointer.hash(state) },
-            _ => {}
-        }
-    }
-}
-
-/// Any possible type.
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub union TypeImpl {
-    /// A primitive type.
-    pub primitive: PrimitiveType,
-    /// A pointer type.
-    pub pointer: PointerType,
-}
-
-// For the [`TypeImpl`] union to be a safe `pod`, all of its members must be pods and the same size.
-// Any bit representation of the union must be valid and initialized in all other variants.
-const _: () = {
-    const SIZE: usize = 12;
-    assert!(std::mem::size_of::<TypeImpl>() == SIZE);
-    assert!(std::mem::size_of::<PrimitiveType>() == SIZE);
-    assert!(std::mem::size_of::<PointerType>() == SIZE);
-
-    assert!(std::mem::align_of::<TypeImpl>() == 4);
-};
 
 /// A representation of a primitive type.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
@@ -342,6 +270,69 @@ pub struct PointerType {
     pub _reserved: [u8; 4],
 }
 
+pub mod ty {
+    use super::*;
+
+    crate::utils::tagged_union! {
+        primitive: PrimitiveType,
+        pointer: PointerType,
+    }
+}
+
+/// A representation of a type.
+#[derive(Clone)]
+#[repr(C)]
+pub struct Type {
+    /// The concrete type.
+    pub ty: ty::Impl,
+    /// Discriminator for [`Self::ty`].
+    pub kind: u8,
+    pub _reserved: [u8; 3],
+}
+
+impl Type {
+    pub fn as_enum(&self) -> Option<ty::Enum> {
+        self.ty.into_enum(self.kind)
+    }
+}
+
+impl<T: Into<ty::Enum>> From<T> for Type {
+    fn from(t: T) -> Self {
+        let (kind, ty) = t.into().into_impl();
+        Self {
+            kind,
+            ty,
+            _reserved: [0; _],
+        }
+    }
+}
+
+impl fmt::Debug for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.ty.tagged(self.kind).fmt(f)
+    }
+}
+
+impl PartialEq for Type {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            kind,
+            ty,
+            _reserved,
+        } = other;
+
+        self.ty.tagged(self.kind) == ty.tagged(*kind) && self._reserved == *_reserved
+    }
+}
+
+impl Eq for Type {}
+
+impl std::hash::Hash for Type {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.ty.tagged(self.kind).hash(state)
+    }
+}
+
 unsafe impl Pod for Header {}
 unsafe impl Pod for VariableHeader {}
 unsafe impl Pod for Function {}
@@ -350,9 +341,10 @@ unsafe impl Pod for File {}
 unsafe impl Pod for SourceLocation {}
 unsafe impl Pod for Range {}
 unsafe impl Pod for Variable {}
-unsafe impl Pod for VariableLocation {}
+unsafe impl Pod for RegisterLocation {}
+unsafe impl Pod for FrameOffsetLocation {}
+unsafe impl Pod for VariableLocationInfo {}
 unsafe impl Pod for Type {}
-unsafe impl Pod for TypeImpl {}
 unsafe impl Pod for PrimitiveType {}
 unsafe impl Pod for PointerType {}
 
@@ -389,8 +381,8 @@ mod tests {
         assert_eq!(mem::size_of::<Variable>(), 20);
         assert_eq!(mem::align_of::<Variable>(), 4);
 
-        assert_eq!(mem::size_of::<VariableLocation>(), 16);
-        assert_eq!(mem::align_of::<VariableLocation>(), 4);
+        assert_eq!(mem::size_of::<VariableLocationInfo>(), 16);
+        assert_eq!(mem::align_of::<VariableLocationInfo>(), 4);
 
         assert_eq!(mem::size_of::<Type>(), 16);
         assert_eq!(mem::align_of::<Type>(), 4);

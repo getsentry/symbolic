@@ -3,10 +3,10 @@ use std::cmp::Ordering;
 
 use symbolic_common::Language;
 
-use crate::v9::{SymCache, raw};
+use crate::v9::{SymCache, convert, raw};
 use crate::{
-    File, Function, PointerType, PrimitiveType, PrimitiveTypeEncoding, Type, TypeId, TypeSize,
-    VariableKind, VariableLocation, VariableLocationInfo,
+    File, Function, PointerType, PrimitiveType, Type, TypeId, TypeSize, VariableKind,
+    VariableLocation, VariableLocationInfo,
 };
 
 impl<'data> SymCache<'data> {
@@ -68,32 +68,17 @@ impl<'data> SymCache<'data> {
     pub fn get_type(&self, ty_idx: u32) -> Option<Type<'data>> {
         let raw_ty = self.types.get(ty_idx as usize)?;
 
-        if let Some(primitive) = raw_ty.as_primitive() {
-            return Some(Type::Primitive(PrimitiveType {
+        Some(match raw_ty.as_enum()? {
+            raw::ty::Enum::primitive(primitive) => Type::Primitive(PrimitiveType {
                 name: self.get_string(primitive.name_offset),
                 size: TypeSize::Bytes(primitive.size.into()),
-                encoding: match primitive.encoding {
-                    0 => Some(PrimitiveTypeEncoding::Boolean),
-                    1 => Some(PrimitiveTypeEncoding::Address),
-                    2 => Some(PrimitiveTypeEncoding::SignedInt),
-                    3 => Some(PrimitiveTypeEncoding::UnsignedInt),
-                    4 => Some(PrimitiveTypeEncoding::SignedChar),
-                    5 => Some(PrimitiveTypeEncoding::UnsignedChar),
-                    6 => Some(PrimitiveTypeEncoding::Float),
-                    7 => Some(PrimitiveTypeEncoding::ComplexFloat),
-                    _ => None,
-                },
-            }));
-        }
-
-        if let Some(pointer) = raw_ty.as_pointer() {
-            return Some(Type::Pointer(PointerType {
+                encoding: convert::u8_to_primitive_type_encoding(primitive.encoding),
+            }),
+            raw::ty::Enum::pointer(pointer) => Type::Pointer(PointerType {
                 size: TypeSize::Bytes(pointer.size.into()),
                 pointee: (pointer.pointee_idx != u32::MAX).then_some(TypeId(pointer.pointee_idx)),
-            }));
-        }
-
-        None
+            }),
+        })
     }
 
     /// An iterator over the functions in this SymCache.
@@ -208,16 +193,6 @@ impl<'data, 'cache> SourceLocation<'data, 'cache> {
     }
 }
 
-impl PartialEq for SourceLocation<'_, '_> {
-    fn eq(&self, other: &Self) -> bool {
-        self.cache == other.cache
-            && self.source_location == other.source_location
-            && self.addr == other.addr
-    }
-}
-
-impl Eq for SourceLocation<'_, '_> {}
-
 /// An Iterator that yields [`SourceLocation`]s, representing an inlining hierarchy.
 #[derive(Debug, Clone)]
 pub struct SourceLocations<'data, 'cache> {
@@ -311,7 +286,7 @@ impl<'data, 'cache> Iterator for Variables<'data, 'cache> {
     type Item = Variable<'data, 'cache>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.depth == u8::MAX {
+        if self.current == u32::MAX {
             return None;
         }
 
@@ -356,14 +331,7 @@ impl<'data, 'cache> Variable<'data, 'cache> {
 
     /// The kind of the variable.
     pub fn kind(&self) -> VariableKind {
-        match self.variable.kind {
-            0 => VariableKind::Parameter,
-            1 => VariableKind::Local,
-            _ => {
-                debug_assert!(false, "invalid variable kind");
-                VariableKind::Local
-            }
-        }
+        convert::u8_to_variable_kind(self.variable.kind)
     }
 
     /// The type of the variable.
@@ -395,7 +363,7 @@ impl<'data, 'cache> Variable<'data, 'cache> {
 
 #[derive(Debug, Clone)]
 pub struct VariableLocations<'data> {
-    locations: std::slice::Iter<'data, raw::VariableLocation>,
+    locations: std::slice::Iter<'data, raw::VariableLocationInfo>,
     addr: u32,
 }
 
@@ -410,18 +378,14 @@ impl<'data> Iterator for VariableLocations<'data> {
             }
 
             if self.addr < location.start + location.size {
-                // Will need to find a better way to keep serialization and de-serialization
-                // closer together. Right now this must mirror the implementation in `writer.rs`.
-                // The code enforces that the implementations agree through the symcache version
-                // and variable section version.
-                let vl = match location.kind {
-                    0 => VariableLocation::Register {
-                        id: location.data as u16,
+                let vl = match location.location() {
+                    Some(raw::location::Enum::register(reg)) => {
+                        VariableLocation::Register { id: reg.id }
+                    }
+                    Some(raw::location::Enum::frame_offset(fo)) => VariableLocation::FrameOffset {
+                        offset: fo.offset.into(),
                     },
-                    1 => VariableLocation::FrameOffset {
-                        offset: location.data.into(),
-                    },
-                    _ => {
+                    None => {
                         debug_assert!(false, "invalid variable location kind");
                         continue;
                     }
