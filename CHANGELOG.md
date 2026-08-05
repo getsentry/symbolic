@@ -18,6 +18,10 @@
 - Implements variables at a frame offset. ([#1026](https://github.com/getsentry/symbolic/pull/1026))
 - Implement resolution for primitive and pointer type references contained in variables. ([#1032](https://github.com/getsentry/symbolic/pull/1032))
 
+**Internal**
+
+- Add an ELF/DWARF fixture and snapshot test for variable extraction. ([#1038](https://github.com/getsentry/symbolic/pull/1038))
+
 ## 14.0.0-alpha.3
 
 **Breaking Changes**
