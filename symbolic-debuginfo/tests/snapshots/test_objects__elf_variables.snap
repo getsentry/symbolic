@@ -1,0 +1,107 @@
+---
+source: symbolic-debuginfo/tests/test_objects.rs
+expression: "VariablesDebug::new(&session, &functions)"
+---
+> main (0x34)
+
+> aggregates (0x3f)
+  variables:
+    point (local)
+      type:
+        > Unknown
+      0x0..0x3f: frame base -32
+    array (local)
+      type:
+        > Unknown
+      0x0..0x3f: frame base -44
+    color (local)
+      type:
+        > Unknown
+      0x0..0x3f: frame base -20
+    value (local)
+      type:
+        > Unknown
+      0x0..0x3f: frame base -48
+    constant (local)
+      type:
+        > Unknown
+      0x0..0x3f: frame base -24
+
+> pointers (0x1b)
+  variables:
+    num (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x1b: frame base -24
+    num_ptr (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Pointer (8 bytes)
+            > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x1b: frame base -32
+    str (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
+      0x0..0x1b: frame base -40
+    any (parameter)
+      type:
+        > Unknown
+      0x0..0x1b: frame base -48
+    fn (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
+      0x0..0x1b: frame base -56
+
+> primitives (0x6d)
+  variables:
+    sc (local)
+      type:
+        > Primitive: signed char (SignedChar, 1 byte)
+      0x0..0x6d: frame base -17
+    uc (local)
+      type:
+        > Primitive: unsigned char (UnsignedChar, 1 byte)
+      0x0..0x6d: frame base -18
+    s (local)
+      type:
+        > Primitive: short int (SignedInt, 2 bytes)
+      0x0..0x6d: frame base -20
+    us (local)
+      type:
+        > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+      0x0..0x6d: frame base -22
+    i (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x6d: frame base -28
+    u (local)
+      type:
+        > Primitive: unsigned int (UnsignedInt, 4 bytes)
+      0x0..0x6d: frame base -32
+    ll (local)
+      type:
+        > Primitive: long long int (SignedInt, 8 bytes)
+      0x0..0x6d: frame base -40
+    ull (local)
+      type:
+        > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+      0x0..0x6d: frame base -48
+    f (local)
+      type:
+        > Primitive: float (Float, 4 bytes)
+      0x0..0x6d: frame base -52
+    d (local)
+      type:
+        > Primitive: double (Float, 8 bytes)
+      0x0..0x6d: frame base -64
+    b (local)
+      type:
+        > Primitive: _Bool (Boolean, 1 byte)
+      0x0..0x6d: frame base -65
+    fc (local)
+      type:
+        > Primitive: complex float (ComplexFloat, 8 bytes)
+      0x0..0x6d: frame base -76
