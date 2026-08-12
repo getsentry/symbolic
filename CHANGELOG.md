@@ -8,6 +8,10 @@
 - Remove support for symcache version 7 and 8. ([#1033](https://github.com/getsentry/symbolic/pull/1033))
 - Adds variables to functions. ([#1025](https://github.com/getsentry/symbolic/pull/1025))
 
+**Fixes**
+
+- No unwind info on certain dsym files with sparse sections. ([#1041](https://github.com/getsentry/symbolic/pull/1041))
+
 **Dependencies**
 
 - Bump `pdb-addr2line` to 0.12.1 to fix a potential infinite recursion. ([#1030](https://github.com/getsentry/symbolic/pull/1030))
