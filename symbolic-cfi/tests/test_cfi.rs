@@ -50,6 +50,20 @@ fn cfi_from_macho() -> Result<(), Error> {
 }
 
 #[test]
+fn cfi_from_sparse_macho_dsym() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture(
+        "macos/symbolic-1040/symbolic-1040.dSYM/Contents/Resources/DWARF/symbolic-1040",
+    ))?;
+    let object = Object::parse(&buffer)?;
+
+    let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
+    let cfi = str::from_utf8(&buf)?;
+    assert!(cfi.contains("STACK CFI INIT 3ef8 58"));
+
+    Ok(())
+}
+
+#[test]
 fn cfi_from_sym_linux() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("linux/crash.sym"))?;
     let object = Object::parse(&buffer)?;
