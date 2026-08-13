@@ -4,7 +4,7 @@
 # Run this via Docker so the output does not depend on your machine:
 #
 #   docker run --rm --platform linux/amd64 \
-#       -v "$PWD/..:/testutils" -w /testutils/variables gcc:14 ./build.sh
+#       -v "$PWD/..:/testutils" -w /testutils/variables gcc:14.4.0 ./build.sh
 #
 # See README.md for details.
 set -eu

@@ -14,19 +14,21 @@ cargo test -p symbolic-debuginfo --test test_objects test_elf_variables
 
 ## Rebuilding
 
-If you make make changes to `variables.c`, updating the snapshot requires two things to run this
-from *this* directory. The following writes `../fixtures/linux/variables`:
+If you make changes to `variables.c`, updating the snapshot takes two steps. First, rebuild the
+fixture — run this from *this* directory; it writes `../fixtures/linux/variables`:
 
 ```sh
 docker run --rm --platform linux/amd64 \
-    -v "$PWD/..:/testutils" -w /testutils/variables gcc:14 ./build.sh
+    -v "$PWD/..:/testutils" -w /testutils/variables gcc:14.4.0 ./build.sh
 ```
 
-Docker pins the compiler, the target architecture and the paths embedded in the debug info, so the
-fixture does not depend on the machine that built it. On an x86-64 Linux machine with GCC 14 you
-can run `./build.sh` directly for the same result.
+Docker pins the compiler, the target architecture and the paths embedded in the debug info
+(`DW_AT_comp_dir` comes from the container working directory), so the fixture does not depend on
+the machine that built it. Do not run `./build.sh` outside Docker: even with the right GCC
+version, your local checkout path would be embedded in the debug info and the binary would differ
+from the committed one.
 
-Next, you refresh the snapshot and check the diff is what you expected:
+Second, refresh the snapshot and check the diff is what you expected:
 
 ```sh
 cargo insta test --accept -p symbolic-debuginfo --test test_objects
@@ -58,7 +60,7 @@ the snapshot is the record of that gap; implementing origin-following will make 
 
 Currently not covered, worth adding when the surrounding support lands:
 
-- `PrimitiveEncoding::Address` — no ordinary C type on this target maps to `DW_ATE_address`.
+- `PrimitiveTypeEncoding::Address` — no ordinary C type on this target maps to `DW_ATE_address`.
 - `Location::Register` and multi-range location lists — these need an optimized build, since at
   `-O0` GCC spills every local to the stack and every variable gets a single whole-function
   `DW_OP_fbreg` location. Adding an `-O2` variant of the same source is the natural next step, but

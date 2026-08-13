@@ -16,7 +16,8 @@
 #include <stdbool.h>
 
 /*
- * Primitive types: one per `PrimitiveEncoding` variant, as locals.
+ * Primitive types, as locals. Covers every `PrimitiveTypeEncoding` variant
+ * except `Address`, which no ordinary C type maps to (see README.md).
  */
 void primitives(void)
 {
