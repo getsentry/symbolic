@@ -58,7 +58,7 @@ pub struct SymCacheConverter<'a> {
     /// A list of all variable locations.
     ///
     /// Variable locations are stored in continous chunks per variable.
-    variable_locations: Vec<v9::raw::VariableLocation>,
+    variable_locations: Vec<v9::raw::VariableLocationInfo>,
     /// The set of all types referenced from variables.
     types: IndexSet<v9::raw::Type>,
 
@@ -484,16 +484,24 @@ impl<'a> SymCacheConverter<'a> {
                     continue;
                 }
 
-                let (kind, data) = match location.location {
-                    di::VariableLocation::Register { id } => (0, id.into()),
-                    di::VariableLocation::FrameOffset { offset } => (1, offset as i32),
+                let raw_loc: v9::raw::location::Enum = match location.location {
+                    di::VariableLocation::Register { id } => v9::raw::RegisterLocation {
+                        id,
+                        _reserved: [0; _],
+                    }
+                    .into(),
+                    di::VariableLocation::FrameOffset { offset } => v9::raw::FrameOffsetLocation {
+                        offset: offset as i32,
+                    }
+                    .into(),
                 };
+                let (kind, data) = raw_loc.into_impl();
 
-                self.variable_locations.push(v9::raw::VariableLocation {
+                self.variable_locations.push(v9::raw::VariableLocationInfo {
                     start: location.address as u32,
                     size: location.size as u32,
+                    location: data,
                     kind,
-                    data,
                     _reserved: [0; _],
                 });
             }
@@ -523,7 +531,7 @@ impl<'a> SymCacheConverter<'a> {
                     location_idx: location_idx as u32,
                     num_locations: num_locations as u32,
                     depth: fn_depth as u8,
-                    kind: variable.kind as u8,
+                    kind: v9::convert::variable_kind_to_u8(variable.kind),
                     _reserved: [0; _],
                 });
         }
@@ -544,16 +552,16 @@ impl<'a> SymCacheConverter<'a> {
         };
 
         let ty = match ty {
-            symbolic_debuginfo::Type::Primitive(ty) => v9::raw::PrimitiveType {
+            di::Type::Primitive(ty) => v9::raw::PrimitiveType {
                 name_offset: ty
                     .name
                     .map_or(u32::MAX, |n| self.string_table.insert(&n) as u32),
                 size: size(ty.size),
-                encoding: ty.encoding.map_or(u8::MAX, |e| e as u8),
+                encoding: v9::convert::primitive_type_encoding_to_u8(ty.encoding),
                 _reserved: [0; _],
             }
             .into(),
-            symbolic_debuginfo::Type::Pointer(ty) => v9::raw::PointerType {
+            di::Type::Pointer(ty) => v9::raw::PointerType {
                 pointee_idx: self.process_symbolic_type(tr, &ty.pointee, depth + 1),
                 size: size(ty.size),
                 _reserved: [0; _],

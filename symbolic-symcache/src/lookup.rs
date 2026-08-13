@@ -178,7 +178,7 @@ pub struct VariableLocations<'data>(VariableLocationsInner<'data>);
 ///
 /// A `SourceLocation` represents source information about a particular instruction.
 /// It always has a `[Function]` associated with it and may also have a `[File]` and a line number.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct SourceLocation<'data, 'cache>(SourceLocationInner<'data, 'cache>);
 
 /// An Iterator that yields [`SourceLocation`]s, representing an inlining hierarchy.
@@ -238,7 +238,7 @@ pub struct Variables<'data, 'cache>(VariablesInner<'data, 'cache>);
 
 macro_rules! impl_version {
     ($([$version:ident, $module:ident]),+) => {
-        #[derive(Clone, PartialEq, Eq)]
+        #[derive(Clone)]
         pub(crate) enum SymCacheInner<'data> {
             $($version(crate::$module::SymCache<'data>),)+
         }
@@ -292,7 +292,7 @@ macro_rules! impl_version {
             }
         }
 
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Debug, Clone)]
         enum SourceLocationInner<'data, 'cache> {
             $($version(crate::$module::lookup::SourceLocation<'data, 'cache>),)+
         }
