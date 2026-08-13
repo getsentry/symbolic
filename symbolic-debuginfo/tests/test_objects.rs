@@ -49,15 +49,13 @@ impl fmt::Debug for FilesDebug<'_> {
 
 /// Selects which parts of a function tree [`FunctionsDebug`] prints, and how.
 #[derive(Clone, Copy)]
-struct DebugOptions {
-    /// Print the line records of each function.
-    lines: bool,
-    /// Print the variables of each function.
-    variables: bool,
-    /// Omit function addresses and print variable location ranges relative to the start of their
-    /// function, so the snapshot only changes when debug info changes and not when the fixture is
-    /// merely relinked or relocated.
-    relative: bool,
+enum DebugMode {
+    /// The full function tree: absolute addresses, line records, and variables.
+    Full,
+    /// Only the variables of each function, with location ranges relative to the start of their
+    /// function, so the snapshot only changes when variable debug info changes and not when the
+    /// fixture is merely relinked or relocated.
+    RelativeVariables,
 }
 
 /// Helper to create neat snapshots for function trees.
@@ -65,7 +63,7 @@ struct FunctionsDebug<'data, 'session> {
     session: &'session ObjectDebugSession<'data>,
     functions: &'session [Function<'session>],
     depth: usize,
-    options: DebugOptions,
+    mode: DebugMode,
 }
 
 impl<'data, 'session> FunctionsDebug<'data, 'session> {
@@ -78,19 +76,11 @@ impl<'data, 'session> FunctionsDebug<'data, 'session> {
             session,
             functions,
             depth: 0,
-            options: DebugOptions {
-                lines: true,
-                variables: true,
-                relative: false,
-            },
+            mode: DebugMode::Full,
         }
     }
 
-    /// Prints only the variables of a function tree.
-    ///
-    /// Line records are left out and location ranges are printed relative to the start of their
-    /// function, so the snapshot only changes when variable debug info changes and not when the
-    /// fixture is merely relinked or relocated.
+    /// Prints only the variables of a function tree, see [`DebugMode::RelativeVariables`].
     fn variables(
         session: &'session ObjectDebugSession<'data>,
         functions: &'session [Function<'session>],
@@ -99,11 +89,7 @@ impl<'data, 'session> FunctionsDebug<'data, 'session> {
             session,
             functions,
             depth: 0,
-            options: DebugOptions {
-                lines: false,
-                variables: true,
-                relative: true,
-            },
+            mode: DebugMode::RelativeVariables,
         }
     }
 
@@ -113,7 +99,7 @@ impl<'data, 'session> FunctionsDebug<'data, 'session> {
             session: self.session,
             functions: &function.inlinees,
             depth: self.depth + 1,
-            options: self.options,
+            mode: self.mode,
         }
     }
 }
@@ -123,50 +109,45 @@ impl fmt::Debug for FunctionsDebug<'_, '_> {
         let indent = self.depth * 2;
 
         for function in self.functions {
-            if self.options.relative {
-                writeln!(
-                    f,
-                    "\n{:indent$}> {} ({:#x})",
-                    "", function.name, function.size,
-                )?;
-            } else {
-                writeln!(
-                    f,
-                    "\n{:indent$}> {:#x}: {} ({:#x})",
-                    "", function.address, function.name, function.size,
-                )?;
-            }
-
-            if self.options.lines {
-                for line in &function.lines {
+            match self.mode {
+                DebugMode::Full => {
                     writeln!(
                         f,
-                        "{:indent$}  {:#x}: {}:{} ({})",
-                        "",
-                        line.address,
-                        line.file.name_str(),
-                        line.line,
-                        line.file.dir_str(),
+                        "\n{:indent$}> {:#x}: {} ({:#x})",
+                        "", function.address, function.name, function.size,
+                    )?;
+
+                    for line in &function.lines {
+                        writeln!(
+                            f,
+                            "{:indent$}  {:#x}: {}:{} ({})",
+                            "",
+                            line.address,
+                            line.file.name_str(),
+                            line.line,
+                            line.file.dir_str(),
+                        )?;
+                    }
+                }
+                DebugMode::RelativeVariables => {
+                    writeln!(
+                        f,
+                        "\n{:indent$}> {} ({:#x})",
+                        "", function.name, function.size
                     )?;
                 }
             }
 
-            if self.options.variables {
-                write!(
-                    f,
-                    "{:?}",
-                    VariablesDebug {
-                        session: self.session,
-                        function,
-                        depth: self.depth,
-                        base: if self.options.relative {
-                            function.address
-                        } else {
-                            0
-                        },
-                    }
-                )?;
-            }
+            write!(
+                f,
+                "{:?}",
+                VariablesDebug {
+                    session: self.session,
+                    function,
+                    depth: self.depth,
+                    mode: self.mode,
+                }
+            )?;
 
             write!(f, "{:?}", self.inlinees(function))?;
         }
@@ -181,8 +162,7 @@ struct VariablesDebug<'data, 'session> {
     function: &'session Function<'session>,
     /// The number of levels this function is indented by.
     depth: usize,
-    /// Location ranges are printed relative to this address. `0` prints absolute addresses.
-    base: u64,
+    mode: DebugMode,
 }
 
 impl fmt::Debug for VariablesDebug<'_, '_> {
@@ -192,6 +172,11 @@ impl fmt::Debug for VariablesDebug<'_, '_> {
         }
 
         let indent = self.depth * 2;
+        let base = match self.mode {
+            DebugMode::Full => 0,
+            DebugMode::RelativeVariables => self.function.address,
+        };
+
         writeln!(f, "{:indent$}  variables:", "")?;
 
         for variable in &self.function.variables {
@@ -213,7 +198,7 @@ impl fmt::Debug for VariablesDebug<'_, '_> {
             for location in &variable.locations {
                 let start = location
                     .address
-                    .checked_sub(self.base)
+                    .checked_sub(base)
                     .expect("location range starts before its function");
                 let end = start.saturating_add(location.size);
 
