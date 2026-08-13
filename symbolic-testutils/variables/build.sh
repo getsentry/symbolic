@@ -9,4 +9,6 @@
 # See README.md for details.
 set -eu
 
+cd "$(dirname "$0")"
+
 gcc -g -gdwarf-5 -O0 -o ../fixtures/linux/variables variables.c
