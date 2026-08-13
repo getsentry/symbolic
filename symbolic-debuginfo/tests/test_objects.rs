@@ -596,6 +596,22 @@ fn test_elf_variables() -> Result<(), Error> {
     Ok(())
 }
 
+#[test]
+fn test_elf_variables_opt() -> Result<(), Error> {
+    let view = ByteView::open(fixture("linux/variables_opt"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session()?;
+    let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
+
+    insta::assert_debug_snapshot!(
+        "elf_variables_opt",
+        FunctionsDebug::variables(&session, &functions)
+    );
+
+    Ok(())
+}
+
 fn elf_debug_crc() -> Result<u32, Error> {
     Ok(u32::from_str_radix(
         std::fs::read_to_string(fixture("linux/elf_debuglink/gen/debug_info.txt.crc"))?.trim(),

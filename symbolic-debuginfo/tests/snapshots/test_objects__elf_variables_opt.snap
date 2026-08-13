@@ -1,0 +1,67 @@
+---
+source: symbolic-debuginfo/tests/test_objects.rs
+expression: "FunctionsDebug::variables(&session, &functions)"
+---
+> main (0x32)
+  variables:
+    result (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x28..0x31: register 3
+
+> optimized_out (0x4)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x4: register 5
+
+> external_call (0x20)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x14: register 5
+      0x14..0x1f: register 6
+    kept (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x10..0x1c: register 3
+    r (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x15..0x1b: register 0
+
+> across_call (0xd)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0xd: register 5
+    doubled (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x3..0xd: register 1
+    other (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0xa..0xc: register 0
+
+> registers (0x9)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x9: register 5
+    b (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x6: register 4
+    sum (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x3..0x8: register 0
+    product (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x6..0x9: register 4
