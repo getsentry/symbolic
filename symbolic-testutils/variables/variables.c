@@ -72,10 +72,33 @@ void aggregates(void)
     const int constant = 42;
 }
 
+/*
+ * Inlined functions. `always_inline` forces inlining even at -O0, which is the
+ * only way this fixture can produce a `DW_TAG_inlined_subroutine`.
+ *
+ * The variables of the inlinee are not supported yet: their concrete DIEs
+ * carry only a location and a `DW_AT_abstract_origin` reference, with name and
+ * type living on the abstract DIE, which symbolic does not follow for
+ * variables. Both `param` and `doubled` have plain frame-base locations at
+ * -O0, so `inlined` rendering with no variables at all in the snapshot is
+ * purely the missing origin lookup.
+ */
+static inline __attribute__((always_inline)) int inlined(int param)
+{
+    int doubled = param * 2;
+    return doubled + 1;
+}
+
+void inlining(int outer)
+{
+    int result = inlined(outer);
+}
+
 int main(void)
 {
     primitives();
     pointers(0, 0, 0, 0, 0);
     aggregates();
+    inlining(5);
     return 0;
 }

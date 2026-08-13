@@ -1,8 +1,21 @@
 ---
 source: symbolic-debuginfo/tests/test_objects.rs
-expression: "VariablesDebug::new(&session, &functions)"
+expression: "FunctionsDebug::variables(&session, &functions)"
 ---
-> main (0x34)
+> main (0x3e)
+
+> inlining (0x21)
+  variables:
+    outer (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x21: frame base -36
+    result (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x21: frame base -20
+
+  > inlined (0xe)
 
 > aggregates (0x3f)
   variables:

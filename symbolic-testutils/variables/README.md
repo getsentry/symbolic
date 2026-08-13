@@ -49,6 +49,13 @@ The snapshot deliberately includes types symbolic cannot resolve yet, which show
 That is what makes it useful: adding support for a type turns into a visible snapshot diff instead
 of requiring someone to remember to write a new test.
 
+The same applies to inlined variables, which currently render as nothing at all rather than as
+`Unknown`: `inlining()` forces a `DW_TAG_inlined_subroutine` even at `-O0`, but the variable DIEs
+inside it carry only a location plus a `DW_AT_abstract_origin` reference, and symbolic does not yet
+follow the origin to the abstract DIE that holds the name and type. The empty `inlined` entry in
+the snapshot is the record of that gap; implementing origin-following will make its `param` and
+`doubled` appear as a snapshot diff.
+
 Currently not covered, worth adding when the surrounding support lands:
 
 - `PrimitiveEncoding::Address` — no ordinary C type on this target maps to `DW_ATE_address`.
