@@ -1,14 +1,14 @@
 # Variables fixture
 
-Sources for the debug info fixtures (ELF/DWARF 5, x86-64) used by the variable extraction tests in
-`symbolic-debuginfo/tests/test_objects.rs`:
+`variables.c` is the single source for the debug info fixtures (ELF/DWARF 5, x86-64) used by the
+variable extraction tests in `symbolic-debuginfo/tests/test_objects.rs`. It is compiled twice:
 
-- `variables.c` → `fixtures/linux/variables` (`-O0`), asserted by `test_elf_variables`. Covers
-  types and variable kinds; at `-O0` every variable has a single whole-function stack location.
-- `variables_opt.c` → `fixtures/linux/variables_opt` (`-O2`), asserted by `test_elf_variables_opt`.
-  Covers locations: registers, sub-function ranges, and multi-range location lists.
+- `fixtures/linux/variables` (`-O0`), asserted by `test_elf_variables`. Covers types and variable
+  kinds; at `-O0` every variable has a single whole-function stack location.
+- `fixtures/linux/variables_opt` (`-O2`), asserted by `test_elf_variables_opt`. Covers locations:
+  registers, sub-function ranges, and multi-range location lists.
 
-Both fixtures are meant to grow along with symbolic's variable support.
+The fixture is meant to grow along with symbolic's variable support.
 
 To run the test without rebuilding the snapshot, use:
 
@@ -66,20 +66,25 @@ Currently not covered, worth adding when the surrounding support lands:
 
 - `PrimitiveTypeEncoding::Address` — no ordinary C type on this target maps to `DW_ATE_address`.
 - Variables optimized down to a `DW_AT_const_value` instead of a location (`gone` in
-  `variables_opt.c`) — symbolic currently drops these entirely, so they do not even appear as an
+  `optimized_out`) — symbolic currently drops these entirely, so they do not even appear as an
   empty entry. When support lands, `gone` will show up as a snapshot diff.
 - Non-DWARF formats. The same source should build to a PDB and a dSYM once those backends grow
   variable support.
 
-## The optimized variant
+## The optimized fixture
 
-`variables_opt.c` is built at `-O2` to produce the location shapes that never occur at `-O0`:
+The `-O2` build of the same source produces the location shapes that never occur at `-O0`:
 register locations, ranges shorter than the function, and location lists with multiple entries.
-Keeping a variable alive under the optimizer needs scaffolding, documented in the file itself; the
-short version is `NOINLINE` on every function, opaque inputs read from a `volatile` global, and a
-`USE(x)` asm marker — a plain `(void)x` cast does not survive `-O2`.
+Keeping a variable alive under the optimizer needs scaffolding, documented in `variables.c`
+itself; the short version is `NOINLINE` on every function, opaque inputs read from a `volatile`
+global, and a `USE(x)` asm marker — a plain `(void)x` cast does not survive `-O2`. All of it is
+harmless at `-O0`, so both fixtures build from one source of truth.
 
-Two things to know when extending it:
+The type-oriented functions carry no such scaffolding, so the optimizer deletes most of their
+variables and their blocks render (nearly) empty in the optimized snapshot — deliberately, as a
+record of what optimization does to them.
+
+Two things to know when extending the location coverage:
 
 - A call to a function in the same file does *not* force values out of call-clobbered registers:
   GCC's interprocedural register allocation sees the callee's real clobbers. Multi-range lists

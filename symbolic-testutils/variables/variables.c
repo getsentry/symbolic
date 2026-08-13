@@ -1,25 +1,51 @@
 /*
  * Test fixture for variable extraction from debug info.
  *
+ * This single source builds twice (see build.sh): at -O0, where every
+ * variable gets one whole-function stack location, and at -O2, where
+ * variables live in registers with partial and multi-range location ranges.
+ * Each build has its own fixture binary and snapshot.
+ *
  * Extending this fixture:
  *   - Prefer adding new functions over growing out existing ones; a new
  *     function is just an addition to the snapshot diff, adding a variable to an
  *     existing function rewrites every variable line in it (because each
  *     location range ends at the function's size).
- *   - Rebuild and refresh the snapshot as described in README.md.
+ *   - Rebuild and refresh the snapshots as described in README.md.
  *
  * Sections marked "not supported yet" render as `Unknown` in the snapshot.
  * That is intentional: the snapshot doubles as a record of what symbolic can
  * and cannot resolve (yet), so adding support shows up as a snapshot diff.
+ *
+ * The "Optimized locations" functions near the bottom carry liveness
+ * scaffolding so -O2 cannot delete them; the type-oriented functions above
+ * carry none, so most of their variables are optimized away and their blocks
+ * render (nearly) empty in the optimized snapshot. That too is a record.
  */
 
 #include <stdbool.h>
+#include <stdlib.h>
+
+/*
+ * Liveness scaffolding for the -O2 build; all of it is harmless at -O0.
+ */
+
+/* Opaque input/output the optimizer can neither constant-fold nor delete. */
+volatile int opaque;
+
+/* Require `x` in a register here without emitting any code. A plain `(void)x`
+ * would not survive -O2. */
+#define USE(x) __asm__ volatile("" : : "r"(x))
+
+/* Keep every function a real DWARF entity instead of being inlined into its
+ * caller at -O2. */
+#define NOINLINE __attribute__((noinline))
 
 /*
  * Primitive types, as locals. Covers every `PrimitiveTypeEncoding` variant
  * except `Address`, which no ordinary C type maps to (see README.md).
  */
-void primitives(void)
+NOINLINE void primitives(void)
 {
     signed char sc = -1;
     unsigned char uc = 1;
@@ -42,7 +68,7 @@ void primitives(void)
  * `DW_TAG_const_type`, `void *` has no `DW_AT_type` at all, and `int (*)(int)`
  * points at a `DW_TAG_subroutine_type`.
  */
-void pointers(int *num, int **num_ptr, const char *str, void *any, int (*fn)(int))
+NOINLINE void pointers(int *num, int **num_ptr, const char *str, void *any, int (*fn)(int))
 {
 }
 
@@ -64,7 +90,7 @@ union Value {
     float as_float;
 };
 
-void aggregates(void)
+NOINLINE void aggregates(void)
 {
     Point point = {1, 2};
     int array[3] = {1, 2, 3};
@@ -90,9 +116,67 @@ static inline __attribute__((always_inline)) int inlined(int param)
     return doubled + 1;
 }
 
-void inlining(int outer)
+NOINLINE void inlining(int outer)
 {
     int result = inlined(outer);
+}
+
+/*
+ * Optimized locations. The functions below target the -O2 fixture; at -O0
+ * they just add ordinary stack-located variables to the snapshot.
+ */
+
+/*
+ * Locals that live purely in registers. -O0 spills every local to the stack,
+ * so this is the only coverage of `VariableLocation::Register`.
+ */
+NOINLINE int registers(int a, int b)
+{
+    int sum = a + b;
+    USE(sum);
+    int product = sum * b;
+    USE(product);
+    return product ^ sum;
+}
+
+/*
+ * A local that is live across a call in the same translation unit. GCC's
+ * interprocedural register allocation knows which registers `registers()`
+ * actually clobbers, so values may legitimately stay in call-clobbered
+ * registers across the call.
+ */
+NOINLINE int across_call(int a)
+{
+    int doubled = a * 2;
+    USE(doubled);
+    int other = registers(a, doubled);
+    return doubled + other;
+}
+
+/*
+ * Values live across a call to an *external* function, which GCC must assume
+ * clobbers all call-clobbered registers: `a` and `kept` start in argument
+ * registers and move to callee-saved ones before the call, producing
+ * multi-range location lists at -O2.
+ */
+NOINLINE int external_call(int a)
+{
+    int kept = a + opaque;
+    USE(kept);
+    int r = rand();
+    return kept + r + a;
+}
+
+/*
+ * At -O2, `gone` is folded into the return value and never materialized: its
+ * DIE carries a constant value instead of a location, and symbolic currently
+ * drops it entirely -- its absence from the optimized snapshot is the record
+ * of that gap.
+ */
+NOINLINE int optimized_out(int a)
+{
+    int gone = 42;
+    return a + gone;
 }
 
 int main(void)
@@ -101,5 +185,8 @@ int main(void)
     pointers(0, 0, 0, 0, 0);
     aggregates();
     inlining(5);
+
+    int result = across_call(opaque) + optimized_out(opaque) + external_call(opaque);
+    opaque = result;
     return 0;
 }

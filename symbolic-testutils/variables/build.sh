@@ -12,4 +12,4 @@ set -eu
 cd "$(dirname "$0")"
 
 gcc -g -gdwarf-5 -O0 -o ../fixtures/linux/variables variables.c
-gcc -g -gdwarf-5 -O2 -o ../fixtures/linux/variables_opt variables_opt.c
+gcc -g -gdwarf-5 -O2 -o ../fixtures/linux/variables_opt variables.c

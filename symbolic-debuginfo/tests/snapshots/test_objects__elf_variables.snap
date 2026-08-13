@@ -2,7 +2,72 @@
 source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug::variables(&session, &functions)"
 ---
-> main (0x3e)
+> main (0x80)
+  variables:
+    result (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x80: frame base -36
+
+> optimized_out (0x18)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x18: frame base -36
+    gone (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x18: frame base -20
+
+> external_call (0x33)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x33: frame base -36
+    kept (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x33: frame base -20
+    r (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x33: frame base -24
+
+> across_call (0x32)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x32: frame base -36
+    doubled (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x32: frame base -20
+    other (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x32: frame base -24
+
+> registers (0x2d)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x2d: frame base -36
+    b (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x2d: frame base -40
+    sum (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x2d: frame base -20
+    product (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x2d: frame base -24
 
 > inlining (0x21)
   variables:
