@@ -65,3 +65,42 @@ expression: "FunctionsDebug::variables(&session, &functions)"
       type:
         > Primitive: int (SignedInt, 4 bytes)
       0x6..0x9: register 4
+
+> inlining (0x1)
+  variables:
+    outer (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x1: register 5
+
+> aggregates (0x1)
+
+> pointers (0x1)
+  variables:
+    num (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x1: register 5
+    num_ptr (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Pointer (8 bytes)
+            > Primitive: int (SignedInt, 4 bytes)
+      0x0..0x1: register 4
+    str (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
+      0x0..0x1: register 1
+    any (parameter)
+      type:
+        > Unknown
+      0x0..0x1: register 2
+    fn (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Unknown
+      0x0..0x1: register 8
+
+> primitives (0x1)
