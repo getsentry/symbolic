@@ -211,7 +211,10 @@ impl fmt::Debug for VariablesDebug<'_, '_> {
             }
 
             for location in &variable.locations {
-                let start = location.address.saturating_sub(self.base);
+                let start = location
+                    .address
+                    .checked_sub(self.base)
+                    .expect("location range starts before its function");
                 let end = start.saturating_add(location.size);
 
                 match location.location {
