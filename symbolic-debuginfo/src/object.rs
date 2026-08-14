@@ -128,9 +128,9 @@ impl Error for ObjectError {
 
 // (Jul 2026): For reference, macOS Chromium has a max inlinee depth of around 60, so
 // let's double it; 128 ought to be enough for anybody.
-// (Aug 2026): For reference, Android Minecraft has a max inlinee depth of around 400, so
-// let's double it; 800 ought to be enough for anybody.
-const MAX_INLINE_DEPTH_DEFAULT: u32 = 800;
+// (Aug 2026): For reference, Android Minecraft has a max inlinee depth of around 400.  Set this
+// to 600, which gets us really close to the max stack size for default macOs.
+const MAX_INLINE_DEPTH_DEFAULT: u32 = 600;
 
 /// Options for parsing object files.
 #[non_exhaustive]
