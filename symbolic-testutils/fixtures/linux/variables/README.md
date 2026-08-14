@@ -28,6 +28,19 @@ functions' addresses. Refresh both from the repository root and review the diff:
 cargo insta test -p symbolic-debuginfo --test test_objects --accept -- test_elf_variables
 ```
 
+## The -O2 build
+
+The optimized fixture relies on the scaffolding in `variables.c`: `NOINLINE` keeps functions from
+disappearing into their callers, the `volatile` global provides opaque inputs, and `USE(x)` pins
+values to registers rather than allowing GCC to describe them as computed expressions
+(`DW_OP_stack_value`), which symbolic currently drops. The type-oriented functions carry no
+variable-liveness scaffolding, so their variables mostly vanish at `-O2` by design.
+
+When extending location coverage, use an *external* call to force values to move from
+call-clobbered to callee-saved registers (`rand()` in `external_call`). GCC sees which registers
+same-file functions touch and may leave values in place across those calls. Pass arguments derived
+from `opaque` to prevent the optimizer from specializing callees with constant inputs.
+
 ## Adding coverage
 
 Add whatever exercises the new support to `variables.c`, rebuild, and refresh the snapshot. Since
