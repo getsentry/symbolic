@@ -8,6 +8,12 @@
 
 `variables.c` is meant to grow along with symbolic's variable support.
 
+Run both tests without rebuilding:
+
+```sh
+cargo test -p symbolic-debuginfo --test test_objects test_elf_variables
+```
+
 ## Rebuilding
 
 If you change `variables.c`, rebuild from *this* directory — it rewrites both binaries next to
@@ -22,7 +28,8 @@ Docker keeps the binaries reproducible (pinned compiler, architecture, and embed
 build outside it.
 
 The snapshots record absolute addresses and line records, so changes to the source can shift other
-functions' addresses. Refresh both from the repository root and review the diff:
+functions' addresses. Refresh both from the repository root, review the diff, and commit the
+rebuilt binaries together with their snapshots:
 
 ```sh
 cargo insta test -p symbolic-debuginfo --test test_objects --accept -- test_elf_variables
@@ -32,9 +39,11 @@ cargo insta test -p symbolic-debuginfo --test test_objects --accept -- test_elf_
 
 The optimized fixture relies on the scaffolding in `variables.c`: `NOINLINE` keeps functions from
 disappearing into their callers, the `volatile` global provides opaque inputs, and `USE(x)` pins
-values to registers rather than allowing GCC to describe them as computed expressions
-(`DW_OP_stack_value`), which symbolic currently drops. The type-oriented functions carry no
-variable-liveness scaffolding, so their variables mostly vanish at `-O2` by design.
+values to general-purpose registers rather than allowing GCC to describe them as computed
+expressions (`DW_OP_stack_value`), which symbolic currently drops. `USE_F(x)` does the same for
+floating-point values in SSE registers. `stack_home` instead uses a `volatile` local to keep a
+frame-base location even at `-O2`. The type-oriented functions carry no variable-liveness
+scaffolding, so their variables mostly vanish at `-O2` by design.
 
 When extending location coverage, use an *external* call to force values to move from
 call-clobbered to callee-saved registers (`rand()` in `external_call`). GCC sees which registers
@@ -64,5 +73,7 @@ Currently not covered, worth adding when the surrounding support lands:
 - `PrimitiveTypeEncoding::Address` — no ordinary C type on this target maps to `DW_ATE_address`.
 - Variables optimized down to a `DW_AT_const_value` instead of a location (`gone` in
   `optimized_out`) — symbolic drops these entirely today: present at `-O0`, absent at `-O2`.
+- `DW_OP_entry_value` and `DW_OP_stack_value` location entries already occur in the fixture's
+  DWARF (for example, the parameter tails in `float_registers`), but symbolic drops them today.
 - Non-DWARF formats. The same source should build to a PDB and a dSYM once those backends grow
   variable support.
