@@ -1368,9 +1368,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         value: AttributeValue<Slice<'d>>,
     ) -> Result<Option<Locations>, DwarfError> {
         if let AttributeValue::Exprloc(expr) = value {
-            return self
-                .parse_location_expression(expr)
-                .map(|v| v.map(Locations::Single));
+            return Ok(self.parse_location_expression(expr).map(Locations::Single));
         }
 
         let mut result = Vec::new();
@@ -1388,7 +1386,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let location = VariableLocationInfo {
                 address,
                 size,
-                location: match self.parse_location_expression(location.data)? {
+                location: match self.parse_location_expression(location.data) {
                     Some(location) => location,
                     None => continue,
                 },
@@ -1401,26 +1399,21 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         Ok((!result.is_empty()).then_some(Locations::Many(result)))
     }
 
-    fn parse_location_expression(
-        &self,
-        expr: Expression<Slice<'d>>,
-    ) -> Result<Option<VariableLocation>, DwarfError> {
+    fn parse_location_expression(&self, expr: Expression<Slice<'d>>) -> Option<VariableLocation> {
         let mut operations = expr.operations(self.inner.unit.encoding());
 
-        let Some(op) = operations.next()? else {
-            return Ok(None);
-        };
-        if operations.next()?.is_some() {
+        let op = operations.next().ok()??;
+        if operations.next().ok()?.is_some() {
             // Currently we only support location expressions with a single op.
-            return Ok(None);
+            return None;
         }
 
-        Ok(match op {
+        match op {
             Operation::Register { register } => Some(VariableLocation::Register { id: register.0 }),
             Operation::FrameOffset { offset } => Some(VariableLocation::FrameOffset { offset }),
             // Currently more operations are not supported.
             _ => None,
-        })
+        }
     }
 
     /// Collects all functions within this compilation unit.
