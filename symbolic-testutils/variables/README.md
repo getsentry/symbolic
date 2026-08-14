@@ -61,7 +61,7 @@ the snapshot is the record of that gap; implementing origin-following will make 
 Currently not covered, worth adding when the surrounding support lands:
 
 - `PrimitiveTypeEncoding::Address` — no ordinary C type on this target maps to `DW_ATE_address`.
-- `Location::Register` and multi-range location lists — these need an optimized build, since at
+- `VariableLocation::Register` and multi-range location lists — these need an optimized build, since at
   `-O0` GCC spills every local to the stack and every variable gets a single whole-function
   `DW_OP_fbreg` location. Adding an `-O2` variant of the same source is the natural next step, but
   it needs `noinline`/`volatile` scaffolding to stop the optimizer deleting the fixture outright.

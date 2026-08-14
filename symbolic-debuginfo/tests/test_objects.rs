@@ -53,8 +53,8 @@ enum DebugMode {
     /// The full function tree: absolute addresses, line records, and variables.
     Full,
     /// Only the variables of each function, with location ranges relative to the start of their
-    /// function, so the snapshot only changes when variable debug info changes and not when the
-    /// fixture is merely relinked or relocated.
+    /// function, so a snapshot only changes when variable debug info changes, not when the
+    /// fixture is merely relinked or relocated. Toolchain changes might still churn the snapshot.
     RelativeVariables,
 }
 
