@@ -1,16 +1,15 @@
 # Variables fixture
 
-`variables.c` is the single source for the debug info fixtures (ELF/DWARF 5, x86-64) used by the
-variable extraction tests in `symbolic-debuginfo/tests/test_objects.rs`. It is compiled twice:
+`variables.c` is the single source for the debug info fixtures (ELF/DWARF 5, x86-64) asserted by
+`test_elf_variables` and `test_elf_variables_opt` in `symbolic-debuginfo/tests/test_objects.rs`.
+It is compiled twice:
 
-- `fixtures/linux/variables` (`-O0`), asserted by `test_elf_variables`. Covers types and variable
-  kinds; at `-O0` every variable has a single whole-function stack location.
-- `fixtures/linux/variables_opt` (`-O2`), asserted by `test_elf_variables_opt`. Covers locations:
-  registers, sub-function ranges, and multi-range location lists.
+- `fixtures/linux/variables` (`-O0`): types and variable kinds; every variable has a single
+  whole-function stack location.
+- `fixtures/linux/variables_opt` (`-O2`): locations — registers, sub-function ranges, and
+  multi-range location lists.
 
-The fixture is meant to grow along with symbolic's variable support.
-
-To run the test without rebuilding the snapshot, use:
+Run both tests without rebuilding:
 
 ```sh
 cargo test -p symbolic-debuginfo --test test_objects test_elf_variables
@@ -18,78 +17,61 @@ cargo test -p symbolic-debuginfo --test test_objects test_elf_variables
 
 ## Rebuilding
 
-If you make changes to the C sources, updating the snapshots takes two steps. First, rebuild the
-fixtures — run this from *this* directory; it writes them under `../fixtures/linux/`:
+After changing `variables.c`, rebuild the fixtures — from *this* directory, writing to
+`../fixtures/linux/`:
 
 ```sh
 docker run --rm --platform linux/amd64 \
     -v "$PWD/..:/testutils" -w /testutils/variables gcc:14.4.0 ./build.sh
 ```
 
-Docker pins the compiler, the target architecture and the paths embedded in the debug info
-(`DW_AT_comp_dir` comes from the container working directory), so the fixture does not depend on
-the machine that built it. Do not run `./build.sh` outside Docker: even with the right GCC
-version, your local checkout path would be embedded in the debug info and the binary would differ
-from the committed one.
+Docker pins the compiler, the target architecture, and the embedded paths (`DW_AT_comp_dir` is the
+container working directory). Do not build outside Docker: your local checkout path would be
+embedded and the binaries would differ from the committed ones.
 
-Second, refresh the snapshot and check the diff is what you expected:
+Then refresh the snapshots, check the diff is what you expected, and commit the rebuilt binaries
+together with the updated snapshots:
 
 ```sh
 cargo insta test --accept -p symbolic-debuginfo --test test_objects
 ```
 
-To keep remote up-to-date, commit the rebuilt binary together with the updated snapshot.
-
 ## Adding coverage
 
-Prefer adding a new function to `variables.c` over growing an existing one. A new function produces
-a purely additive snapshot diff, whereas adding a variable to an existing function rewrites every
-variable line in that function: location ranges are printed relative to the function start but end
-at its size, so any change to a function's body shifts them all. Reordering declarations is cheap
-by comparison — it swaps the affected entries and their stack slots and nothing else.
+Prefer adding a new function over growing an existing one: a new function is a purely additive
+snapshot diff, while adding a variable to an existing function rewrites all of its location ranges
+(they end at the function's size). Either way, churn stays confined to the touched function.
 
-Either way the churn is confined to the function you touched, so a large diff in one function and
-none anywhere else is the expected shape.
+The snapshots deliberately record what symbolic can *not* do yet, so adding support turns into a
+visible snapshot diff instead of a new test someone must remember to write: unresolvable types
+show as `Unknown`, and inlinee variables render as nothing at all (`inlining()` forces a
+`DW_TAG_inlined_subroutine` even at `-O0`, but symbolic does not yet follow their
+`DW_AT_abstract_origin` to the name and type).
 
-The snapshot deliberately includes types symbolic cannot resolve yet, which show up as `Unknown`.
-That is what makes it useful: adding support for a type turns into a visible snapshot diff instead
-of requiring someone to remember to write a new test.
-
-The same applies to inlined variables, which currently render as nothing at all rather than as
-`Unknown`: `inlining()` forces a `DW_TAG_inlined_subroutine` even at `-O0`, but the variable DIEs
-inside it carry only a location plus a `DW_AT_abstract_origin` reference, and symbolic does not yet
-follow the origin to the abstract DIE that holds the name and type. The empty `inlined` entry in
-the snapshot is the record of that gap; implementing origin-following will make its `param` and
-`doubled` appear as a snapshot diff.
-
-Currently not covered, worth adding when the surrounding support lands:
+Not covered yet, worth adding when the surrounding support lands:
 
 - `PrimitiveTypeEncoding::Address` — no ordinary C type on this target maps to `DW_ATE_address`.
-- Variables optimized down to a `DW_AT_const_value` instead of a location (`gone` in
-  `optimized_out`) — symbolic currently drops these entirely, so they do not even appear as an
-  empty entry. When support lands, `gone` will show up as a snapshot diff.
-- Non-DWARF formats. The same source should build to a PDB and a dSYM once those backends grow
-  variable support.
+- Variables reduced to a `DW_AT_const_value` instead of a location (`gone` in `optimized_out`) —
+  symbolic drops these entirely today: present at `-O0`, absent at `-O2`.
+- Non-DWARF formats (PDB, dSYM) once those backends grow variable support.
 
-## The optimized fixture
+## The -O2 build
 
-The `-O2` build of the same source produces the location shapes that never occur at `-O0`:
-register locations, ranges shorter than the function, and location lists with multiple entries.
-Keeping a variable alive under the optimizer needs scaffolding, documented in `variables.c`
-itself; the short version is `NOINLINE` on every function, opaque inputs read from a `volatile`
-global, and a `USE(x)` asm marker — a plain `(void)x` cast does not survive `-O2`. All of it is
-harmless at `-O0`, so both fixtures build from one source of truth.
+Keeping variables alive under the optimizer needs the scaffolding documented in `variables.c`:
+`NOINLINE` on every function, opaque inputs from the `volatile` global, and the `USE(x)` asm
+marker (a plain `(void)x` does not survive `-O2`). All of it is harmless at `-O0`. The
+type-oriented functions carry no scaffolding, so their blocks render (nearly) empty in the
+optimized snapshot — deliberately, as a record of what optimization does to them.
 
-The type-oriented functions carry no such scaffolding, so the optimizer deletes most of their
-variables and their blocks render (nearly) empty in the optimized snapshot — deliberately, as a
-record of what optimization does to them.
+When extending location coverage:
 
-Two things to know when extending the location coverage:
-
-- A call to a function in the same file does *not* force values out of call-clobbered registers:
-  GCC's interprocedural register allocation sees the callee's real clobbers. Multi-range lists
-  come from calls to external functions (`rand()` in `external_call`), which GCC must assume
-  clobber everything.
-- `-O2` register allocation is only stable under the pinned compiler image. Expect any edit to an
-  existing function to rewrite that function's whole snapshot block — the per-function churn
-  containment still holds, but within a function, ranges and register numbers move freely.
+- Multi-range location lists come from a value having to *move* to survive a call: it starts in a
+  register the callee is allowed to overwrite, so the compiler relocates it (to a callee-saved
+  register or the stack) before the call — one variable, one range per home. But this only happens
+  when GCC cannot see the callee's body: for a call to a function in the same file, interprocedural
+  register allocation knows which registers the callee *really* touches, and a value can
+  legitimately stay put straight through the call — no move, no split. So keeping a variable live
+  across a same-file call produces no multi-range coverage; call an external function instead
+  (`rand()` in `external_call`), which GCC must assume overwrites everything the ABI allows.
+- `-O2` register allocation is stable only under the pinned compiler image, and any edit to a
+  function rewrites that function's whole block in the optimized snapshot.
