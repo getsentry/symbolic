@@ -7,10 +7,9 @@
  * Each build has its own fixture binary and snapshot.
  *
  * Extending this fixture:
- *   - Prefer adding new functions over growing out existing ones; a new
- *     function is just an addition to the snapshot diff, adding a variable to an
- *     existing function rewrites every variable line in it (because each
- *     location range ends at the function's size).
+ *   - Prefer adding new functions over growing out existing ones; adding a
+ *     variable to an existing function rewrites its location ranges (which
+ *     end at the function's size). Absolute addresses can shift either way.
  *   - Rebuild and refresh the snapshots as described in README.md.
  *
  * Sections marked "not supported yet" render as `Unknown` in the snapshot.

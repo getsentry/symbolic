@@ -1,14 +1,16 @@
 # Variables fixture
 
-Debug info fixture used by the variable extraction tests: `variables.c` builds to the `variables`
-binary in this directory (ELF/DWARF 5, x86-64), asserted by `test_elf_variables` in
-`symbolic-debuginfo/tests/test_objects.rs`.
+`variables.c` builds two ELF/DWARF 5, x86-64 fixtures in this directory, asserted by
+`test_elf_variables` and `test_elf_variables_opt` in `symbolic-debuginfo/tests/test_objects.rs`:
+
+- `variables` (`-O0`): types and variable kinds with whole-function stack locations.
+- `variables_opt` (`-O2`): registers, sub-function ranges, and multi-range location lists.
 
 `variables.c` is meant to grow along with symbolic's variable support.
 
 ## Rebuilding
 
-If you change `variables.c`, rebuild from *this* directory — it rewrites `variables` next to
+If you change `variables.c`, rebuild from *this* directory — it rewrites both binaries next to
 the source:
 
 ```sh
@@ -16,11 +18,11 @@ docker run --rm --platform linux/amd64 \
     -v "$PWD:/fixture" -w /fixture gcc:14.4.0 ./build.sh
 ```
 
-Docker keeps the binary reproducible (pinned compiler, architecture, and embedded paths) — don't
+Docker keeps the binaries reproducible (pinned compiler, architecture, and embedded paths) — don't
 build outside it.
 
-The snapshot records absolute addresses and line records, so every rebuild changes it. Refresh it
-from the repository root and review the diff:
+The snapshots record absolute addresses and line records, so changes to the source can shift other
+functions' addresses. Refresh both from the repository root and review the diff:
 
 ```sh
 cargo insta test -p symbolic-debuginfo --test test_objects --accept -- test_elf_variables
@@ -47,9 +49,7 @@ the snapshot is the record of that gap; implementing origin-following will make 
 Currently not covered, worth adding when the surrounding support lands:
 
 - `PrimitiveTypeEncoding::Address` — no ordinary C type on this target maps to `DW_ATE_address`.
-- `VariableLocation::Register` and multi-range location lists — these need an optimized build, since at
-  `-O0` GCC spills every local to the stack and every variable gets a single whole-function
-  `DW_OP_fbreg` location. Adding an `-O2` variant of the same source is the natural next step, but
-  it needs `noinline`/`volatile` scaffolding to stop the optimizer deleting the fixture outright.
+- Variables optimized down to a `DW_AT_const_value` instead of a location (`gone` in
+  `optimized_out`) — symbolic drops these entirely today: present at `-O0`, absent at `-O2`.
 - Non-DWARF formats. The same source should build to a PDB and a dSYM once those backends grow
   variable support.
