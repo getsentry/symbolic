@@ -33,9 +33,16 @@
 /* Opaque input/output the optimizer can neither constant-fold nor delete. */
 volatile int opaque;
 
-/* Require `x` in a register here without emitting any code. A plain `(void)x`
- * would not survive -O2. */
+/* Pin `x` to a plain register location at this point, without emitting any
+ * code. Data flow alone keeps most values here alive, but leaves GCC free to
+ * describe them as computed expressions (`DW_OP_stack_value`), which symbolic
+ * drops from the snapshot; the register demand keeps locations simple and
+ * visible. A plain `(void)x` would guarantee neither. */
 #define USE(x) __asm__ volatile("" : : "r"(x))
+
+/* Same, for SSE registers, where float values live on x86-64; `USE`'s "r"
+ * constraint only fits general-purpose registers. */
+#define USE_F(x) __asm__ volatile("" : : "x"(x))
 
 /* Keep every function a real DWARF entity instead of being inlined into its
  * caller at -O2. */
@@ -140,6 +147,19 @@ NOINLINE int registers(int a, int b)
 }
 
 /*
+ * Float locals live in SSE registers at -O2, which appear as DWARF register
+ * numbers 17 and up on x86-64.
+ */
+NOINLINE float float_registers(float a, float b)
+{
+    float sum = a + b;
+    USE_F(sum);
+    float scaled = sum * b;
+    USE_F(scaled);
+    return scaled - sum;
+}
+
+/*
  * A local that is live across a call in the same translation unit. GCC's
  * interprocedural register allocation knows which registers `registers()`
  * actually clobbers, so values may legitimately stay in call-clobbered
@@ -179,6 +199,18 @@ NOINLINE int optimized_out(int a)
     return a + gone;
 }
 
+/*
+ * A volatile local must keep a stack home even at -O2, giving the optimized
+ * snapshot its only frame-base location. Its type renders as `Unknown`: the
+ * volatile qualifier wraps it in a `DW_TAG_volatile_type`, which symbolic
+ * does not follow yet (like `const` in `pointers()`).
+ */
+NOINLINE int stack_home(int a)
+{
+    volatile int slot = a;
+    return slot + 1;
+}
+
 int main(void)
 {
     primitives();
@@ -187,6 +219,8 @@ int main(void)
     inlining(5);
 
     int result = across_call(opaque) + optimized_out(opaque) + external_call(opaque);
+    result += stack_home(opaque);
+    result += (int)float_registers((float)opaque, (float)opaque);
     opaque = result;
     return 0;
 }

@@ -2,12 +2,24 @@
 source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug::variables(&session, &functions)"
 ---
-> main (0x32)
+> main (0x66)
   variables:
     result (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x28..0x31: register 3
+      0x36..0x5c: register 3
+      0x5c..0x65: register 0
+
+> stack_home (0xc)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x0..0xc: register 5
+    slot (local)
+      type:
+        > Unknown
+      0x0..0xc: frame base -12
 
 > optimized_out (0x4)
   variables:
@@ -46,6 +58,25 @@ expression: "FunctionsDebug::variables(&session, &functions)"
       type:
         > Primitive: int (SignedInt, 4 bytes)
       0xa..0xc: register 0
+
+> float_registers (0x10)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: float (Float, 4 bytes)
+      0x0..0x4: register 17
+    b (parameter)
+      type:
+        > Primitive: float (Float, 4 bytes)
+      0x0..0x8: register 18
+    sum (local)
+      type:
+        > Primitive: float (Float, 4 bytes)
+      0x4..0xf: register 17
+    scaled (local)
+      type:
+        > Primitive: float (Float, 4 bytes)
+      0x8..0xc: register 18
 
 > registers (0x9)
   variables:

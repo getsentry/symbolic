@@ -37,11 +37,14 @@ cargo insta test --accept -p symbolic-debuginfo --test test_objects
 
 ## The -O2 build
 
-Keeping variables alive under the optimizer needs the scaffolding documented in `variables.c`:
-`NOINLINE` on every function, opaque inputs from the `volatile` global, and the `USE(x)` asm
-marker (a plain `(void)x` would not survive `-O2`). All of it is harmless at `-O0`. The
-type-oriented functions carry no scaffolding, so their blocks render (nearly) empty in the
-optimized snapshot — deliberately, as a record of what optimization does to them.
+The `-O2` build relies on the scaffolding documented in `variables.c`: `NOINLINE` on every
+function, opaque inputs from the `volatile` global, and the `USE(x)` asm marker. `USE` keeps a
+value alive (a plain `(void)x` would not survive `-O2`), but its main job is subtler: it pins the
+value to a plain register location the snapshot can assert. Without it, GCC freely describes
+values as computed expressions (`DW_OP_stack_value`), which symbolic drops — the ranges silently
+vanish from the snapshot. All of the scaffolding is harmless at `-O0`. The type-oriented functions
+carry none of it, so their blocks render (nearly) empty in the optimized snapshot — deliberately,
+as a record of what optimization does to them.
 
 When extending location coverage, we should be mindful of the following:
 
@@ -53,8 +56,8 @@ When extending location coverage, we should be mindful of the following:
 - Call every function from `main` with arguments derived from `opaque`: constant arguments would
   let GCC specialize the callee despite `NOINLINE`, folding parameters away (sometimes as a
   renamed `.constprop` clone in the snapshot).
-- `USE` takes a general-purpose-register value (`"r"`); floats or aggregates need a different
-  constraint (e.g. `"g"`, or a memory-clobber variant).
+- `USE` takes a general-purpose-register value (`"r"`); `USE_F` is the SSE variant (`"x"`) for
+  floats. Aggregates would need yet another constraint (e.g. a memory-clobber variant).
 
 ## Adding coverage
 
@@ -73,8 +76,8 @@ Not covered yet, but worth adding when the surrounding support lands:
 - `PrimitiveTypeEncoding::Address` — no ordinary C type on this target maps to `DW_ATE_address`.
 - Variables reduced to a `DW_AT_const_value` instead of a location (`gone` in `optimized_out`) —
   symbolic drops these entirely today: present at `-O0`, absent at `-O2`.
-- `DW_OP_entry_value` — a parameter's location after its register is clobbered ("the value it had
-  on entry"); provoke by using a parameter only *before* an external call.
-- Frame-base locations at `-O2` — a `volatile` local forces a stack home even under the optimizer.
-  Needs no new symbolic support, just fixture coverage.
+- `DW_OP_entry_value` and `DW_OP_stack_value` location entries — already present in the fixture's
+  DWARF (e.g. the parameter tails in `float_registers`: "after `0x4`, `a` is the value `xmm0` held
+  on entry"), but symbolic drops these entries today, which is why parameters end early in the
+  optimized snapshot. Support landing will surface them as a diff without any fixture changes.
 - Non-DWARF formats (PDB, dSYM) once those backends grow variable support.
