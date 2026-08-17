@@ -59,10 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //   nested   [0x10, 0x30)      a real (non-inlined) function nested in main
     //     inline [0x14, 0x28)      an inlined call inside nested
     //       leaf [0x18, 0x24)      a real function nested in the inlined call
-    let addr = |offset: i64| Address::Symbol {
-        symbol: 0,
-        addend: offset,
-    };
+    let symbol_relative_addr = |symbol: usize, addend: i64| Address::Symbol { symbol, addend };
 
     let (main_symbol, main_size) = define_main(&mut obj)?;
     let main_address = Address::Symbol {
@@ -129,23 +126,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let file_string = LineString::new(file_name, encoding, line_strings);
     let file_id = line_program.add_file(file_string, dir_id, None);
     // One row per scope boundary, so every function and the inlinee get line records.
-    line_program.begin_sequence(Some(main_address));
-    for (offset, line) in [
-        (0x00, 2),  // main
-        (0x10, 10), // nested_fn
-        (0x14, 20), // inlined_fn (inlined at hello.c:12)
-        (0x18, 22), // innermost_fn
-        (0x24, 21), // back in inlined_fn
-        (0x28, 13), // back in nested_fn
-        (0x30, 4),  // back in main
-    ] {
-        line_program.row().address_offset = offset;
-        line_program.row().file = file_id;
-        line_program.row().line = line;
-        line_program.generate_row();
-    }
-    line_program.end_sequence(main_size);
-    dwarf.unit.line_program = line_program;
+    // line_program.begin_sequence(Some(main_address));
+    // for (offset, line) in [
+    //     (0x00, 2),  // main
+    //     (0x10, 10), // nested_fn
+    //     (0x14, 20), // inlined_fn (inlined at hello.c:12)
+    //     (0x18, 22), // innermost_fn
+    //     (0x24, 21), // back in inlined_fn
+    //     (0x28, 13), // back in nested_fn
+    //     (0x30, 4),  // back in main
+    // ] {
+    //     line_program.row().address_offset = offset;
+    //     line_program.row().file = file_id;
+    //     line_program.row().line = line;
+    //     line_program.generate_row();
+    // }
+    // line_program.end_sequence(main_size);
+    //dwarf.unit.line_program = line_program;
 
     // Add a subprogram DIE for the main function.
     // Note that this example does not include all attributes.
@@ -154,45 +151,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut dwarf,
         file_id,
         root,
-        "first_nested",
+        "main",
         2,
         main_address,
         main_size,
     );
-    let subprogram = entry.id();
     entry.set(gimli::DW_AT_external, AttributeValue::Flag(true));
-
-    // let subprogram = dwarf.unit.add(root, gimli::DW_TAG_subprogram);
-    // let entry = dwarf.unit.get_mut(subprogram);
-    // entry.set(gimli::DW_AT_external, AttributeValue::Flag(true));
-    // entry.set(gimli::DW_AT_name, AttributeValue::String(main_name.into()));
-    // entry.set(
-    //     gimli::DW_AT_decl_file,
-    //     AttributeValue::FileIndex(Some(file_id)),
-    // );
-    // entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(2));
-    // entry.set(gimli::DW_AT_decl_column, AttributeValue::Udata(5));
-    // entry.set(gimli::DW_AT_low_pc, AttributeValue::Address(main_address));
-    // entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(main_size));
+    let subprogram = entry.id();
 
     // The abstract instance of the function that gets inlined further down. It carries no
     // ranges of its own; the concrete `DW_TAG_inlined_subroutine` points at it via
     // `DW_AT_abstract_origin` and that is where its name comes from.
-    let inline_abstract = dwarf.unit.add(root, gimli::DW_TAG_subprogram);
-    let entry = dwarf.unit.get_mut(inline_abstract);
-    entry.set(
-        gimli::DW_AT_name,
-        AttributeValue::String((*b"inlined_fn").into()),
-    );
-    entry.set(
-        gimli::DW_AT_inline,
-        AttributeValue::Inline(gimli::DW_INL_inlined),
-    );
-    entry.set(
-        gimli::DW_AT_decl_file,
-        AttributeValue::FileIndex(Some(file_id)),
-    );
-    entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(20));
+    let entry = add_inline_function_decl(&mut dwarf, file_id, root, "inlined_fn", 20);
+
+    let inline_abstract = entry.id();
 
     // A real function nested inside `main`. symbolic reports this as its own top-level
     // function, not as part of `main`.
@@ -202,41 +174,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         subprogram,
         "nested_fn",
         10,
-        addr(0x10),
+        Address::Constant(0x10),
         0x20,
     );
     let nested = entry.id();
 
-    // let nested = dwarf.unit.add(subprogram, gimli::DW_TAG_subprogram);
-    // let entry = dwarf.unit.get_mut(nested);
-    // entry.set(
-    //     gimli::DW_AT_name,
-    //     AttributeValue::String((*b"nested_fn").into()),
     // );
-    // entry.set(
-    //     gimli::DW_AT_decl_file,
-    //     AttributeValue::FileIndex(Some(file_id)),
-    // );
-    // entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(10));
-    // entry.set(gimli::DW_AT_low_pc, AttributeValue::Address(addr(0x10)));
     // entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(0x20));
 
     // An inlined call inside `nested_fn`. This becomes an inlinee of `nested_fn`.
-
-    let inlined = dwarf.unit.add(nested, gimli::DW_TAG_inlined_subroutine);
-    let entry = dwarf.unit.get_mut(inlined);
-    entry.set(
-        gimli::DW_AT_abstract_origin,
-        AttributeValue::UnitRef(inline_abstract),
+    let entry = add_abstract_inline_function(
+        &mut dwarf,
+        file_id,
+        nested,
+        inline_abstract,
+        Address::Constant(0x14),
+        0x14,
     );
-    entry.set(
-        gimli::DW_AT_call_file,
-        AttributeValue::FileIndex(Some(file_id)),
-    );
-    entry.set(gimli::DW_AT_call_line, AttributeValue::Udata(12));
-    entry.set(gimli::DW_AT_call_column, AttributeValue::Udata(3));
-    entry.set(gimli::DW_AT_low_pc, AttributeValue::Address(addr(0x14)));
-    entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(0x14));
+    let inlined = entry.id();
 
     // A real function nested inside the inlined call.
     add_function(
@@ -245,23 +200,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         inlined,
         "innermost_fn",
         22,
-        addr(0x18),
+        Address::Constant(0x18),
         0xc,
     );
-
-    // let innermost = dwarf.unit.add(inlined, gimli::DW_TAG_subprogram);
-    // let entry = dwarf.unit.get_mut(innermost);
-    // entry.set(
-    //     gimli::DW_AT_name,
-    //     AttributeValue::String((*b"innermost_fn").into()),
-    // );
-    // entry.set(
-    //     gimli::DW_AT_decl_file,
-    //     AttributeValue::FileIndex(Some(file_id)),
-    // );
-    // entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(22));
-    // entry.set(gimli::DW_AT_low_pc, AttributeValue::Address(addr(0x18)));
-    // entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(0xc));
 
     // Build the DWARF sections.
     // This will populate the sections with the DWARF data and relocations.
@@ -270,11 +211,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Add the DWARF section data to the object file.
     sections.for_each_mut(|id, section| -> object::write::Result<()> {
-        eprintln!("{:?}", id);
         if section.data.len() == 0 {
             return Ok(());
         }
-        eprintln!("  {:?}", id);
         let kind = if id.is_string() {
             object::SectionKind::DebugString
         } else {
@@ -347,6 +286,53 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+fn add_inline_function_decl<'a>(
+    dwarf: &'a mut DwarfUnit,
+    file: FileId,
+    parent: UnitEntryId,
+    name: &str,
+    decl_line: u64,
+) -> &'a mut DebuggingInformationEntry {
+    let uie = dwarf.unit.add(parent, gimli::DW_TAG_subprogram);
+    let entry = dwarf.unit.get_mut(uie);
+    entry.set(gimli::DW_AT_name, AttributeValue::String(name.into()));
+    entry.set(
+        gimli::DW_AT_inline,
+        AttributeValue::Inline(gimli::DW_INL_inlined),
+    );
+    entry.set(
+        gimli::DW_AT_decl_file,
+        AttributeValue::FileIndex(Some(file)),
+    );
+    entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(decl_line));
+
+    entry
+}
+
+fn add_abstract_inline_function<'a>(
+    dwarf: &'a mut DwarfUnit,
+    file: FileId,
+    parent: UnitEntryId,
+    decl_ref: UnitEntryId,
+    low_pc: Address,
+    high_pc_offset: u64,
+) -> &'a mut DebuggingInformationEntry {
+    let uie = dwarf.unit.add(parent, gimli::DW_TAG_inlined_subroutine);
+    let entry = dwarf.unit.get_mut(uie);
+    entry.set(
+        gimli::DW_AT_abstract_origin,
+        AttributeValue::UnitRef(decl_ref),
+    );
+    entry.set(
+        gimli::DW_AT_call_file,
+        AttributeValue::FileIndex(Some(file)),
+    );
+    entry.set(gimli::DW_AT_low_pc, AttributeValue::Address(low_pc));
+    entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(high_pc_offset));
+
+    entry
+}
+
 fn add_function<'a>(
     dwarf: &'a mut DwarfUnit,
     file: FileId,
@@ -358,7 +344,7 @@ fn add_function<'a>(
 ) -> &'a mut DebuggingInformationEntry {
     let uei = dwarf.unit.add(parent, gimli::DW_TAG_subprogram);
     let entry = dwarf.unit.get_mut(uei);
-    entry.set(gimli::DW_AT_name, AttributeValue::String((name).into()));
+    entry.set(gimli::DW_AT_name, AttributeValue::String(name.into()));
     entry.set(
         gimli::DW_AT_decl_file,
         AttributeValue::FileIndex(Some(file)),
