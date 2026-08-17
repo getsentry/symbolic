@@ -1,0 +1,10 @@
+[package]
+name = "write_dwarf"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+gimli = { workspace = true, features = ["write"]}
+symbolic-debuginfo = { path = "../../symbolic-debuginfo" }
+object = { version = "0.37.1", features = ["wasm", "write"] }
