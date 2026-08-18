@@ -131,8 +131,7 @@ impl Error for ObjectError {
 // (Aug 2026): For reference, Android Minecraft has a max inlinee depth of around 400.  Set this
 // to 512.
 // (Aug 2026): For reference, FIFA (Android) has a max inlinee depth of around 670.  Set this
-// to 800.  Note that you now will no longer be able to run the associated recursion limit
-// tests in debug; you must test in release.
+// to 800.
 const MAX_INLINE_DEPTH_DEFAULT: u32 = 800;
 
 /// Options for parsing object files.
