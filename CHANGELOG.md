@@ -13,6 +13,7 @@
 
 - No unwind info on certain dsym files with sparse sections. ([#1041](https://github.com/getsentry/symbolic/pull/1041))
 - Increase inlinee limits ([#1046](https://github.com/getsentry/symbolic/pull/1046))
+- Make the `Drop` impl of `Function` nonrecursive. ([#1050](https://github.com/getsentry/symbolic/pull/1050))
 
 **Dependencies**
 
