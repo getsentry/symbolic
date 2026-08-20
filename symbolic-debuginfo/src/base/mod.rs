@@ -751,21 +751,49 @@ impl Function<'_> {
     }
 }
 
-impl fmt::Debug for Function<'_> {
+struct InlineesDebug<'a>(&'a [Function<'a>], u8);
+
+impl<'a> fmt::Debug for InlineesDebug<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        const MAX_INLINEE_DEBUG_DEPTH: u8 = 16;
+
+        let Self(functions, depth) = self;
+
+        if *depth < MAX_INLINEE_DEBUG_DEPTH {
+            f.debug_list()
+                .entries(functions.iter().map(|f| InlineeDebug(f, *depth + 1)))
+                .finish()
+        } else {
+            f.debug_list().finish_non_exhaustive()
+        }
+    }
+}
+
+struct InlineeDebug<'a>(&'a Function<'a>, u8);
+
+impl<'a> fmt::Debug for InlineeDebug<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self(function, depth) = self;
+
         f.debug_struct("Function")
-            .field("address", &format_args!("{:#x}", self.address))
-            .field("size", &format_args!("{:#x}", self.size))
-            .field("name", &self.name)
+            .field("address", &format_args!("{:#x}", function.address))
+            .field("size", &format_args!("{:#x}", function.size))
+            .field("name", &function.name)
             .field(
                 "compilation_dir",
-                &String::from_utf8_lossy(self.compilation_dir),
+                &String::from_utf8_lossy(function.compilation_dir),
             )
-            .field("lines", &self.lines)
-            .field("inlinees", &self.inlinees)
-            .field("inline", &self.inline)
-            .field("variables", &self.variables)
+            .field("lines", &function.lines)
+            .field("inlinees", &InlineesDebug(&function.inlinees, *depth))
+            .field("inline", &function.inline)
+            .field("variables", &function.variables)
             .finish()
+    }
+}
+
+impl fmt::Debug for Function<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        InlineeDebug(self, 0).fmt(f)
     }
 }
 
