@@ -893,6 +893,9 @@ mod tests {
 
     #[test]
     fn test_bcsymbolmap() {
+        let bc_symbol_map_data =
+            std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
+                .unwrap();
         let object_data =
             std::fs::read("tests/fixtures/2d10c42f-591d-3265-b147-78ba0868073f.dwarf-hidden")
                 .unwrap();
@@ -931,9 +934,6 @@ mod tests {
         assert_eq!(&inlinee.name, "__hidden#146_");
 
         // loads the symbolmap
-        let bc_symbol_map_data =
-            std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
-                .unwrap();
         let bc_symbol_map = BcSymbolMap::parse(&bc_symbol_map_data).unwrap();
         object.load_symbolmap(bc_symbol_map);
 

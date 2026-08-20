@@ -769,6 +769,18 @@ impl fmt::Debug for Function<'_> {
     }
 }
 
+impl Drop for Function<'_> {
+    fn drop(&mut self) {
+        let mut inlinees = vec![std::mem::take(&mut self.inlinees)];
+
+        while let Some(next) = inlinees.pop() {
+            for mut f in next {
+                inlinees.push(std::mem::take(&mut f.inlinees));
+            }
+        }
+    }
+}
+
 /// A dynamically dispatched iterator over items with the given lifetime.
 pub type DynIterator<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 

@@ -54,7 +54,7 @@ fn test_pdb_line_info() {
     let line = session
         .functions()
         .map(|function| function.unwrap())
-        .flat_map(|function| function.lines.into_iter())
+        .flat_map(|mut function| std::mem::take(&mut function.lines).into_iter())
         .find(|line| {
             // Expected specific path based on the SRCSRV data in the test PDB
             // Path should NOT contain @12345, revision should be separate
