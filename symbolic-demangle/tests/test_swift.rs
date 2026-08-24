@@ -10,6 +10,13 @@ use symbolic_common::Language;
 use symbolic_demangle::DemangleOptions;
 
 #[test]
+fn test_demangle_swift_segfault() {
+    assert_demangle!(Language::Swift, DemangleOptions::name_only(), {
+        "$s3abcLlfMf_" => "$s3abcLlfMf_",
+    });
+}
+
+#[test]
 fn test_demangle_swift_short() {
     assert_demangle!(Language::Swift, DemangleOptions::name_only().parameters(true), {
         // Swift < 4 (old mangling)
