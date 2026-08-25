@@ -359,7 +359,7 @@ impl<'s> FunctionBuilderStack<'s> {
 }
 
 /// Bounds to ensure that the maximum number of inlinees does not get too large.
-const MAX_NESTED_INLINEES: usize = 250000;
+const MAX_NESTED_INLINEES: usize = 400000;
 
 /// Converts the `BinaryHeap` of inlinees into a sorted `Vec` of inlinees, while ensuring proper
 /// inlinee nesting.
