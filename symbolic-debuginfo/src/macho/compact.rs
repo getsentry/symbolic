@@ -1429,14 +1429,15 @@ impl SecondLevelPage {
     fn size(&self) -> u32 {
         match *self {
             SecondLevelPage::Regular(ref page) => {
-                4 + std::mem::size_of_val(page) as u32
-                    + (page.entries_len as u32 * 8)
-                    + page.entries_offset as u32
+                (page.entries_offset as u32).saturating_add(page.entries_len as u32 * 8)
             }
             SecondLevelPage::Compressed(ref page) => {
-                4 + std::mem::size_of_val(page) as u32
-                    + (page.entries_offset as u32 + (page.entries_len as u32 * 4))
-                    + ((page.local_opcodes_len as u32 * 4) + page.local_opcodes_offset as u32)
+                let entries_end =
+                    (page.entries_offset as u32).saturating_add(page.entries_len as u32 * 4);
+                let locals_end = (page.local_opcodes_offset as u32)
+                    .saturating_add(page.local_opcodes_len as u32 * 4);
+
+                entries_end.max(locals_end)
             }
         }
     }
