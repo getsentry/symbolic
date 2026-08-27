@@ -19,6 +19,7 @@
 **Dependencies**
 
 - Bump `pdb-addr2line` to 0.12.1 to fix a potential infinite recursion. ([#1030](https://github.com/getsentry/symbolic/pull/1030))
+- Bump `js-source-scopes` to 0.7.3 to fix name resolution for private functions. ([#1057](https://github.com/getsentry/symbolic/pull/1057))
 
 **Features**
 
