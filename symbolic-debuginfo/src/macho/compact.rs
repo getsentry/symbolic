@@ -1126,8 +1126,9 @@ impl<'a> CompactUnwindInfoIter<'a> {
 
                 // Subsequent referenced pages should be strictly outside (and great than) this
                 // page.
-                self.last_visited_second_page_offset =
-                    entry.second_level_page_offset + second_level_page.size();
+                self.last_visited_second_page_offset = entry
+                    .second_level_page_offset
+                    .saturating_add(second_level_page.size());
                 self.page_of_next_entry = Some((entry, second_level_page));
                 self.done_page = false;
             } else {
@@ -1428,12 +1429,14 @@ impl SecondLevelPage {
     fn size(&self) -> u32 {
         match *self {
             SecondLevelPage::Regular(ref page) => {
-                std::mem::size_of_val(page) as u32 + (page.entries_len as u32 * 8)
+                4 + std::mem::size_of_val(page) as u32
+                    + (page.entries_len as u32 * 8)
+                    + page.entries_offset as u32
             }
             SecondLevelPage::Compressed(ref page) => {
-                std::mem::size_of_val(page) as u32
-                    + (page.entries_len as u32 * 4)
-                    + (page.local_opcodes_len as u32 * 4)
+                4 + std::mem::size_of_val(page) as u32
+                    + (page.entries_offset as u32 + (page.entries_len as u32 * 4))
+                    + ((page.local_opcodes_len as u32 * 4) + page.local_opcodes_offset as u32)
             }
         }
     }
