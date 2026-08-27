@@ -1099,6 +1099,7 @@ impl<'a> CompactUnwindInfoIter<'a> {
     // page_of_next_entry to the page matching it (so it can be further
     // parsed when needed.
     fn next_raw(&mut self) -> Result<Option<RawCompactUnwindInfoEntry>> {
+        const PAGE_SIZE: u32 = 4096;
         // First, load up the page for this value if needed
         if self.done_page {
             // Only advance the indices if we've already loaded up a page
@@ -1116,13 +1117,15 @@ impl<'a> CompactUnwindInfoIter<'a> {
                         opcode_or_index: OpcodeOrIndex::Opcode(0),
                     }));
                 }
-                if entry.second_level_page_offset <= self.last_visited_second_page_offset {
+                if entry.second_level_page_offset < self.last_visited_second_page_offset {
                     return Err(MachError::from(Error::Malformed(
                         "Non-increasing second-level page seen.".to_string(),
                     )));
                 }
 
-                self.last_visited_second_page_offset = entry.second_level_page_offset;
+                // Subsequent referenced pages should be strictly outside (and great than) this
+                // page.
+                self.last_visited_second_page_offset = entry.second_level_page_offset + PAGE_SIZE;
 
                 let second_level_page = self.second_level_page(entry.second_level_page_offset)?;
                 self.page_of_next_entry = Some((entry, second_level_page));
