@@ -592,12 +592,21 @@ impl<'data> ElfObject<'data> {
         // but we can apply the same heuristic safely.
         //
         // See also: <https://github.com/getsentry/symbolicator/issues/2025>
-        let has_unwind_info = |section: DwarfSection<'_>| {
+        let has_unwind_info = |name: &str| {
+            let Some((compressed, section)) = self.find_section(name) else {
+                return false;
+            };
+
+            // Let's assume a section only containing a termination marker would never be compressed
+            // and use the presence of the section as an indicator for unwind symbols.
+            if compressed {
+                return true;
+            }
+
             section.data.len() > 4 && !section.data.starts_with(&[0, 0, 0, 0])
         };
 
-        self.section("eh_frame").is_some_and(has_unwind_info)
-            || self.section("debug_frame").is_some_and(has_unwind_info)
+        has_unwind_info("eh_frame") || has_unwind_info("debug_frame")
     }
 
     /// Determines whether this object contains embedded source.
