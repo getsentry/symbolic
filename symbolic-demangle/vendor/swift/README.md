@@ -42,7 +42,7 @@ patch is maintained in `1-arguments.patch`.
    2. Check for modifications.
    3. Commit _"feat(demangle): Import libswift demangle x.x.x"_ before proceeding.
 3. **Apply patches:**
-   1. Apply `1-arguments.patch`, `2-metatype-compat.patch`, and `3-null-checks.patch`.
+   1. Apply `1-arguments.patch`, `2-metatype-compat.patch`, `3-null-checks.patch`, and `4-asserts.patch`.
    2. Build the Rust library and ensure tests work.
    3. Commit the changes.
 4. **Add tests for new mangling schemes:**
