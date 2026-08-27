@@ -34,6 +34,7 @@
 #![warn(missing_docs)]
 
 use std::borrow::Cow;
+use std::ffi::NulError;
 #[cfg(feature = "swift")]
 use std::ffi::{CStr, CString};
 #[cfg(feature = "swift")]
@@ -308,12 +309,18 @@ fn try_demangle_rust(_ident: &str, _opts: DemangleOptions) -> Option<String> {
 }
 
 #[cfg(feature = "swift")]
-fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Option<String> {
+#[derive(PartialEq, Eq, Debug, thiserror::Error)]
+enum SwiftDemangleError {
+    #[error("demangle failed with: {0}")]
+    DemangleFail(String),
+    #[error("constructing CString failed")]
+    BadString(#[from] NulError),
+}
+
+#[cfg(feature = "swift")]
+fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Result<String, SwiftDemangleError> {
     let mut buf = vec![0; 4096];
-    let sym = match CString::new(ident) {
-        Ok(sym) => sym,
-        Err(_) => return None,
-    };
+    let sym = CString::new(ident)?;
 
     let mut features = 0;
     if opts.return_type {
@@ -325,15 +332,13 @@ fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Option<String> {
 
     unsafe {
         match symbolic_demangle_swift(sym.as_ptr(), buf.as_mut_ptr(), buf.len(), features) {
-            0 => None,
-            _ => Some(CStr::from_ptr(buf.as_ptr()).to_string_lossy().to_string()),
+            0 => {
+                let error = CStr::from_ptr(buf.as_ptr()).to_string_lossy().to_string();
+                Err(SwiftDemangleError::DemangleFail(error))
+            }
+            _ => Ok(CStr::from_ptr(buf.as_ptr()).to_string_lossy().to_string()),
         }
     }
-}
-
-#[cfg(not(feature = "swift"))]
-fn try_demangle_swift(_ident: &str, _opts: DemangleOptions) -> Option<String> {
-    None
 }
 
 fn demangle_objc(ident: &str, _opts: DemangleOptions) -> String {
@@ -466,7 +471,12 @@ impl Demangle for Name<'_> {
             Language::ObjCpp => try_demangle_objcpp(self.as_str(), opts),
             Language::Rust => try_demangle_rust(self.as_str(), opts),
             Language::Cpp => try_demangle_cpp(self.as_str(), opts),
-            Language::Swift => try_demangle_swift(self.as_str(), opts),
+            #[cfg(feature = "swift")]
+            Language::Swift => try_demangle_swift(self.as_str(), opts)
+                .map_err(
+                    |e| tracing::warn!(error=%e, symbol = self.as_str(), "swift demangling failed"),
+                )
+                .ok(),
             _ => None,
         }
     }
@@ -538,6 +548,16 @@ mod test {
         assert_eq!(
             strip_hash_suffix("hello$\u{1000}0123456789abcdef0123456789abcde"),
             "hello$\u{1000}0123456789abcdef0123456789abcde"
+        );
+    }
+
+    #[test]
+    fn test_swift_demangle_abort() {
+        assert_eq!(
+            try_demangle_swift("$sRvs", DemangleOptions::name_only()),
+            Err(SwiftDemangleError::DemangleFail(
+                "should be printed as a child of a DependentGenericSignature".to_owned()
+            ))
         );
     }
 }

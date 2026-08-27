@@ -57,8 +57,7 @@ DemanglerPrinter &DemanglerPrinter::operator<<(long long n) & {
 
 [[noreturn]]
 static void printer_unreachable(const char *Message) {
-  fprintf(stderr, "fatal error: %s\n", Message);
-  std::abort();
+  throw std::logic_error(Message);
 }
 
 std::string Demangle::genericParameterName(uint64_t depth, uint64_t index) {

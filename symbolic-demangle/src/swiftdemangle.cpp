@@ -19,8 +19,13 @@ extern "C" int symbolic_demangle_swift(const char *symbol,
         opts.ShowFunctionArgumentTypes = argument_types;
     }
 
-    std::string demangled =
-        swift::Demangle::demangleSymbolAsString(llvm::StringRef(symbol), opts);
+    std::string demangled;
+    try {
+        demangled = swift::Demangle::demangleSymbolAsString(llvm::StringRef(symbol), opts);
+    } catch (const std::exception& e) {
+        memcpy(buffer, e.what(), strlen(e.what()));
+        return false;
+    }
 
     if (demangled.size() == 0 || demangled.size() >= buffer_length) {
         return false;

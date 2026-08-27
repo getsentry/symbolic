@@ -2580,6 +2580,8 @@ dependencies = [
  "rustc-demangle",
  "similar-asserts",
  "symbolic-common",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]
