@@ -18,7 +18,6 @@
 #include "swift/Basic/STLExtras.h"
 #include "swift/Demangling/Demangle.h"
 #include "swift/Strings.h"
-#include <cassert>
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
@@ -26,6 +25,14 @@
 using namespace swift;
 using namespace Demangle;
 using llvm::StringRef;
+
+#define BAIL_UNLESS(cond, ...)                                                 \
+  do {                                                                         \
+    if (!(cond)) {                                                             \
+      setInvalid();                                                            \
+      return __VA_ARGS__;                                                      \
+    }                                                                          \
+  } while (0)
 
 DemanglerPrinter &DemanglerPrinter::operator<<(unsigned long long n) & {
   char buffer[32];
@@ -215,7 +222,7 @@ static bool isExistentialType(NodePointer node) {
 }
 
 void NodePrinter::printOptionalIndex(NodePointer node) {
-  assert(node->getKind() == Node::Kind::Index ||
+  BAIL_UNLESS(node->getKind() == Node::Kind::Index ||
          node->getKind() == Node::Kind::UnknownIndex);
   if (node->hasIndex())
     Printer << "#" << node->getIndex() << " ";
@@ -671,7 +678,7 @@ NodePrinter::SugarType NodePrinter::findSugar(NodePointer Node) {
     return SugarType::None;
   }
 
-  assert(Node->getKind() == Node::Kind::BoundGenericStructure);
+  BAIL_UNLESS(Node->getKind() == Node::Kind::BoundGenericStructure, SugarType::None);
 
   // Array
   if (isIdentifier(unboundType->getChild(1), "Array") &&
@@ -763,7 +770,7 @@ void NodePrinter::printFunctionParameters(NodePointer LabelList,
   }
 
   NodePointer Parameters = ParameterType->getFirstChild();
-  assert(Parameters->getKind() == Node::Kind::Type);
+  BAIL_UNLESS(Parameters->getKind() == Node::Kind::Type);
   Parameters = Parameters->getFirstChild();
   if (Parameters->getKind() != Node::Kind::Tuple) {
     // only a single not-named parameter
@@ -779,8 +786,8 @@ void NodePrinter::printFunctionParameters(NodePointer LabelList,
 
   auto getLabelFor = [&](NodePointer Param, unsigned Index) -> std::string {
     auto Label = LabelList->getChild(Index);
-    assert(Label && (Label->getKind() == Node::Kind::Identifier ||
-                     Label->getKind() == Node::Kind::FirstElementMarker));
+    BAIL_UNLESS(Label && (Label->getKind() == Node::Kind::Identifier ||
+                     Label->getKind() == Node::Kind::FirstElementMarker), "_");
     return Label->getKind() == Node::Kind::Identifier ? Label->getText().str()
                                                       : "_";
   };
@@ -792,7 +799,7 @@ void NodePrinter::printFunctionParameters(NodePointer LabelList,
   llvm::interleave(
       Parameters->begin(), Parameters->end(),
       [&](NodePointer Param) {
-        assert(Param->getKind() == Node::Kind::TupleElement);
+        BAIL_UNLESS(Param->getKind() == Node::Kind::TupleElement);
 
         if (hasLabels) {
           Printer << getLabelFor(Param, ParamIndex) << ':';
@@ -855,7 +862,7 @@ void NodePrinter::printFunctionType(NodePointer LabelList, NodePointer node,
     printConventionWithMangledCType("block");
     break;
   default:
-    assert(false && "Unhandled function type in printFunctionType!");
+    BAIL_UNLESS(false && "Unhandled function type in printFunctionType!");
   }
 
   unsigned argIndex = node->getNumChildren() - 2;
@@ -973,7 +980,7 @@ void NodePrinter::printImplFunctionType(NodePointer fn, unsigned depth) {
   NodePointer sendingResult = nullptr;
   enum State { Attrs, Inputs, Results } curState = Attrs;
   auto transitionTo = [&](State newState) {
-    assert(newState >= curState);
+    BAIL_UNLESS(newState >= curState);
     for (; curState != newState; curState = State(curState + 1)) {
       switch (curState) {
       case Attrs:
@@ -1019,7 +1026,7 @@ void NodePrinter::printImplFunctionType(NodePointer fn, unsigned depth) {
     } else if (child->getKind() == Node::Kind::ImplSendingResult) {
       sendingResult = child;
     } else {
-      assert(curState == Attrs);
+      BAIL_UNLESS(curState == Attrs);
       print(child, depth + 1);
       Printer << ' ';
     }
@@ -1259,7 +1266,7 @@ void NodePrinter::printFunctionSigSpecializationParams(NodePointer Node,
       Printer << "]";
       break;
     default:
-      assert(
+      BAIL_UNLESS(
        ((V & unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed)) ||
         (V & unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned)) ||
         (V & unsigned(FunctionSigSpecializationParamKind::SROA)) ||
@@ -1555,8 +1562,8 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
     }
     return nullptr;
   case Node::Kind::Extension:
-    assert((Node->getNumChildren() == 2 || Node->getNumChildren() == 3)
-           && "Extension expects 2 or 3 children.");
+    BAIL_UNLESS((Node->getNumChildren() == 2 || Node->getNumChildren() == 3)
+           && "Extension expects 2 or 3 children.", nullptr);
     if (Options.QualifyEntities && Options.DisplayExtensionContexts) {
       Printer << "(extension in ";
       // Print the module where extension is defined.
@@ -1755,7 +1762,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
       Printer << Label->getText() << ": ";
 
     auto Type = getChildIf(Node, Node::Kind::Type);
-    assert(Type && "malformed Node::Kind::TupleElement");
+    BAIL_UNLESS(Type && "malformed Node::Kind::TupleElement", nullptr);
 
     print(Type, depth + 1);
 
@@ -2354,7 +2361,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
       Printer << "linear";
       break;
     case MangledDifferentiabilityKind::NonDifferentiable:
-      assert(false && "Impossible case");
+      BAIL_UNLESS(false && "Impossible case", nullptr);
     }
     Printer << " differentiability witness for ";
     unsigned idx = 0;
@@ -2369,7 +2376,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
     print(Node->getChild(idx++), depth + 1);
     if (idx < Node->getNumChildren()) {
       auto *genSig = Node->getChild(idx);
-      assert(genSig->getKind() == Node::Kind::DependentGenericSignature);
+      BAIL_UNLESS(genSig->getKind() == Node::Kind::DependentGenericSignature, nullptr);
       Printer << " with ";
       print(genSig, depth + 1);
     }
@@ -2381,7 +2388,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
     bool printedAnyIndex = false;
     for (unsigned i = 0, n = text.size(); i < n; ++i) {
       if (text[i] != 'S') {
-        assert(text[i] == 'U');
+        BAIL_UNLESS(text[i] == 'U', nullptr);
         continue;
       }
       if (printedAnyIndex)
@@ -2881,7 +2888,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
       Printer << "(reverse)";
       break;
     case MangledDifferentiabilityKind::NonDifferentiable:
-      assert(false && "Impossible case 'NonDifferentiable'");
+      BAIL_UNLESS(false && "Impossible case 'NonDifferentiable'", nullptr);
     }
     return nullptr;
   case Node::Kind::ImplEscaping:
@@ -2889,7 +2896,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
     return nullptr;
   case Node::Kind::ImplErasedIsolation:
     Printer << "@isolated(any)";
-    return nullptr;    
+    return nullptr;
   case Node::Kind::ImplCoroutineKind:
     // Skip if text is empty.
     if (Node->getText().empty())
@@ -2934,12 +2941,12 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
       Printer << '"';
       break;
     default:
-      assert(false && "Unexpected numChildren for ImplFunctionConvention");
+      BAIL_UNLESS(false && "Unexpected numChildren for ImplFunctionConvention", nullptr);
     }
     Printer << ')';
     return nullptr;
   case Node::Kind::ImplFunctionConventionName:
-    assert(false && "Already handled in ImplFunctionConvention");
+    BAIL_UNLESS(false && "Already handled in ImplFunctionConvention", nullptr);
     return nullptr;
   case Node::Kind::ImplErrorResult:
     Printer << "@error ";
@@ -2984,7 +2991,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
   case Node::Kind::ErrorType:
     Printer << "<ERROR TYPE>";
     return nullptr;
-      
+
   case Node::Kind::DependentPseudogenericSignature:
   case Node::Kind::DependentGenericSignature: {
     printGenericSignature(Node, depth);
@@ -3022,8 +3029,8 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
     NodePointer layout = Node->getChild(1);
     print(type, depth + 1);
     Printer << ": ";
-    assert(layout->getKind() == Node::Kind::Identifier);
-    assert(layout->getText().size() == 1);
+    BAIL_UNLESS(layout->getKind() == Node::Kind::Identifier, nullptr);
+    BAIL_UNLESS(layout->getText().size() == 1, nullptr);
     char c = layout->getText()[0];
     StringRef name;
     if (c == 'U') {
@@ -3141,7 +3148,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
     case MangledDifferentiabilityKind::Normal:
       break;
     case MangledDifferentiabilityKind::NonDifferentiable:
-      assert(false && "Unexpected case NonDifferentiable");
+      BAIL_UNLESS(false && "Unexpected case NonDifferentiable", nullptr);
     }
     Printer << ' ';
     return nullptr;
@@ -3185,15 +3192,15 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
     Printer << " variadic-marker ";
     return nullptr;
   case Node::Kind::SILBoxTypeWithLayout: {
-    assert(Node->getNumChildren() == 1 || Node->getNumChildren() == 3);
+    BAIL_UNLESS(Node->getNumChildren() == 1 || Node->getNumChildren() == 3, nullptr);
     NodePointer layout = Node->getChild(0);
-    assert(layout->getKind() == Node::Kind::SILBoxLayout);
+    BAIL_UNLESS(layout->getKind() == Node::Kind::SILBoxLayout, nullptr);
     NodePointer signature, genericArgs = nullptr;
     if (Node->getNumChildren() == 3) {
       signature = Node->getChild(1);
-      assert(signature->getKind() == Node::Kind::DependentGenericSignature);
+      BAIL_UNLESS(signature->getKind() == Node::Kind::DependentGenericSignature, nullptr);
       genericArgs = Node->getChild(2);
-      assert(genericArgs->getKind() == Node::Kind::TypeList);
+      BAIL_UNLESS(genericArgs->getKind() == Node::Kind::TypeList, nullptr);
 
       print(signature, depth + 1);
       Printer << ' ';
@@ -3225,8 +3232,8 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
     Printer << (Node->getKind() == Node::Kind::SILBoxImmutableField
       ? "let "
       : "var ");
-    assert(Node->getNumChildren() == 1
-           && Node->getChild(0)->getKind() == Node::Kind::Type);
+    BAIL_UNLESS(Node->getNumChildren() == 1
+           && Node->getChild(0)->getKind() == Node::Kind::Type, nullptr);
     print(Node->getChild(0), depth + 1);
     return nullptr;
   case Node::Kind::AssocTypePath:
@@ -3604,11 +3611,8 @@ NodePointer NodePrinter::printEntity(NodePointer Entity, unsigned depth,
 
   if (TypePr != TypePrinting::NoType) {
     NodePointer type = getChildIf(Entity, Node::Kind::Type);
-    assert(type && "malformed entity");
-    if (!type) {
-      setInvalid();
-      return nullptr;
-    }
+    BAIL_UNLESS(type && "malformed entity", nullptr);
+
     type = type->getChild(0);
     if (TypePr == TypePrinting::FunctionStyle) {
       // We expect to see a function type here, but if we don't, use the colon.
@@ -3630,7 +3634,7 @@ NodePointer NodePrinter::printEntity(NodePointer Entity, unsigned depth,
         printEntityType(Entity, type, genericFunctionTypeList, depth);
       }
     } else if (shouldShowEntityType(Entity->getKind(), Options)) {
-      assert(TypePr == TypePrinting::FunctionStyle);
+      BAIL_UNLESS(TypePr == TypePrinting::FunctionStyle, nullptr);
       if (MultiWordName || needSpaceBeforeType(type))
         Printer << ' ';
       printEntityType(Entity, type, genericFunctionTypeList, depth);
