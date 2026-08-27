@@ -1099,7 +1099,6 @@ impl<'a> CompactUnwindInfoIter<'a> {
     // page_of_next_entry to the page matching it (so it can be further
     // parsed when needed.
     fn next_raw(&mut self) -> Result<Option<RawCompactUnwindInfoEntry>> {
-        const PAGE_SIZE: u32 = 4096;
         // First, load up the page for this value if needed
         if self.done_page {
             // Only advance the indices if we've already loaded up a page
@@ -1123,11 +1122,12 @@ impl<'a> CompactUnwindInfoIter<'a> {
                     )));
                 }
 
+                let second_level_page = self.second_level_page(entry.second_level_page_offset)?;
+
                 // Subsequent referenced pages should be strictly outside (and great than) this
                 // page.
-                self.last_visited_second_page_offset = entry.second_level_page_offset + PAGE_SIZE;
-
-                let second_level_page = self.second_level_page(entry.second_level_page_offset)?;
+                self.last_visited_second_page_offset =
+                    entry.second_level_page_offset + second_level_page.size();
                 self.page_of_next_entry = Some((entry, second_level_page));
                 self.done_page = false;
             } else {
@@ -1422,6 +1422,19 @@ impl SecondLevelPage {
         match *self {
             SecondLevelPage::Regular(ref page) => page.entries_len as u32,
             SecondLevelPage::Compressed(ref page) => page.entries_len as u32,
+        }
+    }
+
+    fn size(&self) -> u32 {
+        match *self {
+            SecondLevelPage::Regular(ref page) => {
+                std::mem::size_of_val(page) as u32 + (page.entries_len as u32 * 8)
+            }
+            SecondLevelPage::Compressed(ref page) => {
+                std::mem::size_of_val(page) as u32
+                    + (page.entries_len as u32 * 4)
+                    + (page.local_opcodes_len as u32 * 4)
+            }
         }
     }
 }
