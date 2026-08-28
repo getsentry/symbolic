@@ -476,11 +476,7 @@ impl Demangle for Name<'_> {
             Language::Rust => try_demangle_rust(self.as_str(), opts),
             Language::Cpp => try_demangle_cpp(self.as_str(), opts),
             #[cfg(feature = "swift")]
-            Language::Swift => try_demangle_swift(self.as_str(), opts)
-                .map_err(
-                    |e| tracing::warn!(error=%e, symbol = self.as_str(), "swift demangling failed"),
-                )
-                .ok(),
+            Language::Swift => try_demangle_swift(self.as_str(), opts).ok(),
             _ => None,
         }
     }
