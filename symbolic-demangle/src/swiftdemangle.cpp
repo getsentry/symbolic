@@ -1,4 +1,5 @@
 #include "swift/Demangling/Demangle.h"
+#include <cstdio>
 
 #define SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE 0x1
 #define SYMBOLIC_SWIFT_FEATURE_PARAMETERS 0x2
@@ -23,7 +24,10 @@ extern "C" int symbolic_demangle_swift(const char *symbol,
     try {
         demangled = swift::Demangle::demangleSymbolAsString(llvm::StringRef(symbol), opts);
     } catch (const std::exception& e) {
-        memcpy(buffer, e.what(), strlen(e.what()));
+        snprintf(buffer, buffer_length, "%s", e.what());
+        return false;
+    } catch (...) {
+        snprintf(buffer, buffer_length, "%s", "unknown exception");
         return false;
     }
 

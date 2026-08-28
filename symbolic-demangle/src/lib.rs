@@ -560,4 +560,14 @@ mod test {
             ))
         );
     }
+
+    #[test]
+    fn test_swift_demangle_assert() {
+        assert_eq!(
+            try_demangle_swift("$syxD4oE0F", DemangleOptions::name_only()),
+            Err(SwiftDemangleError::DemangleFail(
+                "Assertion failed: (false && \"Unhandled function type in printFunctionType!\"), file vendor/swift/lib/Demangling/NodePrinter.cpp, line 866".to_owned()
+            ))
+        );
+    }
 }
