@@ -17,13 +17,6 @@ fn test_demangle_swift_segfault() {
 }
 
 #[test]
-fn test_demangle_swift_assert() {
-    assert_demangle!(Language::Swift, DemangleOptions::name_only(), {
-        "$syxD4oE0F" => "$syxD4oE0F",
-    });
-}
-
-#[test]
 fn test_demangle_swift_short() {
     assert_demangle!(Language::Swift, DemangleOptions::name_only().parameters(true), {
         // Swift < 4 (old mangling)

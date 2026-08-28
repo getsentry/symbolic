@@ -14,7 +14,7 @@
 - No unwind info on certain dsym files with sparse sections. ([#1041](https://github.com/getsentry/symbolic/pull/1041))
 - Increase inlinee limits. ([#1046](https://github.com/getsentry/symbolic/pull/1046))
 - Patch a potential segfault in the vendored Swift demangler. ([#1052](https://github.com/getsentry/symbolic/pull/1052))
-- Patch potential aborts in the vendored Swift demangler. ([#1054](https://github.com/getsentry/symbolic/pull/1054))
+- Patch potential aborts in the vendored Swift demangler. ([#1054](https://github.com/getsentry/symbolic/pull/1054), [#1059](https://github.com/getsentry/symbolic/pull/1059))
 - Do not allocate based on untrusted input in unreal parser. ([#1055](https://github.com/getsentry/symbolic/pull/1055))
 - Ensure unwind sections contain any unwind information. ([#1058](https://github.com/getsentry/symbolic/pull/1058))
 
