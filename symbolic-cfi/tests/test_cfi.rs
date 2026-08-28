@@ -174,3 +174,15 @@ fn cfi_process_pe_self_loop_terminates() {
         Err(_) => panic!("process_pe did not terminate: loop is unbounded"),
     }
 }
+
+#[test]
+fn test_second_level_page_duplicates() {
+    use std::error::Error;
+    let data = std::fs::read("tests/fixtures/mal.bin").unwrap();
+
+    let obj = Object::parse(&data).unwrap();
+
+    let err = CfiCache::from_object(&obj).err().unwrap();
+    let inner = err.source().unwrap();
+    assert_eq!(inner.to_string(), "invalid MachO file");
+}

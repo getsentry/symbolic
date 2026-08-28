@@ -576,7 +576,37 @@ impl<'data> ElfObject<'data> {
 
     /// Determines whether this object contains stack unwinding information.
     pub fn has_unwind_info(&self) -> bool {
-        self.has_section("eh_frame") || self.has_section("debug_frame")
+        // Both the `eh_frame` and `debug_frame` sections contain a list of CIE and FDE entries.
+        // The `eh_frame` spec mentions an explicit terminator CIE entry with length 0
+        // (https://refspecs.linuxfoundation.org/LSB_3.0.0/LSB-PDA/LSB-PDA/ehframechpt.html).
+        //
+        // Checking for presence of the section is not a strong enough indicator to determine whether
+        // this object contains unwind info, as the section may be empty and only contain the
+        // terminator entry.
+        //
+        // The section must at least contain the length (4 bytes) and the length must not be zero
+        // -> at least 5 bytes. Additionally check explicitly for the zero length terminator
+        // to deal with potential trailing bytes.
+        //
+        // The DWARF spec for the `debug_frame` does not explicitly mention such a terminator,
+        // but we can apply the same heuristic safely.
+        //
+        // See also: <https://github.com/getsentry/symbolicator/issues/2025>
+        let has_unwind_info = |name: &str| {
+            let Some((compressed, section)) = self.find_section(name) else {
+                return false;
+            };
+
+            // Let's assume a section only containing a termination marker would never be compressed
+            // and use the presence of the section as an indicator for unwind symbols.
+            if compressed {
+                return true;
+            }
+
+            section.data.len() > 4 && !section.data.starts_with(&[0, 0, 0, 0])
+        };
+
+        has_unwind_info("eh_frame") || has_unwind_info("debug_frame")
     }
 
     /// Determines whether this object contains embedded source.
