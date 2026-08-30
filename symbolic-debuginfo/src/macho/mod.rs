@@ -62,7 +62,7 @@ pub struct MachObject<'d> {
     macho: mach::MachO<'d>,
     data: &'d [u8],
     bcsymbolmap: Option<Arc<BcSymbolMap<'d>>>,
-    max_inline_depth: u32,
+    max_function_parse_depth: u32,
 }
 
 impl<'d> MachObject<'d> {
@@ -78,7 +78,7 @@ impl<'d> MachObject<'d> {
                 macho,
                 data,
                 bcsymbolmap: None,
-                max_inline_depth: ParseObjectOptions::default().max_inline_depth,
+                max_function_parse_depth: ParseObjectOptions::default().max_function_parse_depth,
             })
             .map_err(MachError::new)
     }
@@ -326,7 +326,7 @@ impl<'d> MachObject<'d> {
             symbols,
             self.load_address() as i64,
             self.kind(),
-            self.max_inline_depth,
+            self.max_function_parse_depth,
         )?;
         session.load_symbolmap(self.bcsymbolmap.clone());
         Ok(session)
@@ -401,7 +401,7 @@ impl<'d> Parse<'d> for MachObject<'d> {
                 macho,
                 data,
                 bcsymbolmap: None,
-                max_inline_depth: opts.max_inline_depth,
+                max_function_parse_depth: opts.max_function_parse_depth,
             })
             .map_err(MachError::new)
     }
