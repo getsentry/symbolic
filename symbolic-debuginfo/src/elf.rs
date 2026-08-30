@@ -593,7 +593,7 @@ impl<'data> ElfObject<'data> {
         //
         // See also: <https://github.com/getsentry/symbolicator/issues/2025>
         let has_unwind_info = |name: &str| {
-            let Some((compressed, section)) = self.find_section(name) else {
+            let Some((_, compressed, section)) = self.find_section(name) else {
                 return false;
             };
 
@@ -683,8 +683,8 @@ impl<'data> ElfObject<'data> {
     }
 
     /// Locates and reads a section in an ELF binary.
-    fn find_section(&self, name: &str) -> Option<(bool, DwarfSection<'data>)> {
-        for header in &self.elf.section_headers {
+    fn find_section(&self, name: &str) -> Option<(usize, bool, DwarfSection<'data>)> {
+        for (idx, header) in self.elf.section_headers.iter().enumerate() {
             // The section type is usually SHT_PROGBITS, but some compilers also use
             // SHT_X86_64_UNWIND and SHT_MIPS_DWARF. We apply the same approach as elfutils,
             // matching against SHT_NOBITS, instead.
@@ -730,11 +730,71 @@ impl<'data> ElfObject<'data> {
                     align: header.sh_addralign,
                 };
 
-                return Some((compressed, section));
+                return Some((idx, compressed, section));
             }
         }
 
         None
+    }
+
+    /// Applies ELF relocations (from the matching `.rela.<name>`/`.rel.<name>` section) to a
+    /// raw debug section's bytes.
+    ///
+    /// Unlinked relocatable objects (`ET_REL`, i.e. plain `.o` files) leave
+    /// `DW_FORM_line_strp`/`DW_FORM_strp` offset fields in `.debug_line`/`.debug_info` as
+    /// zero placeholders, with a companion `R_*_32`/`R_*_64` relocation recording the real
+    /// offset into `.debug_line_str`/`.debug_str` (those sections' final layout isn't fixed
+    /// until link time, since they may be merged/deduplicated across translation units).
+    /// `self.elf.shdr_relocs` is already parsed but was never consulted here, so every such
+    /// field silently read back as offset 0 -- which happens to coincide with `DW_AT_comp_dir`
+    /// often enough to go unnoticed, but corrupts every other directory/file-table entry in
+    /// the DWARF5 line program, and can point `bundle-sources`/`upload --include-sources` at
+    /// a directory instead of a file, which then hard-errors instead of skipping gracefully.
+    fn apply_section_relocations(&self, section_idx: usize, data: &mut [u8]) {
+        // Relocation type numbers are only meaningful relative to e_machine: e.g. type 1 is
+        // R_X86_64_64 on x86_64, but R_PPC_ADDR32 on PowerPC and R_RISCV_32 on RISC-V. Without
+        // this guard, a 32-bit relocation on another architecture could be misread as an 8-byte
+        // x86_64/AArch64 one and overwrite the following field.
+        let (r32, r64): (u32, u32) = match self.elf.header.e_machine {
+            elf::header::EM_X86_64 => (elf::reloc::R_X86_64_32, elf::reloc::R_X86_64_64),
+            elf::header::EM_AARCH64 => (elf::reloc::R_AARCH64_ABS32, elf::reloc::R_AARCH64_ABS64),
+            _ => return,
+        };
+
+        for (rela_idx, relocs) in &self.elf.shdr_relocs {
+            let Some(rela_header) = self.elf.section_headers.get(*rela_idx) else {
+                continue;
+            };
+            if rela_header.sh_info as usize != section_idx {
+                continue;
+            }
+
+            for reloc in relocs.iter() {
+                let width = match reloc.r_type {
+                    t if t == r32 => 4usize,
+                    t if t == r64 => 8usize,
+                    _ => continue,
+                };
+
+                let Some(addend) = reloc.r_addend else {
+                    continue;
+                };
+                let offset = reloc.r_offset as usize;
+                if offset + width > data.len() {
+                    continue;
+                }
+
+                let value = addend as u64;
+                let patched = if self.elf.little_endian {
+                    let bytes = value.to_le_bytes();
+                    bytes[..width].to_vec()
+                } else {
+                    let bytes = value.to_be_bytes();
+                    bytes[8 - width..].to_vec()
+                };
+                data[offset..offset + width].copy_from_slice(&patched);
+            }
+        }
     }
 
     /// Searches for a GNU build identifier node in an ELF file.
@@ -917,16 +977,22 @@ impl<'data> Dwarf<'data> for ElfObject<'data> {
     }
 
     fn raw_section(&self, name: &str) -> Option<DwarfSection<'data>> {
-        let (_, section) = self.find_section(name)?;
+        let (_, _, section) = self.find_section(name)?;
         Some(section)
     }
 
     fn section(&self, name: &str) -> Option<DwarfSection<'data>> {
-        let (compressed, mut section) = self.find_section(name)?;
+        let (idx, compressed, mut section) = self.find_section(name)?;
 
         if compressed {
             let decompressed = self.decompress_section(&section.data)?;
             section.data = Cow::Owned(decompressed);
+        }
+
+        if self.elf.header.e_type == elf::header::ET_REL {
+            let mut owned = section.data.into_owned();
+            self.apply_section_relocations(idx, &mut owned);
+            section.data = Cow::Owned(owned);
         }
 
         Some(section)
