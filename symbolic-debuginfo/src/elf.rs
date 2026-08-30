@@ -776,6 +776,16 @@ impl<'data> ElfObject<'data> {
                     _ => continue,
                 };
 
+                // `r_addend` is used directly as the final value, i.e. this assumes the
+                // relocation's symbol has value 0 (a plain section-relative reference), which is
+                // what every compiler emits for cross-references between debug sections -- there
+                // would be no reason to route these through a named symbol instead. `r_addend` is
+                // `None` precisely for REL-type (not RELA) relocation sections, i.e. ones where
+                // the addend is implicit in the pre-relocation bytes rather than stored in the
+                // relocation entry itself; that never happens for the two architectures handled
+                // above; both x86_64 and AArch64 are RELA-only per their psABIs. Continuing here
+                // leaves the section's placeholder untouched rather than corrupting it, so this
+                // degrades safely if that ever changes.
                 let Some(addend) = reloc.r_addend else {
                     continue;
                 };
@@ -785,14 +795,15 @@ impl<'data> ElfObject<'data> {
                 }
 
                 let value = addend as u64;
+                let mut buf = [0u8; 8];
                 let patched = if self.elf.little_endian {
-                    let bytes = value.to_le_bytes();
-                    bytes[..width].to_vec()
+                    buf.copy_from_slice(&value.to_le_bytes());
+                    &buf[..width]
                 } else {
-                    let bytes = value.to_be_bytes();
-                    bytes[8 - width..].to_vec()
+                    buf.copy_from_slice(&value.to_be_bytes());
+                    &buf[8 - width..]
                 };
-                data[offset..offset + width].copy_from_slice(&patched);
+                data[offset..offset + width].copy_from_slice(patched);
             }
         }
     }

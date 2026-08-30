@@ -499,6 +499,40 @@ fn test_elf_files() -> Result<(), Error> {
     Ok(())
 }
 
+/// Regression test for a bug where unapplied ELF relocations in `.rela.debug_line`/
+/// `.rela.debug_info` left every `DW_FORM_line_strp`/`DW_FORM_strp` offset field reading back as
+/// 0 for unlinked relocatable objects (`ET_REL`), silently resolving every file in a subdirectory
+/// to the compilation directory itself instead of its real path. See `elf.rs`'s
+/// `apply_section_relocations`.
+#[test]
+fn test_elf_unlinked_relocations_resolve_correctly() -> Result<(), Error> {
+    let view = ByteView::open(fixture("linux/relocations/unlinked.o"))?;
+    let object = Object::parse(&view)?;
+    assert_eq!(object.kind(), ObjectKind::Relocatable);
+
+    let session = object.debug_session()?;
+    let files = session.files().collect::<Result<Vec<_>, _>>()?;
+
+    let example = files
+        .iter()
+        .find(|f| f.name_str() == "example.c")
+        .expect("fixture must reference example.c");
+
+    // Checked against dir_str()/name_str() directly (not the joined abs_path_str(), and not
+    // compilation_dir_str()) because those are the only two fields here that don't embed the
+    // fixture's original build machine's absolute path, so the assertion stays portable.
+    //
+    // Before the fix, every DW_FORM_line_strp/strp field in this object -- including these two
+    // -- silently read back as offset 0 in .debug_line_str, i.e. whatever string GCC happened
+    // to place there first (verified: it was neither "subdir" nor "example.c", but the CU's own
+    // DW_AT_name, "subdir/example.c" -- reproducing that exact false positive is why this test
+    // checks precise equality rather than a substring/suffix match).
+    assert_eq!(example.dir_str(), "subdir");
+    assert_eq!(example.name_str(), "example.c");
+
+    Ok(())
+}
+
 #[test]
 fn test_elf_functions() -> Result<(), Error> {
     let view = ByteView::open(fixture("linux/crash.debug"))?;
