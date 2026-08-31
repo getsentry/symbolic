@@ -593,7 +593,7 @@ impl<'data> ElfObject<'data> {
         //
         // See also: <https://github.com/getsentry/symbolicator/issues/2025>
         let has_unwind_info = |name: &str| {
-            let Some((compressed, section)) = self.find_section(name) else {
+            let Some((_, compressed, section)) = self.find_section(name) else {
                 return false;
             };
 
@@ -683,8 +683,8 @@ impl<'data> ElfObject<'data> {
     }
 
     /// Locates and reads a section in an ELF binary.
-    fn find_section(&self, name: &str) -> Option<(bool, DwarfSection<'data>)> {
-        for header in &self.elf.section_headers {
+    fn find_section(&self, name: &str) -> Option<(usize, bool, DwarfSection<'data>)> {
+        for (idx, header) in self.elf.section_headers.iter().enumerate() {
             // The section type is usually SHT_PROGBITS, but some compilers also use
             // SHT_X86_64_UNWIND and SHT_MIPS_DWARF. We apply the same approach as elfutils,
             // matching against SHT_NOBITS, instead.
@@ -730,11 +730,102 @@ impl<'data> ElfObject<'data> {
                     align: header.sh_addralign,
                 };
 
-                return Some((compressed, section));
+                return Some((idx, compressed, section));
             }
         }
 
         None
+    }
+
+    /// The (32-bit, 64-bit) "absolute value" relocation type pair for this object's `e_machine`,
+    /// or `None` if it isn't one this crate applies relocations for.
+    ///
+    /// Relocation type numbers are only meaningful per-machine: type 1 is `R_X86_64_64` on
+    /// x86_64, but `R_PPC_ADDR32` on PowerPC and `R_RISCV_32` on RISC-V.
+    fn absolute_reloc_types(&self) -> Option<(u32, u32)> {
+        match self.elf.header.e_machine {
+            elf::header::EM_X86_64 => Some((elf::reloc::R_X86_64_32, elf::reloc::R_X86_64_64)),
+            elf::header::EM_AARCH64 => {
+                Some((elf::reloc::R_AARCH64_ABS32, elf::reloc::R_AARCH64_ABS64))
+            }
+            _ => None,
+        }
+    }
+
+    /// Whether any relocation applies to `section_idx`, so callers can skip `into_owned()`'s
+    /// copy of the section bytes when there is nothing to patch. Keep in sync with
+    /// `apply_section_relocations`'s own matching criteria below.
+    fn section_has_applicable_relocations(&self, section_idx: usize) -> bool {
+        let Some((r32, r64)) = self.absolute_reloc_types() else {
+            return false;
+        };
+
+        self.elf.shdr_relocs.iter().any(|(rela_idx, relocs)| {
+            self.elf
+                .section_headers
+                .get(*rela_idx)
+                .is_some_and(|header| header.sh_info as usize == section_idx)
+                && relocs
+                    .iter()
+                    .any(|reloc| reloc.r_type == r32 || reloc.r_type == r64)
+        })
+    }
+
+    /// Applies ELF relocations to a raw debug section's bytes, matching relocation sections
+    /// to `section_idx` via `sh_info` rather than by name.
+    ///
+    /// Unlinked relocatable objects (`ET_REL`, plain `.o` files) leave `DW_FORM_line_strp`/
+    /// `DW_FORM_strp` offsets in `.debug_line`/`.debug_info` as zero placeholders, with a
+    /// companion relocation recording the real offset into `.debug_line_str`/`.debug_str`
+    /// (not fixed until link time).
+    fn apply_section_relocations(&self, section_idx: usize, data: &mut [u8]) {
+        let Some((r32, r64)) = self.absolute_reloc_types() else {
+            return;
+        };
+
+        for (rela_idx, relocs) in &self.elf.shdr_relocs {
+            let Some(rela_header) = self.elf.section_headers.get(*rela_idx) else {
+                continue;
+            };
+            if rela_header.sh_info as usize != section_idx {
+                continue;
+            }
+
+            for reloc in relocs.iter() {
+                let width = match reloc.r_type {
+                    t if t == r32 => 4usize,
+                    t if t == r64 => 8usize,
+                    _ => continue,
+                };
+
+                // Uses `r_addend` directly, assuming a section-relative symbol (value 0),
+                // true for every compiler's debug-section relocations. `r_addend` is `None`
+                // only for REL (not RELA) sections, which x86_64/AArch64 never use.
+                let Some(addend) = reloc.r_addend else {
+                    continue;
+                };
+                let offset = reloc.r_offset as usize;
+                // r_offset is unchecked file input, so guard against overflow rather than
+                // panicking on a malformed or adversarial object.
+                let Some(end) = offset.checked_add(width) else {
+                    continue;
+                };
+                if end > data.len() {
+                    continue;
+                }
+
+                let value = addend as u64;
+                let mut buf = [0u8; 8];
+                let patched = if self.elf.little_endian {
+                    buf.copy_from_slice(&value.to_le_bytes());
+                    &buf[..width]
+                } else {
+                    buf.copy_from_slice(&value.to_be_bytes());
+                    &buf[8 - width..]
+                };
+                data[offset..end].copy_from_slice(patched);
+            }
+        }
     }
 
     /// Searches for a GNU build identifier node in an ELF file.
@@ -917,16 +1008,25 @@ impl<'data> Dwarf<'data> for ElfObject<'data> {
     }
 
     fn raw_section(&self, name: &str) -> Option<DwarfSection<'data>> {
-        let (_, section) = self.find_section(name)?;
+        let (_, _, section) = self.find_section(name)?;
         Some(section)
     }
 
     fn section(&self, name: &str) -> Option<DwarfSection<'data>> {
-        let (compressed, mut section) = self.find_section(name)?;
+        let (idx, compressed, mut section) = self.find_section(name)?;
 
         if compressed {
             let decompressed = self.decompress_section(&section.data)?;
             section.data = Cow::Owned(decompressed);
+        }
+
+        if self.elf.header.e_type == elf::header::ET_REL {
+            // Skip into_owned()'s copy for sections with nothing to patch (the common case).
+            if self.section_has_applicable_relocations(idx) {
+                let mut owned = section.data.into_owned();
+                self.apply_section_relocations(idx, &mut owned);
+                section.data = Cow::Owned(owned);
+            }
         }
 
         Some(section)

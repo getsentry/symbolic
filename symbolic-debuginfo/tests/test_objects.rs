@@ -500,6 +500,30 @@ fn test_elf_files() -> Result<(), Error> {
 }
 
 #[test]
+fn test_elf_unlinked_relocations_resolve_correctly() -> Result<(), Error> {
+    // Regression test for unapplied ELF relocations leaving DW_FORM_line_strp/strp offsets
+    // in an unlinked object (ET_REL) reading back as 0. See apply_section_relocations in elf.rs.
+    let view = ByteView::open(fixture("linux/relocations/unlinked.o"))?;
+    let object = Object::parse(&view)?;
+    assert_eq!(object.kind(), ObjectKind::Relocatable);
+
+    let session = object.debug_session()?;
+    let files = session.files().collect::<Result<Vec<_>, _>>()?;
+
+    let example = files
+        .iter()
+        .find(|f| f.name_str() == "example.c")
+        .expect("fixture must reference example.c");
+
+    // dir_str()/name_str(), not abs_path_str(), so the assertion doesn't depend on the
+    // fixture's original build machine's absolute compilation directory.
+    assert_eq!(example.dir_str(), "subdir");
+    assert_eq!(example.name_str(), "example.c");
+
+    Ok(())
+}
+
+#[test]
 fn test_elf_functions() -> Result<(), Error> {
     let view = ByteView::open(fixture("linux/crash.debug"))?;
     let object = Object::parse(&view)?;
