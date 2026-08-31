@@ -514,6 +514,8 @@ pub fn demangle(ident: &str) -> Cow<'_, str> {
 
 #[cfg(test)]
 mod test {
+    use std::assert_matches;
+
     use super::*;
 
     #[test]
@@ -563,11 +565,22 @@ mod test {
 
     #[test]
     fn test_swift_demangle_assert() {
-        assert_eq!(
-            try_demangle_swift("$syxD4oE0F", DemangleOptions::name_only()),
-            Err(SwiftDemangleError::DemangleFail(
-                "Assertion failed: (false && \"Unhandled function type in printFunctionType!\"), file vendor/swift/lib/Demangling/NodePrinter.cpp, line 866".to_owned()
-            ))
-        );
+        const SYMBOLS: &[&str] = &[
+            "$syxD4oE0F",
+            "$syTB3TJdSpSrQri",
+            "_T08mog)nalg4psoiyx_QrSGySGGtF",
+            "$sly_Is",
+            "$ssSVRVsLcSQQrSQF",
+            "$ss$MXYTJdSpSrQri",
+            "$sSS8SS9SP__PSS8SrQriSP__RPTJdSpSrQri",
+            "$sSSSu1%RcTJdSpSrQri",
+            "$s1E2sACST7EmlrQriRtTJdSpSrQri",
+        ];
+        for symbol in SYMBOLS {
+            assert_matches!(
+                try_demangle_swift(symbol, DemangleOptions::name_only()),
+                Err(SwiftDemangleError::DemangleFail(_))
+            );
+        }
     }
 }
