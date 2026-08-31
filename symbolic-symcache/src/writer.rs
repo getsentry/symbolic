@@ -487,7 +487,7 @@ impl<'a> SymCacheConverter<'a> {
 
             // skip over empty functions or functions whose address is too large to fit in a u32
             if function.size == 0 || function.address > u32::MAX as u64 {
-                return;
+                continue;
             }
 
             let comp_dir = std::str::from_utf8(function.compilation_dir).ok();

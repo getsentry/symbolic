@@ -1078,6 +1078,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         &self,
         index: usize,
         depth: isize,
+        max_parse_depth: usize,
         dw_die_offset: gimli::UnitOffset<usize>,
         entries: &mut EntriesRaw<'d, '_>,
         abbrev: &gimli::Abbreviation,
@@ -1154,10 +1155,15 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             .map(|range| {
                 let address = offset(range.begin, self.inner.info.address_offset);
                 let size = range.end - range.begin;
-                // TODO: remove inline depth limit
                 (
                     *range,
-                    FunctionBuilder::new(name.clone(), self.compilation_dir(), address, size, 999),
+                    FunctionBuilder::new(
+                        name.clone(),
+                        self.compilation_dir(),
+                        address,
+                        size,
+                        max_parse_depth as u32,
+                    ),
                 )
             })
             .collect();
@@ -1274,6 +1280,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     let program = self.consume_subprogram_tag(
                         function_stack.len(),
                         next_depth,
+                        max_parse_depth,
                         dw_die_offset,
                         entries,
                         abbrev,
