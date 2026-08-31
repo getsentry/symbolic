@@ -565,9 +565,10 @@ mod test {
 
     #[test]
     fn test_swift_demangle_segfault() {
-        assert_eq!(
+        assert_matches!(
             try_demangle_swift("$sSS1-fMb_", DemangleOptions::name_only()),
-            Err(SwiftDemangleError::DemangleFail("Assertion failed: (Node->getNumChildren() >= 4), file vendor/swift/include/swift/Basic/MacroRoles.def, line 81".to_owned()))
+            Err(SwiftDemangleError::DemangleFail(msg))
+                if msg.starts_with("Assertion failed: (Node->getNumChildren() >= 4)")
         );
     }
 
