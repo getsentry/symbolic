@@ -18,23 +18,15 @@
 #include "swift/Basic/STLExtras.h"
 #include "swift/Demangling/Demangle.h"
 #include "swift/Strings.h"
+#include <cassert>
 #include <cstdio>
 #include <cstdlib>
-#include <stdexcept>
-#include <string>
 #include <vector>
 
 using namespace swift;
 using namespace Demangle;
 using llvm::StringRef;
 
-#undef assert
-#define assert(cond)                                                          \
-  do {                                                                        \
-    if (!(cond))                                                              \
-      throw std::logic_error("Assertion failed: (" #cond "), file "           \
-                              __FILE__ ", line " + std::to_string(__LINE__)); \
-  } while (0)
 
 DemanglerPrinter &DemanglerPrinter::operator<<(unsigned long long n) & {
   char buffer[32];
@@ -1599,6 +1591,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
 #define FREESTANDING_MACRO_ROLE(Name, Description)
 #define ATTACHED_MACRO_ROLE(Name, Description, MangledChar)                \
   case Node::Kind::Name##AttachedMacroExpansion:                           \
+    assert(Node->getNumChildren() >= 4);                                   \
     return printEntity(Node, depth, asPrefixContext,                       \
                        TypePrinting::NoType, /*hasName*/true,              \
                        (Description " macro @" +                           \

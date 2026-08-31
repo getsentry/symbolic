@@ -1,22 +1,14 @@
-diff --git a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-index 7431e548..0f85634d 100644
---- a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-+++ b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-@@ -18,15 +18,24 @@
- #include "swift/Basic/STLExtras.h"
- #include "swift/Demangling/Demangle.h"
- #include "swift/Strings.h"
--#include <cassert>
- #include <cstdio>
- #include <cstdlib>
-+#include <stdexcept>
+diff --git a/symbolic-demangle/vendor/swift/include/assert.h b/symbolic-demangle/vendor/swift/include/assert.h
+new file mode 100644
+index 00000000..e981921a
+--- /dev/null
++++ b/symbolic-demangle/vendor/swift/include/assert.h
+@@ -0,0 +1,12 @@
++// Our overwrite of assert, this is done so that we get an exception which can be caught before the
++// FFI, rather than aborting.
 +#include <string>
- #include <vector>
-
- using namespace swift;
- using namespace Demangle;
- using llvm::StringRef;
-
++#include <stdexcept>
++
 +#undef assert
 +#define assert(cond)                                                          \
 +  do {                                                                        \
@@ -24,11 +16,53 @@ index 7431e548..0f85634d 100644
 +      throw std::logic_error("Assertion failed: (" #cond "), file "           \
 +                              __FILE__ ", line " + std::to_string(__LINE__)); \
 +  } while (0)
+diff --git a/symbolic-demangle/vendor/swift/lib/Demangling/DemanglerAssert.h b/symbolic-demangle/vendor/swift/lib/Demangling/DemanglerAssert.h
+index 367a81ef..a734aa36 100644
+--- a/symbolic-demangle/vendor/swift/lib/Demangling/DemanglerAssert.h
++++ b/symbolic-demangle/vendor/swift/lib/Demangling/DemanglerAssert.h
+@@ -22,7 +22,6 @@
+ #include "swift/Demangling/Demangle.h"
+ #include "swift/Demangling/NamespaceMacros.h"
+
+-#if defined(NDEBUG) || defined (SWIFT_RUNTIME)
+
+ // In the runtime and non-asserts builds, DEMANGLER_ASSERT() returns an error.
+ #define DEMANGLER_ASSERT(expr, node)                                           \
+@@ -31,21 +30,6 @@
+       return ManglingError(ManglingError::AssertionFailed, (node), __LINE__);  \
+   } while (0)
+
+-#else
+-
+-// Except in unittests, assert builds cause DEMANGLER_ASSERT() to assert()
+-#define DEMANGLER_ASSERT(expr, node)                                           \
+-  do {                                                                         \
+-    if (!(expr)) {                                                             \
+-      if (Factory.disableAssertionsForUnitTest)                                \
+-        return ManglingError(ManglingError::AssertionFailed, (node),           \
+-                             __LINE__);                                        \
+-      else                                                                     \
+-        swift::Demangle::failAssert(__FILE__, __LINE__, node, #expr);          \
+-    }                                                                          \
+-  } while (0)
+-
+-#endif
+
+ // DEMANGLER_ALWAYS_ASSERT() *always* fails the program, even in the runtime
+ #define DEMANGLER_ALWAYS_ASSERT(expr, node)                                    \
+diff --git a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
+index 7431e548..99d0d4ce 100644
+--- a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
++++ b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
+@@ -27,6 +27,7 @@ using namespace swift;
+ using namespace Demangle;
+ using llvm::StringRef;
+
 +
  DemanglerPrinter &DemanglerPrinter::operator<<(unsigned long long n) & {
    char buffer[32];
    snprintf(buffer, sizeof(buffer), "%llu", n);
-@@ -50,8 +59,7 @@ DemanglerPrinter &DemanglerPrinter::operator<<(long long n) & {
+@@ -50,8 +51,7 @@ DemanglerPrinter &DemanglerPrinter::operator<<(long long n) & {
 
  [[noreturn]]
  static void printer_unreachable(const char *Message) {
@@ -38,7 +72,15 @@ index 7431e548..0f85634d 100644
  }
 
  std::string Demangle::genericParameterName(uint64_t depth, uint64_t index) {
-@@ -2889,7 +2897,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
+@@ -1591,6 +1591,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
+ #define FREESTANDING_MACRO_ROLE(Name, Description)
+ #define ATTACHED_MACRO_ROLE(Name, Description, MangledChar)                \
+   case Node::Kind::Name##AttachedMacroExpansion:                           \
++    assert(Node->getNumChildren() >= 4);                                   \
+     return printEntity(Node, depth, asPrefixContext,                       \
+                        TypePrinting::NoType, /*hasName*/true,              \
+                        (Description " macro @" +                           \
+@@ -2889,7 +2890,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
      return nullptr;
    case Node::Kind::ImplErasedIsolation:
      Printer << "@isolated(any)";
@@ -47,7 +89,7 @@ index 7431e548..0f85634d 100644
    case Node::Kind::ImplCoroutineKind:
      // Skip if text is empty.
      if (Node->getText().empty())
-@@ -2984,7 +2992,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
+@@ -2984,7 +2985,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
    case Node::Kind::ErrorType:
      Printer << "<ERROR TYPE>";
      return nullptr;
@@ -56,7 +98,7 @@ index 7431e548..0f85634d 100644
    case Node::Kind::DependentPseudogenericSignature:
    case Node::Kind::DependentGenericSignature: {
      printGenericSignature(Node, depth);
-@@ -3605,10 +3613,7 @@ NodePointer NodePrinter::printEntity(NodePointer Entity, unsigned depth,
+@@ -3605,10 +3606,7 @@ NodePointer NodePrinter::printEntity(NodePointer Entity, unsigned depth,
    if (TypePr != TypePrinting::NoType) {
      NodePointer type = getChildIf(Entity, Node::Kind::Type);
      assert(type && "malformed entity");
