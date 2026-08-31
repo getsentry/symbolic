@@ -41,5 +41,9 @@ extern "C" int symbolic_demangle_swift(const char *symbol,
 }
 
 extern "C" int symbolic_demangle_is_swift_symbol(const char *symbol) {
-    return swift::Demangle::isSwiftSymbol(symbol);
+    try {
+        return swift::Demangle::isSwiftSymbol(symbol);
+    } catch (...) {
+        return false;
+    }
 }
