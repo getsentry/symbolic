@@ -777,8 +777,7 @@ impl<'data> ElfObject<'data> {
     /// Unlinked relocatable objects (`ET_REL`, plain `.o` files) leave `DW_FORM_line_strp`/
     /// `DW_FORM_strp` offsets in `.debug_line`/`.debug_info` as zero placeholders, with a
     /// companion relocation recording the real offset into `.debug_line_str`/`.debug_str`
-    /// (not fixed until link time). `self.elf.shdr_relocs` is already parsed but was never
-    /// applied, so every such field silently read back as offset 0.
+    /// (not fixed until link time).
     fn apply_section_relocations(&self, section_idx: usize, data: &mut [u8]) {
         let Some((r32, r64)) = self.absolute_reloc_types() else {
             return;
