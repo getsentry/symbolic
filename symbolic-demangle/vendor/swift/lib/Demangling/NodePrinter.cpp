@@ -1591,6 +1591,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
 #define FREESTANDING_MACRO_ROLE(Name, Description)
 #define ATTACHED_MACRO_ROLE(Name, Description, MangledChar)                \
   case Node::Kind::Name##AttachedMacroExpansion:                           \
+    assert(Node->getNumChildren() >= 4);                                   \
     return printEntity(Node, depth, asPrefixContext,                       \
                        TypePrinting::NoType, /*hasName*/true,              \
                        (Description " macro @" +                           \
