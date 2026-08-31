@@ -315,6 +315,9 @@ enum SwiftDemangleError {
     DemangleFail(String),
     #[error("constructing CString failed")]
     BadString(#[from] NulError),
+    // The output of demangling is currently capped at 4096 chars.
+    #[error("demangle output is too large")]
+    OutputTooLarge,
 }
 
 #[cfg(feature = "swift")]
@@ -332,10 +335,11 @@ fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Result<String, Swif
 
     unsafe {
         match symbolic_demangle_swift(sym.as_ptr(), buf.as_mut_ptr(), buf.len(), features) {
-            0 => {
+            2 => {
                 let error = CStr::from_ptr(buf.as_ptr()).to_string_lossy().to_string();
                 Err(SwiftDemangleError::DemangleFail(error))
             }
+            1 => Err(SwiftDemangleError::OutputTooLarge),
             _ => Ok(CStr::from_ptr(buf.as_ptr()).to_string_lossy().to_string()),
         }
     }
@@ -472,11 +476,7 @@ impl Demangle for Name<'_> {
             Language::Rust => try_demangle_rust(self.as_str(), opts),
             Language::Cpp => try_demangle_cpp(self.as_str(), opts),
             #[cfg(feature = "swift")]
-            Language::Swift => try_demangle_swift(self.as_str(), opts)
-                .map_err(
-                    |e| tracing::warn!(error=%e, symbol = self.as_str(), "swift demangling failed"),
-                )
-                .ok(),
+            Language::Swift => try_demangle_swift(self.as_str(), opts).ok(),
             _ => None,
         }
     }

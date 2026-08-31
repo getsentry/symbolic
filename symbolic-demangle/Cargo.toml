@@ -36,7 +36,6 @@ symbolic-common = { version = "14.0.0-alpha.3", path = "../symbolic-common" }
 bitflags = { version = "2", optional = true, default-features = false }
 itoa = { version = "1.0", optional = true }
 thiserror = { workspace = true }
-tracing = { workspace = true }
 
 [build-dependencies]
 cc = { workspace = true, optional = true }
