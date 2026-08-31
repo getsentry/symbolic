@@ -1,5 +1,5 @@
 use std::assert_matches;
-use symbolic_debuginfo::{Object};
+use symbolic_debuginfo::Object;
 
 #[test]
 fn test_resolve_function() {

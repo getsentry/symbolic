@@ -126,7 +126,7 @@ impl Error for ObjectError {
     }
 }
 
-const MAX_FUNCTION_PARSE_DEPTH_DEFAULT: u32 = 2000;
+const MAX_FUNCTION_PARSE_DEPTH_DEFAULT: u32 = 800;
 
 /// Options for parsing object files.
 #[non_exhaustive]
