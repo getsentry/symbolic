@@ -51,7 +51,7 @@ index 367a81ef..a734aa36 100644
  // DEMANGLER_ALWAYS_ASSERT() *always* fails the program, even in the runtime
  #define DEMANGLER_ALWAYS_ASSERT(expr, node)                                    \
 diff --git a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-index 7431e548..6e60bee7 100644
+index 7431e548..99d0d4ce 100644
 --- a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
 +++ b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
 @@ -27,6 +27,7 @@ using namespace swift;
@@ -72,7 +72,15 @@ index 7431e548..6e60bee7 100644
  }
 
  std::string Demangle::genericParameterName(uint64_t depth, uint64_t index) {
-@@ -2889,7 +2889,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
+@@ -1591,6 +1591,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
+ #define FREESTANDING_MACRO_ROLE(Name, Description)
+ #define ATTACHED_MACRO_ROLE(Name, Description, MangledChar)                \
+   case Node::Kind::Name##AttachedMacroExpansion:                           \
++    assert(Node->getNumChildren() >= 4);                                   \
+     return printEntity(Node, depth, asPrefixContext,                       \
+                        TypePrinting::NoType, /*hasName*/true,              \
+                        (Description " macro @" +                           \
+@@ -2889,7 +2890,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
      return nullptr;
    case Node::Kind::ImplErasedIsolation:
      Printer << "@isolated(any)";
@@ -81,7 +89,7 @@ index 7431e548..6e60bee7 100644
    case Node::Kind::ImplCoroutineKind:
      // Skip if text is empty.
      if (Node->getText().empty())
-@@ -2984,7 +2984,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
+@@ -2984,7 +2985,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
    case Node::Kind::ErrorType:
      Printer << "<ERROR TYPE>";
      return nullptr;
@@ -90,7 +98,7 @@ index 7431e548..6e60bee7 100644
    case Node::Kind::DependentPseudogenericSignature:
    case Node::Kind::DependentGenericSignature: {
      printGenericSignature(Node, depth);
-@@ -3605,10 +3605,7 @@ NodePointer NodePrinter::printEntity(NodePointer Entity, unsigned depth,
+@@ -3605,10 +3606,7 @@ NodePointer NodePrinter::printEntity(NodePointer Entity, unsigned depth,
    if (TypePr != TypePrinting::NoType) {
      NodePointer type = getChildIf(Entity, Node::Kind::Type);
      assert(type && "malformed entity");
