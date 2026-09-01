@@ -17,6 +17,7 @@
 - Patch potential aborts in the vendored Swift demangler. ([#1054](https://github.com/getsentry/symbolic/pull/1054), [#1059](https://github.com/getsentry/symbolic/pull/1059), [#1062](https://github.com/getsentry/symbolic/pull/1062))
 - Do not allocate based on untrusted input in unreal parser. ([#1055](https://github.com/getsentry/symbolic/pull/1055))
 - Ensure unwind sections contain any unwind information. ([#1058](https://github.com/getsentry/symbolic/pull/1058))
+- Only replace the first `*` in sourcelink expansion. ([#1064](https://github.com/getsentry/symbolic/pull/1064))
 
 **Dependencies**
 
