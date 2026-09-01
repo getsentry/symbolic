@@ -108,7 +108,7 @@ impl SourceLinkMappings {
                             .get(value.len()..)
                             .unwrap_or_default()
                             .replace('\\', "/");
-                        return Some(target.replace('*', &replacement));
+                        return Some(target.replacen('*', &replacement, 1));
                     }
                 }
             }
