@@ -1259,8 +1259,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     break;
                 }
 
-                let last_func: InProgressSubProgram<'_> =
-                    function_stack.pop().expect("already checked");
+                let last_func = function_stack.pop().expect("already checked");
                 last_func.finish(self, output, &mut function_stack)?;
             }
 
@@ -1270,9 +1269,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
             // It's possible the top function is dead-code; if so, we want to ignore anything
             // nested inside that is NOT a subprogram.
-            let deadcode_top = function_stack
-                .last()
-                .is_some_and(|p| matches!(p, InProgressSubProgram::Deadcode(_)));
+            let deadcode_top = matches!(
+                function_stack.last(),
+                Some(InProgressSubProgram::Deadcode(_))
+            );
 
             match abbrev.tag() {
                 // Always process a subprogram, even if we have a deadcode frame at top of stack.
