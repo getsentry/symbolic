@@ -1,40 +1,23 @@
 # Variables fixture
 
-Source for the debug info fixtures used by the variable extraction tests, currently
-`fixtures/linux/variables` (ELF/DWARF 5, x86-64), asserted by `test_elf_variables` in
+Debug info fixture used by the variable extraction tests: `variables.c` builds to the `variables`
+binary in this directory (ELF/DWARF 5, x86-64), asserted by `test_elf_variables` in
 `symbolic-debuginfo/tests/test_objects.rs`.
 
 `variables.c` is our fixture which is meant to grow along with symbolic's variable support.
 
-To run the test without rebuilding the snapshot, use:
-
-```sh
-cargo test -p symbolic-debuginfo --test test_objects test_elf_variables
-```
-
 ## Rebuilding
 
-If you make changes to `variables.c`, updating the snapshot takes two steps. First, rebuild the
-fixture — run this from *this* directory; it writes `../fixtures/linux/variables`:
+If you change `variables.c`, rebuild from *this* directory — it rewrites `variables` next to
+the source:
 
 ```sh
 docker run --rm --platform linux/amd64 \
-    -v "$PWD/..:/testutils" -w /testutils/variables gcc:14.4.0 ./build.sh
+    -v "$PWD:/fixture" -w /fixture gcc:14.4.0 ./build.sh
 ```
 
-Docker pins the compiler, the target architecture and the paths embedded in the debug info
-(`DW_AT_comp_dir` comes from the container working directory), so the fixture does not depend on
-the machine that built it. Do not run `./build.sh` outside Docker: even with the right GCC
-version, your local checkout path would be embedded in the debug info and the binary would differ
-from the committed one.
-
-Second, refresh the snapshot and check the diff is what you expected:
-
-```sh
-cargo insta test --accept -p symbolic-debuginfo --test test_objects
-```
-
-To keep remote up-to-date, commit the rebuilt binary together with the updated snapshot.
+Docker keeps the binary reproducible (pinned compiler, architecture, and embedded paths) — don't
+build outside it.
 
 ## Adding coverage
 

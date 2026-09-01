@@ -582,7 +582,7 @@ fn test_elf_functions() -> Result<(), Error> {
 
 #[test]
 fn test_elf_variables() -> Result<(), Error> {
-    let view = ByteView::open(fixture("linux/variables"))?;
+    let view = ByteView::open(fixture("linux/variables/variables"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
