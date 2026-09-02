@@ -2134,6 +2134,8 @@ mod parsing {
 }
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use super::*;
 
     #[test]
@@ -2626,10 +2628,8 @@ mod tests {
         let obj = BreakpadObject::parse(&buffer).expect("parse breakpad");
 
         let session = obj.debug_session().expect("session");
-        let _ = session
-            .functions()
-            .next()
-            .unwrap()
-            .expect_err("should have seen an error");
+        let e = session.functions().next().unwrap().err().unwrap();
+
+        assert_matches!(e.kind(), BreakpadErrorKind::ExhaustedResourceLimit);
     }
 }
