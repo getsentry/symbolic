@@ -742,6 +742,19 @@ pub struct Function<'data> {
     pub variables: Vec<variable::Variable<'data>>,
 }
 
+// We need a custom drop implementation to avoid recursing down the inlinees.
+impl<'data> Drop for Function<'data> {
+    fn drop(&mut self) {
+        let mut inlinees = vec![std::mem::take(&mut self.inlinees)];
+
+        while let Some(inlinee_set) = inlinees.pop() {
+            for mut f in inlinee_set {
+                inlinees.push(std::mem::take(&mut f.inlinees));
+            }
+        }
+    }
+}
+
 impl Function<'_> {
     /// End address of the entire function body, including inlined functions.
     ///
@@ -751,21 +764,225 @@ impl Function<'_> {
     }
 }
 
+// The following is an iterative fmt::Debug impl for Function, written by Claude.  Because it's
+// a Debug impl, I haven't thoroughly vetted it, but it seems to produce byte-identical output.
+
+/// Writes `4 * indent` spaces.
+fn write_indent(f: &mut fmt::Formatter<'_>, indent: usize) -> fmt::Result {
+    const SPACES: &str = "                                ";
+
+    let mut remaining = indent * 4;
+    while remaining > 0 {
+        let len = remaining.min(SPACES.len());
+        f.write_str(&SPACES[..len])?;
+        remaining -= len;
+    }
+
+    Ok(())
+}
+
+/// A writer that indents every line but the first, mirroring what the standard library's debug
+/// builders do for nested values in alternate mode.
+struct PadAdapter<'a, 'b> {
+    fmt: &'a mut fmt::Formatter<'b>,
+    indent: usize,
+    on_newline: bool,
+}
+
+impl fmt::Write for PadAdapter<'_, '_> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for (i, line) in s.split('\n').enumerate() {
+            if i > 0 {
+                self.fmt.write_str("\n")?;
+                self.on_newline = true;
+            }
+
+            if line.is_empty() {
+                continue;
+            }
+
+            if self.on_newline {
+                write_indent(self.fmt, self.indent)?;
+                self.on_newline = false;
+            }
+
+            self.fmt.write_str(line)?;
+        }
+
+        Ok(())
+    }
+}
+
+/// Writes a single `name: value` field of a `Function`.
+///
+/// `sep` is the separator preceding the field in compact (non-alternate) mode, which is `" "` for
+/// the first field of a struct and `", "` for all following ones.
+fn write_field(
+    f: &mut fmt::Formatter<'_>,
+    alternate: bool,
+    indent: usize,
+    sep: &str,
+    name: &str,
+    value: &dyn fmt::Debug,
+) -> fmt::Result {
+    use fmt::Write;
+
+    if !alternate {
+        return write!(f, "{sep}{name}: {value:?}");
+    }
+
+    write_indent(f, indent)?;
+    write!(f, "{name}: ")?;
+
+    let mut pad = PadAdapter {
+        fmt: f,
+        indent,
+        on_newline: false,
+    };
+    write!(pad, "{value:#?}")?;
+
+    f.write_str(",\n")
+}
+
 impl fmt::Debug for Function<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Function")
-            .field("address", &format_args!("{:#x}", self.address))
-            .field("size", &format_args!("{:#x}", self.size))
-            .field("name", &self.name)
-            .field(
-                "compilation_dir",
-                &String::from_utf8_lossy(self.compilation_dir),
-            )
-            .field("lines", &self.lines)
-            .field("inlinees", &self.inlinees)
-            .field("inline", &self.inline)
-            .field("variables", &self.variables)
-            .finish()
+        // This is written as an explicit work list rather than the usual recursive `Debug`
+        // implementation, since deeply nested inlinees would otherwise overflow the stack.
+        enum Step<'a, 'data> {
+            /// Writes everything up to and including the opening bracket of `inlinees`.
+            Head {
+                func: &'a Function<'data>,
+                indent: usize,
+                /// Separator written before the function in compact mode.
+                prefix: &'static str,
+                /// Separator written after the function in alternate mode.
+                suffix: &'static str,
+            },
+            /// Closes `inlinees` and writes the remaining fields and the closing brace.
+            Tail {
+                func: &'a Function<'data>,
+                indent: usize,
+                /// Separator written after the function in alternate mode.
+                suffix: &'static str,
+            },
+        }
+
+        let alternate = f.alternate();
+        let mut stack = vec![Step::Head {
+            func: self,
+            indent: 0,
+            prefix: "",
+            suffix: "",
+        }];
+
+        while let Some(step) = stack.pop() {
+            match step {
+                Step::Head {
+                    func,
+                    indent,
+                    prefix,
+                    suffix,
+                } => {
+                    if alternate {
+                        write_indent(f, indent)?;
+                        f.write_str("Function {\n")?;
+                    } else {
+                        write!(f, "{prefix}Function {{")?;
+                    }
+
+                    let inner = indent + 1;
+                    write_field(
+                        f,
+                        alternate,
+                        inner,
+                        " ",
+                        "address",
+                        &format_args!("{:#x}", func.address),
+                    )?;
+                    write_field(
+                        f,
+                        alternate,
+                        inner,
+                        ", ",
+                        "size",
+                        &format_args!("{:#x}", func.size),
+                    )?;
+                    write_field(f, alternate, inner, ", ", "name", &func.name)?;
+                    write_field(
+                        f,
+                        alternate,
+                        inner,
+                        ", ",
+                        "compilation_dir",
+                        &String::from_utf8_lossy(func.compilation_dir),
+                    )?;
+                    write_field(f, alternate, inner, ", ", "lines", &func.lines)?;
+
+                    if alternate {
+                        write_indent(f, inner)?;
+                        f.write_str("inlinees: [")?;
+                    } else {
+                        f.write_str(", inlinees: [")?;
+                    }
+
+                    if func.inlinees.is_empty() {
+                        if alternate {
+                            f.write_str("],\n")?;
+                        } else {
+                            f.write_str("]")?;
+                        }
+                    } else if alternate {
+                        f.write_str("\n")?;
+                    }
+
+                    // The remaining fields are written once all inlinees have been visited.
+                    stack.push(Step::Tail {
+                        func,
+                        indent,
+                        suffix,
+                    });
+
+                    for (i, inlinee) in func.inlinees.iter().enumerate().rev() {
+                        stack.push(Step::Head {
+                            func: inlinee,
+                            indent: indent + 2,
+                            prefix: if i == 0 { "" } else { ", " },
+                            suffix: if alternate { ",\n" } else { "" },
+                        });
+                    }
+                }
+
+                Step::Tail {
+                    func,
+                    indent,
+                    suffix,
+                } => {
+                    if !func.inlinees.is_empty() {
+                        if alternate {
+                            write_indent(f, indent + 1)?;
+                            f.write_str("],\n")?;
+                        } else {
+                            f.write_str("]")?;
+                        }
+                    }
+
+                    let inner = indent + 1;
+                    write_field(f, alternate, inner, ", ", "inline", &func.inline)?;
+                    write_field(f, alternate, inner, ", ", "variables", &func.variables)?;
+
+                    if alternate {
+                        write_indent(f, indent)?;
+                        f.write_str("}")?;
+                    } else {
+                        f.write_str(" }")?;
+                    }
+
+                    f.write_str(suffix)?;
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -934,6 +1151,7 @@ mod derive_serde {
 mod tests {
     use super::*;
     use similar_asserts::assert_eq;
+    use symbolic_common::{Language, NameMangling};
 
     fn file_info<'a>(dir: &'a str, name: &'a str) -> FileInfo<'a> {
         FileInfo::new(
@@ -983,5 +1201,71 @@ mod tests {
             file_entry("/usr", "/src", "foo.h").abs_path_str(),
             "/src/foo.h"
         );
+    }
+
+    // Tests, written by Claude, to ensure that the iterative fmt::Debug implementation matches
+    // the original recursive one.
+
+    /// A recursive `Debug` implementation for `Function`, used as a reference for the iterative
+    /// one.
+    struct RecursiveDebug<'a, 'data>(&'a Function<'data>);
+
+    impl fmt::Debug for RecursiveDebug<'_, '_> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let func = self.0;
+            let inlinees: Vec<_> = func.inlinees.iter().map(RecursiveDebug).collect();
+
+            f.debug_struct("Function")
+                .field("address", &format_args!("{:#x}", func.address))
+                .field("size", &format_args!("{:#x}", func.size))
+                .field("name", &func.name)
+                .field(
+                    "compilation_dir",
+                    &String::from_utf8_lossy(func.compilation_dir),
+                )
+                .field("lines", &func.lines)
+                .field("inlinees", &inlinees)
+                .field("inline", &func.inline)
+                .field("variables", &func.variables)
+                .finish()
+        }
+    }
+
+    fn function(name: &'static str, inlinees: Vec<Function<'static>>) -> Function<'static> {
+        Function {
+            address: 0x1000,
+            size: 0x42,
+            name: Name::new(name, NameMangling::Unmangled, Language::Rust),
+            compilation_dir: b"/usr/src",
+            lines: vec![
+                LineInfo::new(0x1000, 0x10, b"foo.rs", 1),
+                LineInfo::new(0x1010, 0x10, b"bar.rs", 2),
+            ],
+            inlinees,
+            inline: true,
+            variables: Vec::new(),
+        }
+    }
+
+    /// Builds a function with `depth` levels of nested inlinees, each with two children on the
+    /// first level to also cover multiple siblings.
+    fn nested_function(depth: usize) -> Function<'static> {
+        let mut func = function("innermost", vec![function("sibling", Vec::new())]);
+        for _ in 0..depth {
+            func = function("outer", vec![func]);
+        }
+        func
+    }
+
+    #[test]
+    fn test_function_debug_matches_recursive() {
+        for depth in [0, 1, 5] {
+            let func = nested_function(depth);
+            assert_eq!(format!("{func:?}"), format!("{:?}", RecursiveDebug(&func)));
+            assert_eq!(
+                format!("{func:#?}"),
+                format!("{:#?}", RecursiveDebug(&func))
+            );
+        }
     }
 }

@@ -62,7 +62,6 @@ pub struct MachObject<'d> {
     macho: mach::MachO<'d>,
     data: &'d [u8],
     bcsymbolmap: Option<Arc<BcSymbolMap<'d>>>,
-    max_function_parse_depth: u32,
 }
 
 impl<'d> MachObject<'d> {
@@ -78,7 +77,6 @@ impl<'d> MachObject<'d> {
                 macho,
                 data,
                 bcsymbolmap: None,
-                max_function_parse_depth: ParseObjectOptions::default().max_function_parse_depth,
             })
             .map_err(MachError::new)
     }
@@ -321,13 +319,8 @@ impl<'d> MachObject<'d> {
     /// [`has_debug_info`](struct.MachObject.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
         let symbols = self.symbol_map();
-        let mut session = DwarfDebugSession::parse(
-            self,
-            symbols,
-            self.load_address() as i64,
-            self.kind(),
-            self.max_function_parse_depth,
-        )?;
+        let mut session =
+            DwarfDebugSession::parse(self, symbols, self.load_address() as i64, self.kind())?;
         session.load_symbolmap(self.bcsymbolmap.clone());
         Ok(session)
     }
@@ -395,13 +388,12 @@ impl<'d> Parse<'d> for MachObject<'d> {
     }
 
     /// Tries to parse a MachO from the given slice.
-    fn parse_with_opts(data: &'d [u8], opts: ParseObjectOptions) -> Result<Self, MachError> {
+    fn parse_with_opts(data: &'d [u8], _opts: ParseObjectOptions) -> Result<Self, MachError> {
         mach::MachO::parse(data, 0)
             .map(|macho| MachObject {
                 macho,
                 data,
                 bcsymbolmap: None,
-                max_function_parse_depth: opts.max_function_parse_depth,
             })
             .map_err(MachError::new)
     }
