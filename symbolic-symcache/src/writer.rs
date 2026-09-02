@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 use std::collections::btree_map;
 use std::io::Write;
+use std::rc::Rc;
 
 use indexmap::IndexSet;
 use symbolic_common::{Arch, DebugId};
@@ -69,6 +70,13 @@ pub struct SymCacheConverter<'a> {
     last_addr: Option<u32>,
 }
 
+struct InProgressFunction<'a> {
+    function: &'a Function<'a>,
+    base_index: u32,
+    depth: u16,
+    call_locations: Rc<Vec<(u32, u32)>>,
+}
+
 impl<'a> SymCacheConverter<'a> {
     /// Creates a new Converter.
     pub fn new() -> Self {
@@ -124,7 +132,14 @@ impl<'a> SymCacheConverter<'a> {
         for function in session.functions() {
             let function = function.map_err(|e| Error::new(ErrorKind::BadDebugFile, e))?;
 
-            self.process_symbolic_function_recursive(&session, &function, &[(0x0, u32::MAX)], 0, 0);
+            let function = InProgressFunction {
+                function: &function,
+                base_index: 0,
+                depth: 0,
+                call_locations: Rc::new(vec![(0x0, u32::MAX)]),
+            };
+            let function_stack = vec![function];
+            self.process_symbolic_functions(&session, function_stack);
         }
 
         for symbol in object.symbols() {
@@ -138,321 +153,327 @@ impl<'a> SymCacheConverter<'a> {
 
     /// Processes an individual [`Function`], adding its line information to the converter.
     pub fn process_symbolic_function(&mut self, function: &Function<'_>) {
-        self.process_symbolic_function_recursive(
-            &NoopTypeResolver,
+        let function = InProgressFunction {
             function,
-            &[(0x0, u32::MAX)],
-            0,
-            0,
-        );
+            base_index: 0,
+            depth: 0,
+            call_locations: Rc::new(vec![(0x0, u32::MAX)]),
+        };
+        self.process_symbolic_functions(&NoopTypeResolver, vec![function]);
     }
 
-    /// Processes an individual [`Function`], adding its line information to the converter.
-    ///
-    /// `call_locations` is a non-empty sorted list of `(address, call_location index)` pairs.
-    fn process_symbolic_function_recursive(
+    /// Processes a stack of [`Function`]s, adding their line information to the converter.
+    fn process_symbolic_functions(
         &mut self,
         tr: &dyn TypeResolver,
-        function: &Function<'_>,
-        call_locations: &[(u32, u32)],
-        base_idx: u32,
-        fn_depth: u16,
+        mut function_stack: Vec<InProgressFunction<'_>>,
     ) {
-        // skip over empty functions or functions whose address is too large to fit in a u32
-        if function.size == 0 || function.address > u32::MAX as u64 {
-            return;
-        }
+        while let Some(in_progress_function) = function_stack.pop() {
+            let InProgressFunction {
+                function,
+                base_index: base_idx,
+                depth: fn_depth,
+                call_locations,
+            } = in_progress_function;
 
-        let comp_dir = std::str::from_utf8(function.compilation_dir).ok();
-
-        let entry_pc = if function.inline {
-            u32::MAX
-        } else {
-            function.address as u32
-        };
-
-        let function_idx = {
-            let language = function.name.language();
-            let mut function = transform::Function {
-                name: function.name.as_str().into(),
-                comp_dir: comp_dir.map(Into::into),
-            };
-            for transformer in &mut self.transformers.0 {
-                function = transformer.transform_function(function);
+            // skip over empty functions or functions whose address is too large to fit in a u32
+            if function.size == 0 || function.address > u32::MAX as u64 {
+                continue;
             }
 
-            let function_name = if self.is_windows_object {
-                undecorate_win_symbol(&function.name)
+            let comp_dir = std::str::from_utf8(function.compilation_dir).ok();
+
+            let entry_pc = if function.inline {
+                u32::MAX
             } else {
-                &function.name
+                function.address as u32
             };
 
-            let name_offset = self.string_table.insert(function_name) as u32;
-
-            let lang = language as u32;
-            let (fun_idx, _) = self.functions.insert_full(v9::raw::Function {
-                name_offset,
-                _comp_dir_offset: u32::MAX,
-                entry_pc,
-                lang,
-            });
-            fun_idx as u32
-        };
-
-        let base_idx = match fn_depth {
-            // If the depth is zero, the current function is a 'base' function,
-            // it has not been inlined into another function.
-            0 => function_idx,
-            // If the depth is non-zero, it means were are N levels deep in resolving
-            // inlinees. So keep the existing base.
-            _ => base_idx,
-        };
-        self.process_symbolic_variables(tr, function, base_idx, fn_depth);
-
-        // We can divide the instructions in a function into two buckets:
-        //  (1) Instructions which are part of an inlined function call, and
-        //  (2) instructions which are *not* part of an inlined function call.
-        //
-        // Our incoming line records cover both (1) and (2) types of instructions.
-        //
-        // Let's call the address ranges of these instructions (1) inlinee ranges and (2) self ranges.
-        //
-        // We use the following strategy: For each function, only insert that function's "self ranges"
-        // into `self.ranges`. Then recurse into the function's inlinees. Those will insert their
-        // own "self ranges". Once the entire tree has been traversed, `self.ranges` will contain
-        // entries from all levels.
-        //
-        // In order to compute this function's "self ranges", we first gather and sort its
-        // "inlinee ranges". Later, when we iterate over this function's lines, we will compute the
-        // "self ranges" from the gaps between the "inlinee ranges".
-
-        let mut inlinee_ranges = Vec::new();
-        for inlinee in &function.inlinees {
-            for line in &inlinee.lines {
-                let (start, end) = line_boundaries(line.address, line.size);
-                inlinee_ranges.push(start..end);
-            }
-        }
-        inlinee_ranges.sort_unstable_by_key(|range| range.start);
-
-        // Walk three iterators. All of these are already sorted by address.
-        let mut line_iter = function.lines.iter();
-        let mut call_location_iter = call_locations.iter();
-        let mut inline_iter = inlinee_ranges.into_iter();
-
-        // call_locations is non-empty, so the first element always exists.
-        let mut current_call_location = call_location_iter.next().unwrap();
-
-        let mut next_call_location = call_location_iter.next();
-        let mut next_line = line_iter.next();
-        let mut next_inline = inline_iter.next();
-
-        // This will be the list we pass to our inlinees as the call_locations argument.
-        // This list is ordered by address by construction.
-        let mut callee_call_locations = Vec::new();
-
-        let string_table = &mut self.string_table;
-
-        // Iterate over the line records.
-        while let Some(line) = next_line.take() {
-            let (line_range_start, line_range_end) = line_boundaries(line.address, line.size);
-
-            // Find the call location for this line.
-            while next_call_location.is_some() && next_call_location.unwrap().0 <= line_range_start
-            {
-                current_call_location = next_call_location.unwrap();
-                next_call_location = call_location_iter.next();
-            }
-            let inlined_into_idx = current_call_location.1;
-
-            let mut location = transform::SourceLocation {
-                file: transform::File {
-                    name: line.file.name_str(),
-                    directory: Some(line.file.dir_str()),
+            let function_idx = {
+                let language = function.name.language();
+                let mut function = transform::Function {
+                    name: function.name.as_str().into(),
                     comp_dir: comp_dir.map(Into::into),
-                    srcsrv_name: line.file.srcsrv_name_str(),
-                    srcsrv_dir: line.file.srcsrv_dir_str(),
-                    srcsrv_revision: line.file.srcsrv_revision().map(|s| s.into()),
-                },
-                line: line.line as u32,
-            };
-            for transformer in &mut self.transformers.0 {
-                location = transformer.transform_source_location(location);
-            }
-
-            let name_offset = string_table.insert(&location.file.name) as u32;
-            let directory_offset = location
-                .file
-                .directory
-                .map_or(u32::MAX, |d| string_table.insert(&d) as u32);
-            let comp_dir_offset = location
-                .file
-                .comp_dir
-                .map_or(u32::MAX, |cd| string_table.insert(&cd) as u32);
-            let srcsrv_name_offset = location
-                .file
-                .srcsrv_name
-                .map_or(u32::MAX, |r| string_table.insert(&r) as u32);
-            let srcsrv_dir_offset = location
-                .file
-                .srcsrv_dir
-                .map_or(u32::MAX, |r| string_table.insert(&r) as u32);
-            let srcsrv_revision_offset = location
-                .file
-                .srcsrv_revision
-                .map_or(u32::MAX, |r| string_table.insert(&r) as u32);
-
-            let (file_idx, _) = self.files.insert_full(v9::raw::File {
-                name_offset,
-                directory_offset,
-                comp_dir_offset,
-                srcsrv_name_offset,
-                srcsrv_dir_offset,
-                srcsrv_revision_offset,
-            });
-
-            let source_location = v9::raw::SourceLocation {
-                file_idx: file_idx as u32,
-                line: location.line,
-                function_idx,
-                inlined_into_idx,
-            };
-
-            // The current line can be a "self line", or a "call line", or even a mixture.
-            //
-            // Examples:
-            //
-            //  a) Just self line:
-            //      Line:            |==============|
-            //      Inlinee ranges:  (none)
-            //
-            //      Effect: insert_range
-            //
-            //  b) Just call line:
-            //      Line:            |==============|
-            //      Inlinee ranges:  |--------------|
-            //
-            //      Effect: make_call_location
-            //
-            //  c) Just call line, for multiple inlined calls:
-            //      Line:            |==========================|
-            //      Inlinee ranges:  |----------||--------------|
-            //
-            //      Effect: make_call_location, make_call_location
-            //
-            //  d) Call line and trailing self line:
-            //      Line:            |==================|
-            //      Inlinee ranges:  |-----------|
-            //
-            //      Effect: make_call_location, insert_range
-            //
-            //  e) Leading self line and also call line:
-            //      Line:            |==================|
-            //      Inlinee ranges:         |-----------|
-            //
-            //      Effect: insert_range, make_call_location
-            //
-            //  f) Interleaving
-            //      Line:            |======================================|
-            //      Inlinee ranges:         |-----------|    |-------|
-            //
-            //      Effect: insert_range, make_call_location, insert_range, make_call_location, insert_range
-            //
-            //  g) Bad debug info
-            //      Line:            |=======|
-            //      Inlinee ranges:  |-------------|
-            //
-            //      Effect: make_call_location
-
-            let mut current_address = line_range_start;
-            while current_address < line_range_end {
-                // Emit our source location at current_address if current_address is not covered by an inlinee.
-                if next_inline
-                    .as_ref()
-                    .is_none_or(|next| next.start > current_address)
-                {
-                    // "insert_range"
-                    self.ranges.insert(current_address, source_location.clone());
+                };
+                for transformer in &mut self.transformers.0 {
+                    function = transformer.transform_function(function);
                 }
 
-                // If there is an inlinee range covered by this line record, turn this line into that
-                // call's "call line". Make a `call_location_idx` for it and store it in `callee_call_locations`.
-                if let Some(inline_range) =
-                    take_if(&mut next_inline, |next| next.start < line_range_end)
-                {
-                    // "make_call_location"
-                    let (call_location_idx, _) =
-                        self.call_locations.insert_full(source_location.clone());
-                    callee_call_locations.push((inline_range.start, call_location_idx as u32));
-
-                    // Advance current_address to the end of this inlinee range.
-                    current_address = inline_range.end;
-                    next_inline = inline_iter.next();
+                let function_name = if self.is_windows_object {
+                    undecorate_win_symbol(&function.name)
                 } else {
-                    // No further inlinee ranges are overlapping with this line record. Advance to the
-                    // end of the line record.
-                    current_address = line_range_end;
+                    &function.name
+                };
+
+                let name_offset = self.string_table.insert(function_name) as u32;
+
+                let lang = language as u32;
+                let (fun_idx, _) = self.functions.insert_full(v9::raw::Function {
+                    name_offset,
+                    _comp_dir_offset: u32::MAX,
+                    entry_pc,
+                    lang,
+                });
+                fun_idx as u32
+            };
+
+            let base_idx = match fn_depth {
+                // If the depth is zero, the current function is a 'base' function,
+                // it has not been inlined into another function.
+                0 => function_idx,
+                // If the depth is non-zero, it means were are N levels deep in resolving
+                // inlinees. So keep the existing base.
+                _ => base_idx,
+            };
+            self.process_symbolic_variables(tr, function, base_idx, fn_depth);
+
+            // We can divide the instructions in a function into two buckets:
+            //  (1) Instructions which are part of an inlined function call, and
+            //  (2) instructions which are *not* part of an inlined function call.
+            //
+            // Our incoming line records cover both (1) and (2) types of instructions.
+            //
+            // Let's call the address ranges of these instructions (1) inlinee ranges and (2) self ranges.
+            //
+            // We use the following strategy: For each function, only insert that function's "self ranges"
+            // into `self.ranges`. Then recurse into the function's inlinees. Those will insert their
+            // own "self ranges". Once the entire tree has been traversed, `self.ranges` will contain
+            // entries from all levels.
+            //
+            // In order to compute this function's "self ranges", we first gather and sort its
+            // "inlinee ranges". Later, when we iterate over this function's lines, we will compute the
+            // "self ranges" from the gaps between the "inlinee ranges".
+
+            let mut inlinee_ranges = Vec::new();
+            for inlinee in &function.inlinees {
+                for line in &inlinee.lines {
+                    let (start, end) = line_boundaries(line.address, line.size);
+                    inlinee_ranges.push(start..end);
+                }
+            }
+            inlinee_ranges.sort_unstable_by_key(|range| range.start);
+
+            // Walk three iterators. All of these are already sorted by address.
+            let mut line_iter = function.lines.iter();
+            let mut call_location_iter = call_locations.iter();
+            let mut inline_iter = inlinee_ranges.into_iter();
+
+            // call_locations is non-empty, so the first element always exists.
+            let mut current_call_location = call_location_iter.next().unwrap();
+
+            let mut next_call_location = call_location_iter.next();
+            let mut next_line = line_iter.next();
+            let mut next_inline = inline_iter.next();
+
+            // This will be the list we pass to our inlinees as the call_locations argument.
+            // This list is ordered by address by construction.
+            let mut callee_call_locations = Vec::new();
+
+            let string_table = &mut self.string_table;
+
+            // Iterate over the line records.
+            while let Some(line) = next_line.take() {
+                let (line_range_start, line_range_end) = line_boundaries(line.address, line.size);
+
+                // Find the call location for this line.
+                while next_call_location.is_some()
+                    && next_call_location.unwrap().0 <= line_range_start
+                {
+                    current_call_location = next_call_location.unwrap();
+                    next_call_location = call_location_iter.next();
+                }
+                let inlined_into_idx = current_call_location.1;
+
+                let mut location = transform::SourceLocation {
+                    file: transform::File {
+                        name: line.file.name_str(),
+                        directory: Some(line.file.dir_str()),
+                        comp_dir: comp_dir.map(Into::into),
+                        srcsrv_name: line.file.srcsrv_name_str(),
+                        srcsrv_dir: line.file.srcsrv_dir_str(),
+                        srcsrv_revision: line.file.srcsrv_revision().map(|s| s.into()),
+                    },
+                    line: line.line as u32,
+                };
+                for transformer in &mut self.transformers.0 {
+                    location = transformer.transform_source_location(location);
+                }
+
+                let name_offset = string_table.insert(&location.file.name) as u32;
+                let directory_offset = location
+                    .file
+                    .directory
+                    .map_or(u32::MAX, |d| string_table.insert(&d) as u32);
+                let comp_dir_offset = location
+                    .file
+                    .comp_dir
+                    .map_or(u32::MAX, |cd| string_table.insert(&cd) as u32);
+                let srcsrv_name_offset = location
+                    .file
+                    .srcsrv_name
+                    .map_or(u32::MAX, |r| string_table.insert(&r) as u32);
+                let srcsrv_dir_offset = location
+                    .file
+                    .srcsrv_dir
+                    .map_or(u32::MAX, |r| string_table.insert(&r) as u32);
+                let srcsrv_revision_offset = location
+                    .file
+                    .srcsrv_revision
+                    .map_or(u32::MAX, |r| string_table.insert(&r) as u32);
+
+                let (file_idx, _) = self.files.insert_full(v9::raw::File {
+                    name_offset,
+                    directory_offset,
+                    comp_dir_offset,
+                    srcsrv_name_offset,
+                    srcsrv_dir_offset,
+                    srcsrv_revision_offset,
+                });
+
+                let source_location = v9::raw::SourceLocation {
+                    file_idx: file_idx as u32,
+                    line: location.line,
+                    function_idx,
+                    inlined_into_idx,
+                };
+
+                // The current line can be a "self line", or a "call line", or even a mixture.
+                //
+                // Examples:
+                //
+                //  a) Just self line:
+                //      Line:            |==============|
+                //      Inlinee ranges:  (none)
+                //
+                //      Effect: insert_range
+                //
+                //  b) Just call line:
+                //      Line:            |==============|
+                //      Inlinee ranges:  |--------------|
+                //
+                //      Effect: make_call_location
+                //
+                //  c) Just call line, for multiple inlined calls:
+                //      Line:            |==========================|
+                //      Inlinee ranges:  |----------||--------------|
+                //
+                //      Effect: make_call_location, make_call_location
+                //
+                //  d) Call line and trailing self line:
+                //      Line:            |==================|
+                //      Inlinee ranges:  |-----------|
+                //
+                //      Effect: make_call_location, insert_range
+                //
+                //  e) Leading self line and also call line:
+                //      Line:            |==================|
+                //      Inlinee ranges:         |-----------|
+                //
+                //      Effect: insert_range, make_call_location
+                //
+                //  f) Interleaving
+                //      Line:            |======================================|
+                //      Inlinee ranges:         |-----------|    |-------|
+                //
+                //      Effect: insert_range, make_call_location, insert_range, make_call_location, insert_range
+                //
+                //  g) Bad debug info
+                //      Line:            |=======|
+                //      Inlinee ranges:  |-------------|
+                //
+                //      Effect: make_call_location
+
+                let mut current_address = line_range_start;
+                while current_address < line_range_end {
+                    // Emit our source location at current_address if current_address is not covered by an inlinee.
+                    if next_inline
+                        .as_ref()
+                        .is_none_or(|next| next.start > current_address)
+                    {
+                        // "insert_range"
+                        self.ranges.insert(current_address, source_location.clone());
+                    }
+
+                    // If there is an inlinee range covered by this line record, turn this line into that
+                    // call's "call line". Make a `call_location_idx` for it and store it in `callee_call_locations`.
+                    if let Some(inline_range) =
+                        take_if(&mut next_inline, |next| next.start < line_range_end)
+                    {
+                        // "make_call_location"
+                        let (call_location_idx, _) =
+                            self.call_locations.insert_full(source_location.clone());
+                        callee_call_locations.push((inline_range.start, call_location_idx as u32));
+
+                        // Advance current_address to the end of this inlinee range.
+                        current_address = inline_range.end;
+                        next_inline = inline_iter.next();
+                    } else {
+                        // No further inlinee ranges are overlapping with this line record. Advance to the
+                        // end of the line record.
+                        current_address = line_range_end;
+                    }
+                }
+
+                // Advance the line iterator.
+                next_line = line_iter.next();
+
+                // Skip any lines that start before current_address.
+                // Such lines can exist if the debug information is faulty, or if the compiler created
+                // multiple identical small "call line" records instead of one combined record
+                // covering the entire inlinee range. We can't have different "call lines" for a single
+                // inlinee range anyway, so it's fine to skip these.
+                while next_line
+                    .as_ref()
+                    .is_some_and(|next| (next.address as u32) < current_address)
+                {
+                    next_line = line_iter.next();
                 }
             }
 
-            // Advance the line iterator.
-            next_line = line_iter.next();
-
-            // Skip any lines that start before current_address.
-            // Such lines can exist if the debug information is faulty, or if the compiler created
-            // multiple identical small "call line" records instead of one combined record
-            // covering the entire inlinee range. We can't have different "call lines" for a single
-            // inlinee range anyway, so it's fine to skip these.
-            while next_line
-                .as_ref()
-                .is_some_and(|next| (next.address as u32) < current_address)
-            {
-                next_line = line_iter.next();
+            if !function.inline {
+                // add the bare minimum of information for the function if there isn't any.
+                insert_source_location(&mut self.ranges, entry_pc, || v9::raw::SourceLocation {
+                    file_idx: u32::MAX,
+                    line: 0,
+                    function_idx,
+                    inlined_into_idx: u32::MAX,
+                });
             }
-        }
 
-        if !function.inline {
-            // add the bare minimum of information for the function if there isn't any.
-            insert_source_location(&mut self.ranges, entry_pc, || v9::raw::SourceLocation {
-                file_idx: u32::MAX,
-                line: 0,
-                function_idx,
-                inlined_into_idx: u32::MAX,
-            });
-        }
-
-        // We've processed all address ranges which are *not* covered by inlinees.
-        // Now it's time to recurse.
-        // Process our inlinees.
-        if !callee_call_locations.is_empty() {
-            for inlinee in &function.inlinees {
-                self.process_symbolic_function_recursive(
-                    tr,
-                    inlinee,
-                    &callee_call_locations,
-                    base_idx,
-                    fn_depth + 1,
-                );
+            // We've processed all address ranges which are *not* covered by inlinees.
+            // Now it's time to recurse.
+            // Process our inlinees.
+            if !callee_call_locations.is_empty() {
+                let callee_call_locations = Rc::new(callee_call_locations);
+                for inlinee in function.inlinees.iter().rev() {
+                    let function = InProgressFunction {
+                        function: inlinee,
+                        base_index: base_idx,
+                        depth: fn_depth + 1,
+                        call_locations: callee_call_locations.clone(),
+                    };
+                    function_stack.push(function);
+                }
             }
-        }
 
-        let function_end = function.end_address() as u32;
-        let last_addr = self.last_addr.get_or_insert(0);
-        if function_end > *last_addr {
-            *last_addr = function_end;
-        }
+            let function_end = function.end_address() as u32;
+            let last_addr = self.last_addr.get_or_insert(0);
+            if function_end > *last_addr {
+                *last_addr = function_end;
+            }
 
-        // Insert an explicit "empty" mapping for the end of the function.
-        // This is to ensure that addresses that fall "between" functions don't get
-        // erroneously mapped to the previous function.
-        //
-        // We only do this if there is no previous mapping for the end address—we don't
-        // want to overwrite valid mappings.
-        //
-        // If the next function starts right at this function's end, that's no trouble,
-        // it will just overwrite this mapping with one of its ranges.
-        if let btree_map::Entry::Vacant(vacant_entry) = self.ranges.entry(function_end) {
-            vacant_entry.insert(v9::raw::NO_SOURCE_LOCATION);
+            // Insert an explicit "empty" mapping for the end of the function.
+            // This is to ensure that addresses that fall "between" functions don't get
+            // erroneously mapped to the previous function.
+            //
+            // We only do this if there is no previous mapping for the end address—we don't
+            // want to overwrite valid mappings.
+            //
+            // If the next function starts right at this function's end, that's no trouble,
+            // it will just overwrite this mapping with one of its ranges.
+            if let btree_map::Entry::Vacant(vacant_entry) = self.ranges.entry(function_end) {
+                vacant_entry.insert(v9::raw::NO_SOURCE_LOCATION);
+            }
         }
     }
 
