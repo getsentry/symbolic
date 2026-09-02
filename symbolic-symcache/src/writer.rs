@@ -74,7 +74,7 @@ struct InProgressFunction<'a> {
     function: &'a Function<'a>,
     base_index: u32,
     depth: u16,
-    call_locations: Rc<Vec<(u32, u32)>>,
+    call_locations: Rc<[(u32, u32)]>,
 }
 
 impl<'a> SymCacheConverter<'a> {
@@ -136,7 +136,7 @@ impl<'a> SymCacheConverter<'a> {
                 function: &function,
                 base_index: 0,
                 depth: 0,
-                call_locations: Rc::new(vec![(0x0, u32::MAX)]),
+                call_locations: Rc::new([(0x0, u32::MAX)]),
             };
             let function_stack = vec![function];
             self.process_symbolic_functions(&session, function_stack);
@@ -157,7 +157,7 @@ impl<'a> SymCacheConverter<'a> {
             function,
             base_index: 0,
             depth: 0,
-            call_locations: Rc::new(vec![(0x0, u32::MAX)]),
+            call_locations: Rc::new([(0x0, u32::MAX)]),
         };
         self.process_symbolic_functions(&NoopTypeResolver, vec![function]);
     }
@@ -444,7 +444,7 @@ impl<'a> SymCacheConverter<'a> {
             // Now it's time to recurse.
             // Process our inlinees.
             if !callee_call_locations.is_empty() {
-                let callee_call_locations = Rc::new(callee_call_locations);
+                let callee_call_locations: Rc<[(u32, u32)]> = Rc::from(callee_call_locations);
                 for inlinee in function.inlinees.iter().rev() {
                     let function = InProgressFunction {
                         function: inlinee,
