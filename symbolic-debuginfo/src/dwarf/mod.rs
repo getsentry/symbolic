@@ -637,6 +637,165 @@ struct DwarfUnit<'d, 'a> {
     prefer_dwarf_names: bool,
 }
 
+type Builders<'a> = Vec<(Range, FunctionBuilder<'a>)>;
+
+struct RegularSubProgram<'a> {
+    index: usize,
+    depth: isize,
+    builders: Vec<(Range, FunctionBuilder<'a>)>,
+    variables: Vec<ParsedVariable<'a>>,
+    language: Language,
+}
+
+struct InlinedSubProgram<'a> {
+    depth: isize,
+    relative_list_depth: isize,
+    ranges: Vec<Range>,
+    owning_function_idx: usize,
+    variables: Vec<ParsedVariable<'a>>,
+    name: Name<'a>,
+    call_file: FileInfo<'a>,
+    call_line: u64,
+    language: Language,
+}
+
+struct DeadcodeSubProgram {
+    depth: isize,
+}
+
+enum InProgressSubProgram<'a> {
+    Deadcode(DeadcodeSubProgram),
+    Regular(RegularSubProgram<'a>),
+    Inlined(InlinedSubProgram<'a>),
+}
+
+impl<'a> InProgressSubProgram<'a> {
+    fn language(&self) -> Language {
+        match self {
+            InProgressSubProgram::Deadcode(_) => Language::Unknown,
+            InProgressSubProgram::Regular(p) => p.language,
+            InProgressSubProgram::Inlined(p) => p.language,
+        }
+    }
+
+    fn own_builder_mut(&mut self) -> Option<&mut Builders<'a>> {
+        match self {
+            InProgressSubProgram::Regular(p) => Some(&mut p.builders),
+            InProgressSubProgram::Inlined(_) => None,
+            InProgressSubProgram::Deadcode(_) => None,
+        }
+    }
+
+    fn owning_function_idx(&self) -> usize {
+        match self {
+            InProgressSubProgram::Deadcode(_) => 0,
+            InProgressSubProgram::Regular(p) => p.index,
+            InProgressSubProgram::Inlined(p) => p.owning_function_idx,
+        }
+    }
+
+    fn finish(
+        self,
+        dwarf_unit: &DwarfUnit<'a, '_>,
+        output: &mut FunctionsOutput<'_, 'a>,
+        function_stack: &mut [InProgressSubProgram<'a>],
+    ) -> Result<(), FunctionBuilderError> {
+        match self {
+            InProgressSubProgram::Deadcode(_) => Ok(()),
+            InProgressSubProgram::Regular(mut p) => {
+                for (range, builder) in p.builders.iter_mut() {
+                    for variable in &p.variables {
+                        if let Some(variable) = dwarf_unit.variable_for_range(variable, *range) {
+                            builder.add_variable(variable);
+                        }
+                    }
+                }
+
+                if let Some(line_program) = &dwarf_unit.line_program {
+                    for (range, builder) in p.builders.iter_mut() {
+                        for row in line_program.get_rows(range) {
+                            let address = offset(row.address, dwarf_unit.inner.info.address_offset);
+                            let size = row.size;
+                            let file = dwarf_unit.resolve_file(row.file_index).unwrap_or_default();
+                            let line = row.line.unwrap_or(0);
+                            builder.add_leaf_line(address, size, file, line);
+                        }
+                    }
+                }
+
+                for (_range, builder) in p.builders {
+                    output.functions.push(builder.finish()?);
+                }
+
+                Ok(())
+            }
+
+            // Inlinees don't output anything directly, they just contribute to the running list
+            // of function builders.
+            InProgressSubProgram::Inlined(p) => {
+                let Some(builders) = function_stack[p.owning_function_idx].own_builder_mut() else {
+                    return Err(FunctionBuilderErrorKind::TooManyInlineeNestings.into());
+                };
+                // Create a separate inlinee for each range.
+                for range in p.ranges.iter() {
+                    // Find the builder for the outer function that covers this range. Usually there's only
+                    // one outer range, so only one builder.
+                    //
+                    // We can use `partition_point` here, because builders are sorted by range and
+                    // non-overlapping, see `parse_ranges`.
+
+                    let builder_index =
+                        builders.partition_point(|(outer_range, _)| outer_range.end <= range.begin);
+
+                    let Some((outer_range, builder)) = builders.get_mut(builder_index) else {
+                        continue;
+                    };
+                    // `partition_point` may return the next builder when `range.begin` falls into a gap between outer ranges.
+                    if range.begin < outer_range.begin {
+                        continue;
+                    }
+
+                    let address = offset(range.begin, dwarf_unit.inner.info.address_offset);
+                    let size = range.end - range.begin;
+                    let variables = p
+                        .variables
+                        .iter()
+                        .filter_map(|variable| dwarf_unit.variable_for_range(variable, *range))
+                        .collect();
+
+                    builder.add_inlinee(FunctionBuilderInlinee {
+                        depth: p.relative_list_depth as u32,
+                        name: p.name.clone(),
+                        address,
+                        size,
+                        call_file: p.call_file.clone(),
+                        call_line: p.call_line,
+                        variables,
+                    });
+                }
+
+                Ok(())
+            }
+        }
+    }
+
+    fn push_variable(&mut self, variable: ParsedVariable<'a>) {
+        match self {
+            InProgressSubProgram::Deadcode(_) => {}
+            InProgressSubProgram::Regular(p) => p.variables.push(variable),
+            InProgressSubProgram::Inlined(p) => p.variables.push(variable),
+        }
+    }
+
+    fn depth(&self) -> isize {
+        match self {
+            InProgressSubProgram::Deadcode(p) => p.depth,
+            InProgressSubProgram::Regular(p) => p.depth,
+            InProgressSubProgram::Inlined(p) => p.depth,
+        }
+    }
+}
+
 impl<'d, 'a> DwarfUnit<'d, 'a> {
     /// The maximum depth to recurse to in order to resolve a function name.
     const MAX_RESOLVE_FUNCTION_DEPTH: u8 = 32;
@@ -914,60 +1073,20 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             .unwrap_or(fallback_language)
     }
 
-    /// Parses any DW_TAG_subprogram DIEs in the DIE subtree.
-    fn parse_functions(
+    #[allow(clippy::too_many_arguments)]
+    fn consume_subprogram_tag(
         &self,
+        index: usize,
         depth: isize,
-        remaining_inline_depth: u32,
-        entries: &mut EntriesRaw<'d, '_>,
-        output: &mut FunctionsOutput<'_, 'd>,
-    ) -> Result<(), DwarfError> {
-        while !entries.is_empty() {
-            let dw_die_offset = entries.next_offset();
-            let next_depth = entries.next_depth();
-            if next_depth <= depth {
-                return Ok(());
-            }
-
-            if let Some(abbrev) = entries.read_abbreviation()? {
-                if abbrev.tag() == constants::DW_TAG_subprogram {
-                    self.parse_function(
-                        dw_die_offset,
-                        next_depth,
-                        remaining_inline_depth,
-                        entries,
-                        abbrev,
-                        output,
-                    )?;
-                } else {
-                    entries.skip_attributes(abbrev.attributes())?;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// Parse a single function from a DWARF DIE subtree.
-    ///
-    /// The `entries` iterator must be placed after the abbrev / before the attributes of the
-    /// function DIE.
-    ///
-    /// This method can call itself recursively if another DW_TAG_subprogram entry is encountered
-    /// in the subtree.
-    ///
-    /// On return, the `entries` iterator is placed after the attributes of the last-read DIE.
-    fn parse_function(
-        &self,
+        max_parse_depth: usize,
         dw_die_offset: gimli::UnitOffset<usize>,
-        depth: isize,
-        remaining_inline_depth: u32,
         entries: &mut EntriesRaw<'d, '_>,
         abbrev: &gimli::Abbreviation,
-        output: &mut FunctionsOutput<'_, 'd>,
-    ) -> Result<(), DwarfError> {
-        let (ranges, _) = self.parse_ranges(entries, abbrev, &mut output.range_buf)?;
+        seen_ranges: &mut BTreeSet<(u64, u64)>,
+        ranges: &mut Vec<Range>,
+    ) -> Result<InProgressSubProgram<'d>, DwarfError> {
+        self.parse_ranges(entries, abbrev, ranges)?;
 
-        let seen_ranges = &mut *output.seen_ranges;
         ranges.retain(|range| {
             // We have seen duplicate top-level function entries being yielded from the
             // [`DwarfFunctionIterator`], which combined with recursively walking its inlinees can
@@ -991,7 +1110,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         // However, non-inlined functions may be present in this subtree, so we must still descend
         // into it.
         if ranges.is_empty() {
-            return self.parse_functions(depth, remaining_inline_depth, entries, output);
+            return Ok(InProgressSubProgram::Deadcode(DeadcodeSubProgram { depth }));
         }
 
         // Resolve functions in the symbol table first. Only if there is no entry, fall back
@@ -1031,7 +1150,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         // Create one function per range. In the common case there is only one range, so
         // we usually only have one function builder here.
-        let mut builders: Vec<(Range, FunctionBuilder)> = ranges
+        let builders = ranges
             .iter()
             .map(|range| {
                 let address = offset(range.begin, self.inner.info.address_offset);
@@ -1043,141 +1162,34 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                         self.compilation_dir(),
                         address,
                         size,
-                        remaining_inline_depth,
+                        max_parse_depth as u32,
                     ),
                 )
             })
             .collect();
 
-        let mut variables = Vec::new();
-        self.parse_function_children(
+        Ok(InProgressSubProgram::Regular(RegularSubProgram {
+            index,
             depth,
-            0,
-            remaining_inline_depth,
-            entries,
-            &mut builders,
-            output,
+            builders,
+            variables: vec![],
             language,
-            &mut variables,
-        )?;
-
-        for (range, builder) in &mut builders {
-            for variable in &variables {
-                if let Some(variable) = self.variable_for_range(variable, *range) {
-                    builder.add_variable(variable);
-                }
-            }
-        }
-
-        if let Some(line_program) = &self.line_program {
-            for (range, builder) in &mut builders {
-                for row in line_program.get_rows(range) {
-                    let address = offset(row.address, self.inner.info.address_offset);
-                    let size = row.size;
-                    let file = self.resolve_file(row.file_index).unwrap_or_default();
-                    let line = row.line.unwrap_or(0);
-                    builder.add_leaf_line(address, size, file, line);
-                }
-            }
-        }
-
-        for (_range, builder) in builders {
-            output.functions.push(builder.finish()?);
-        }
-
-        Ok(())
+        }))
     }
 
-    /// Traverses a subtree during function parsing.
     #[allow(clippy::too_many_arguments)]
-    fn parse_function_children(
+    fn consume_inline_subprogram_tag(
         &self,
         depth: isize,
-        inline_depth: u32,
-        remaining_inline_depth: u32,
-        entries: &mut EntriesRaw<'d, '_>,
-        builders: &mut [(Range, FunctionBuilder<'d>)],
-        output: &mut FunctionsOutput<'_, 'd>,
-        language: Language,
-        variables: &mut Vec<ParsedVariable<'d>>,
-    ) -> Result<(), DwarfError> {
-        while !entries.is_empty() {
-            let dw_die_offset = entries.next_offset();
-            let next_depth = entries.next_depth();
-            if next_depth <= depth {
-                return Ok(());
-            }
-            let abbrev = match entries.read_abbreviation()? {
-                Some(abbrev) => abbrev,
-                None => continue,
-            };
-            match abbrev.tag() {
-                constants::DW_TAG_subprogram => {
-                    // Nested subprograms resolve their own language independently.
-                    self.parse_function(
-                        dw_die_offset,
-                        next_depth,
-                        remaining_inline_depth,
-                        entries,
-                        abbrev,
-                        output,
-                    )?;
-                }
-                constants::DW_TAG_inlined_subroutine => {
-                    self.parse_inlinee(
-                        dw_die_offset,
-                        next_depth,
-                        inline_depth,
-                        remaining_inline_depth,
-                        entries,
-                        abbrev,
-                        builders,
-                        output,
-                        language,
-                    )?;
-                }
-                constants::DW_TAG_variable | constants::DW_TAG_formal_parameter => {
-                    if let Some(variable) = self.parse_variable(entries, abbrev)? {
-                        variables.push(variable);
-                    }
-                }
-                _ => {
-                    entries.skip_attributes(abbrev.attributes())?;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// Recursively parse the inlinees of a function from a DWARF DIE subtree.
-    ///
-    /// The `entries` iterator must be placed just before the attributes of the inline function DIE.
-    ///
-    /// This method calls itself recursively for other DW_TAG_inlined_subroutine entries in the
-    /// subtree. It can also call `parse_function` if a `DW_TAG_subprogram` entry is encountered.
-    ///
-    /// On return, the `entries` iterator is placed after the attributes of the last-read DIE.
-    #[allow(clippy::too_many_arguments)]
-    fn parse_inlinee(
-        &self,
+        relative_list_depth: isize,
         dw_die_offset: gimli::UnitOffset<usize>,
-        depth: isize,
-        inline_depth: u32,
-        remaining_inline_depth: u32,
+        owning_function_idx: usize,
+        language: Language,
         entries: &mut EntriesRaw<'d, '_>,
         abbrev: &gimli::Abbreviation,
-        builders: &mut [(Range, FunctionBuilder<'d>)],
-        output: &mut FunctionsOutput<'_, 'd>,
-        language: Language,
-    ) -> Result<(), DwarfError> {
-        if remaining_inline_depth == 0 {
-            return Err(DwarfError::new(
-                DwarfErrorKind::CorruptedData,
-                "Exceeded max parse inlinee depth",
-            ));
-        }
-
-        let (ranges, call_location) = self.parse_ranges(entries, abbrev, &mut output.range_buf)?;
+        ranges: &mut Vec<Range>,
+    ) -> Result<InProgressSubProgram<'d>, DwarfError> {
+        let (_, call_location) = self.parse_ranges(entries, abbrev, ranges)?;
 
         // Ranges can be empty for three reasons: (1) the function is a no-op and does not
         // contain any code, (2) the function did contain eliminated dead code, or (3) some
@@ -1187,7 +1199,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         // However, non-inlined functions may be present in this subtree, so we must still descend
         // into it.
         if ranges.is_empty() {
-            return self.parse_functions(depth, remaining_inline_depth, entries, output);
+            return Ok(InProgressSubProgram::Deadcode(DeadcodeSubProgram { depth }));
         }
         let ranges = ranges.clone();
 
@@ -1215,52 +1227,114 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             .unwrap_or_default();
         let call_line = call_location.call_line.unwrap_or(0);
 
-        let mut variables = Vec::new();
-        self.parse_function_children(
+        Ok(InProgressSubProgram::Inlined(InlinedSubProgram {
             depth,
-            inline_depth + 1,
-            remaining_inline_depth - 1,
-            entries,
-            builders,
-            output,
+            relative_list_depth,
+            ranges,
+            owning_function_idx,
+            variables: vec![],
+            name,
+            call_file,
+            call_line,
             language,
-            &mut variables,
-        )?;
+        }))
+    }
 
-        // Create a separate inlinee for each range.
-        for range in ranges.iter() {
-            // Find the builder for the outer function that covers this range. Usually there's only
-            // one outer range, so only one builder.
-            //
-            // We can use `partition_point` here, because builders are sorted by range and
-            // non-overlapping, see `parse_ranges`.
-            let builder_index =
-                builders.partition_point(|(outer_range, _)| outer_range.end <= range.begin);
+    /// Parses any DW_TAG_subprogram DIEs in the DIE subtree.
+    fn parse_functions(
+        &self,
+        entries: &mut EntriesRaw<'d, '_>,
+        output: &mut FunctionsOutput<'_, 'd>,
+        max_parse_depth: usize,
+    ) -> Result<(), DwarfError> {
+        let mut function_stack: Vec<InProgressSubProgram<'d>> = vec![];
 
-            let Some((outer_range, builder)) = builders.get_mut(builder_index) else {
-                continue;
-            };
-            // `partition_point` may return the next builder when `range.begin` falls into a gap between outer ranges.
-            if range.begin < outer_range.begin {
-                continue;
+        while !entries.is_empty() {
+            let dw_die_offset = entries.next_offset();
+            let next_depth = entries.next_depth();
+
+            // Use next_depth to finish any in-progress functions that are higher on the stack.
+            while let Some(last_func) = function_stack.last() {
+                if last_func.depth() < next_depth {
+                    break;
+                }
+
+                let last_func = function_stack.pop().expect("already checked");
+                last_func.finish(self, output, &mut function_stack)?;
             }
 
-            let address = offset(range.begin, self.inner.info.address_offset);
-            let size = range.end - range.begin;
-            let variables = variables
-                .iter()
-                .filter_map(|variable| self.variable_for_range(variable, *range))
-                .collect();
+            let Some(abbrev) = entries.read_abbreviation()? else {
+                continue;
+            };
 
-            builder.add_inlinee(FunctionBuilderInlinee {
-                depth: inline_depth,
-                name: name.clone(),
-                address,
-                size,
-                call_file: call_file.clone(),
-                call_line,
-                variables,
-            });
+            // It's possible the top function is dead-code; if so, we want to ignore anything
+            // nested inside that is NOT a subprogram.
+            let deadcode_top = matches!(
+                function_stack.last(),
+                Some(InProgressSubProgram::Deadcode(_))
+            );
+
+            match abbrev.tag() {
+                // Always process a subprogram, even if we have a deadcode frame at top of stack.
+                constants::DW_TAG_subprogram => {
+                    let program = self.consume_subprogram_tag(
+                        function_stack.len(),
+                        next_depth,
+                        max_parse_depth,
+                        dw_die_offset,
+                        entries,
+                        abbrev,
+                        output.seen_ranges,
+                        &mut output.range_buf,
+                    )?;
+
+                    function_stack.push(program);
+                }
+                // If we have a deadcode frame at the top of stack, just skip the entry.
+                _ if deadcode_top => {
+                    entries.skip_attributes(abbrev.attributes())?;
+                }
+                constants::DW_TAG_inlined_subroutine => {
+                    let Some(prev_program) = function_stack.last() else {
+                        entries.skip_attributes(abbrev.attributes())?;
+                        continue;
+                    };
+                    let owning_function_idx = prev_program.owning_function_idx();
+                    let language = prev_program.language();
+
+                    let program = self.consume_inline_subprogram_tag(
+                        next_depth,
+                        function_stack.len() as isize - (owning_function_idx + 1) as isize,
+                        dw_die_offset,
+                        owning_function_idx,
+                        language,
+                        entries,
+                        abbrev,
+                        &mut output.range_buf,
+                    )?;
+                    function_stack.push(program);
+                }
+                constants::DW_TAG_variable | constants::DW_TAG_formal_parameter => {
+                    if let Some(variable) = self.parse_variable(entries, abbrev)? {
+                        if let Some(last_function) = function_stack.last_mut() {
+                            last_function.push_variable(variable);
+                        }
+                    }
+                }
+                _ => {
+                    entries.skip_attributes(abbrev.attributes())?;
+                }
+            }
+            if function_stack.len() > max_parse_depth {
+                return Err(DwarfError::new(
+                    DwarfErrorKind::CorruptedData,
+                    "Exceeded max parse depth",
+                ));
+            }
+        }
+
+        while let Some(f) = function_stack.pop() {
+            f.finish(self, output, &mut function_stack)?;
         }
 
         Ok(())
@@ -1420,11 +1494,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     fn functions(
         &self,
         seen_ranges: &mut BTreeSet<(u64, u64)>,
-        max_inline_depth: u32,
+        max_parse_depth: u32,
     ) -> Result<Vec<Function<'d>>, DwarfError> {
         let mut entries = self.inner.unit.entries_raw(None)?;
         let mut output = FunctionsOutput::with_seen_ranges(seen_ranges);
-        self.parse_functions(-1, max_inline_depth, &mut entries, &mut output)?;
+        self.parse_functions(&mut entries, &mut output, max_parse_depth as usize)?;
         Ok(output.functions)
     }
 }
@@ -1868,7 +1942,7 @@ impl std::iter::FusedIterator for DwarfUnitIterator<'_> {}
 pub struct DwarfDebugSession<'data> {
     cell: SelfCell<Box<DwarfSections<'data>>, DwarfInfo<'data>>,
     bcsymbolmap: Option<Arc<BcSymbolMap<'data>>>,
-    max_inline_depth: u32,
+    max_parse_depth: u32,
 }
 
 impl<'data> DwarfDebugSession<'data> {
@@ -1878,7 +1952,7 @@ impl<'data> DwarfDebugSession<'data> {
         symbol_map: SymbolMap<'data>,
         address_offset: i64,
         kind: ObjectKind,
-        max_inline_depth: u32,
+        max_parse_depth: u32,
     ) -> Result<Self, DwarfError>
     where
         D: Dwarf<'data>,
@@ -1891,7 +1965,7 @@ impl<'data> DwarfDebugSession<'data> {
         Ok(DwarfDebugSession {
             cell,
             bcsymbolmap: None,
-            max_inline_depth,
+            max_parse_depth,
         })
     }
 
@@ -1920,7 +1994,7 @@ impl<'data> DwarfDebugSession<'data> {
             functions: Vec::new().into_iter(),
             seen_ranges: BTreeSet::new(),
             finished: false,
-            max_inline_depth: self.max_inline_depth,
+            max_parse_depth: self.max_parse_depth,
         }
     }
 
@@ -2067,7 +2141,7 @@ pub struct DwarfFunctionIterator<'s> {
     functions: std::vec::IntoIter<Function<'s>>,
     seen_ranges: BTreeSet<(u64, u64)>,
     finished: bool,
-    max_inline_depth: u32,
+    max_parse_depth: u32,
 }
 
 impl<'s> Iterator for DwarfFunctionIterator<'s> {
@@ -2089,7 +2163,7 @@ impl<'s> Iterator for DwarfFunctionIterator<'s> {
                 None => break,
             };
 
-            self.functions = match unit.functions(&mut self.seen_ranges, self.max_inline_depth) {
+            self.functions = match unit.functions(&mut self.seen_ranges, self.max_parse_depth) {
                 Ok(functions) => functions.into_iter(),
                 Err(error) => return Some(Err(error)),
             };

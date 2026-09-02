@@ -240,7 +240,7 @@ impl<'d> Parse<'d> for WasmObject<'d> {
             data,
             code_offset,
             kind,
-            max_inline_depth: opts.max_inline_depth,
+            max_function_parse_depth: opts.max_function_parse_depth,
         })
     }
 }

@@ -70,7 +70,7 @@ pub struct PeObject<'data> {
     pe: pe::PE<'data>,
     data: &'data [u8],
     is_stub: bool,
-    max_inline_depth: u32,
+    max_function_parse_depth: u32,
 }
 
 impl<'data> PeObject<'data> {
@@ -99,7 +99,7 @@ impl<'data> PeObject<'data> {
             pe,
             data,
             is_stub,
-            max_inline_depth: ParseObjectOptions::default().max_inline_depth,
+            max_function_parse_depth: ParseObjectOptions::default().max_function_parse_depth,
         })
     }
 
@@ -262,7 +262,7 @@ impl<'data> PeObject<'data> {
             symbols,
             self.load_address() as i64,
             self.kind(),
-            self.max_inline_depth,
+            self.max_function_parse_depth,
         )
     }
 
@@ -419,7 +419,7 @@ impl<'data> Parse<'data> for PeObject<'data> {
             pe,
             data,
             is_stub,
-            max_inline_depth: popts.max_inline_depth,
+            max_function_parse_depth: popts.max_function_parse_depth,
         })
     }
 }

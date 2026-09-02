@@ -1,5 +1,5 @@
 use std::assert_matches;
-use symbolic_debuginfo::{Object, ParseObjectOptions};
+use symbolic_debuginfo::Object;
 
 #[test]
 fn test_resolve_function() {
@@ -19,11 +19,7 @@ fn test_resolve_function() {
 #[test]
 fn test_function_inlining() {
     let data = std::fs::read("tests/fixtures/deep_inline.elf").unwrap();
-    let mut opts = ParseObjectOptions::default();
-    // Use a lower bound that will still work in debug.  The elf file itself has 10K (more?)
-    // nested inlinees.
-    opts.max_inline_depth = 400;
-    let object = Object::parse_with_opts(&data, opts).unwrap();
+    let object = Object::parse(&data).unwrap();
 
     let session = object.debug_session().unwrap();
 
