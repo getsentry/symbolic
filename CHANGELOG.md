@@ -18,6 +18,7 @@
 - Do not allocate based on untrusted input in unreal parser. ([#1055](https://github.com/getsentry/symbolic/pull/1055))
 - Ensure unwind sections contain any unwind information. ([#1058](https://github.com/getsentry/symbolic/pull/1058))
 - Only replace the first `*` in sourcelink expansion. ([#1064](https://github.com/getsentry/symbolic/pull/1064))
+- Remove recursive symcache writer. ([#1066](https://github.com/getsentry/symbolic/pull/1066))
 
 **Dependencies**
 
