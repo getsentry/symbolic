@@ -742,12 +742,16 @@ pub struct Function<'data> {
     pub variables: Vec<variable::Variable<'data>>,
 }
 
-impl Function<'_> {
-    /// End address of the entire function body, including inlined functions.
-    ///
-    /// This address points at the first instruction after the function body.
-    pub fn end_address(&self) -> u64 {
-        self.address.saturating_add(self.size)
+// We need a custom drop implementation to avoid recursing down the inlinees.
+impl<'data> Drop for Function<'data> {
+    fn drop(&mut self) {
+        let mut inlinees = vec![std::mem::take(&mut self.inlinees)];
+
+        while let Some(inlinee_set) = inlinees.pop() {
+            for mut f in inlinee_set {
+                inlinees.push(std::mem::take(&mut f.inlinees));
+            }
+        }
     }
 }
 
@@ -766,6 +770,15 @@ impl fmt::Debug for Function<'_> {
             .field("inline", &self.inline)
             .field("variables", &self.variables)
             .finish()
+    }
+}
+
+impl Function<'_> {
+    /// End address of the entire function body, including inlined functions.
+    ///
+    /// This address points at the first instruction after the function body.
+    pub fn end_address(&self) -> u64 {
+        self.address.saturating_add(self.size)
     }
 }
 

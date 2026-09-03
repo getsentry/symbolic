@@ -73,7 +73,7 @@ pub struct SymCacheConverter<'a> {
 struct InProgressFunction<'a> {
     function: &'a Function<'a>,
     base_index: u32,
-    depth: u16,
+    depth: u32,
     call_locations: Rc<[(u32, u32)]>,
 }
 
@@ -487,7 +487,7 @@ impl<'a> SymCacheConverter<'a> {
         tr: &dyn TypeResolver,
         function: &Function<'_>,
         base_idx: u32,
-        fn_depth: u16,
+        fn_depth: u32,
     ) {
         if !self.collect_variables || fn_depth > u8::MAX.into() {
             return;

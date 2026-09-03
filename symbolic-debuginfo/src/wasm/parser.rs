@@ -66,7 +66,7 @@ impl<'d> Parse<'d> for WasmObject<'d> {
         Self::test(data)
     }
 
-    fn parse_with_opts(data: &'d [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
+    fn parse_with_opts(data: &'d [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
         let mut code_offset = 0;
         let mut build_id = None;
         let mut dwarf_sections = Vec::new();
@@ -240,7 +240,6 @@ impl<'d> Parse<'d> for WasmObject<'d> {
             data,
             code_offset,
             kind,
-            max_function_parse_depth: opts.max_function_parse_depth,
         })
     }
 }

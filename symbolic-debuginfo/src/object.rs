@@ -126,11 +126,9 @@ impl Error for ObjectError {
     }
 }
 
-const MAX_FUNCTION_PARSE_DEPTH_DEFAULT: u32 = 800;
-
 /// Options for parsing object files.
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct ParseObjectOptions {
     /// The maximum uncompressed size for compressed debug file sections.
     ///
@@ -141,19 +139,6 @@ pub struct ParseObjectOptions {
     ///
     /// This is only relevant for source bundles and PPDB objects.
     pub max_decompressed_embedded_source_size: Option<usize>,
-
-    /// The maximum inline nesting depth to process.
-    pub max_function_parse_depth: u32,
-}
-
-impl Default for ParseObjectOptions {
-    fn default() -> Self {
-        Self {
-            max_decompressed_section_size: Default::default(),
-            max_decompressed_embedded_source_size: Default::default(),
-            max_function_parse_depth: MAX_FUNCTION_PARSE_DEPTH_DEFAULT,
-        }
-    }
 }
 
 /// Tries to infer the object type from the start of the given buffer.
