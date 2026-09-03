@@ -186,3 +186,12 @@ fn test_second_level_page_duplicates() {
     let inner = err.source().unwrap();
     assert_eq!(inner.to_string(), "invalid MachO file");
 }
+
+#[test]
+fn test_missing_second_page() {
+    let view = std::fs::read("tests/fixtures/second_page.macho").unwrap();
+
+    let object = Object::parse(&view).unwrap();
+
+    let _ = CfiCache::from_object(&object).unwrap();
+}

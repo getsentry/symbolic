@@ -1074,7 +1074,10 @@ impl<'a> CompactUnwindInfoIter<'a> {
         if let Some(cur_entry) = self.next_entry.take() {
             // Copy the first and second page data, as it may get overwritten
             // by next_raw, then peek the next entry.
-            let (first_page, second_page) = self.page_of_next_entry.clone().unwrap();
+            let Some((first_page, second_page)) = self.page_of_next_entry.clone() else {
+                // We can have a next_entry without a page_of_next_entry
+                return Ok(None);
+            };
             self.next_entry = self.next_raw()?;
             if let Some(next_entry) = self.next_entry.as_ref() {
                 let result = self.complete_entry(
@@ -1095,9 +1098,9 @@ impl<'a> CompactUnwindInfoIter<'a> {
         }
     }
 
-    // Yields a minimally parsed version of the next entry, and sets
+    // Yields a minimally parsed version of the next entry, and optionally sets
     // page_of_next_entry to the page matching it (so it can be further
-    // parsed when needed.
+    // parsed when needed.)
     fn next_raw(&mut self) -> Result<Option<RawCompactUnwindInfoEntry>> {
         // First, load up the page for this value if needed
         if self.done_page {
