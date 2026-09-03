@@ -19,6 +19,7 @@
 - Ensure unwind sections contain any unwind information. ([#1058](https://github.com/getsentry/symbolic/pull/1058))
 - Only replace the first `*` in sourcelink expansion. ([#1064](https://github.com/getsentry/symbolic/pull/1064))
 - Remove recursive symcache writer. ([#1066](https://github.com/getsentry/symbolic/pull/1066))
+- Don't panic when seeing a no-entry second level compact page ([#1067](https://github.com/getsentry/symbolic/pull/1067))
 
 **Dependencies**
 
