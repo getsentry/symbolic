@@ -1,12 +1,8 @@
 /*
  * Test fixture for variable extraction from debug info.
  *
- * Extending this fixture:
- *   - Prefer adding new functions over growing out existing ones; a new
- *     function is just an addition to the snapshot diff, adding a variable to an
- *     existing function rewrites every variable line in it (because each
- *     location range ends at the function's size).
- *   - Rebuild as described in README.md.
+ * After changing this file, rebuild the binary and refresh the snapshot as
+ * described in README.md.
  *
  * Sections marked "not supported yet" render as `Unknown` in the snapshot.
  * That is intentional: the snapshot doubles as a record of what symbolic can

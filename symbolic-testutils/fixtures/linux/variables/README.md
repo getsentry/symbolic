@@ -4,7 +4,7 @@ Debug info fixture used by the variable extraction tests: `variables.c` builds t
 binary in this directory (ELF/DWARF 5, x86-64), asserted by `test_elf_variables` in
 `symbolic-debuginfo/tests/test_objects.rs`.
 
-`variables.c` is our fixture which is meant to grow along with symbolic's variable support.
+`variables.c` is meant to grow along with symbolic's variable support.
 
 ## Rebuilding
 
@@ -19,16 +19,19 @@ docker run --rm --platform linux/amd64 \
 Docker keeps the binary reproducible (pinned compiler, architecture, and embedded paths) — don't
 build outside it.
 
+The snapshot records absolute addresses and line records, so every rebuild changes it. Refresh it
+from the repository root and review the diff:
+
+```sh
+cargo insta test -p symbolic-debuginfo --test test_objects --accept -- test_elf_variables
+```
+
 ## Adding coverage
 
-Prefer adding a new function to `variables.c` over growing an existing one. A new function produces
-a purely additive snapshot diff, whereas adding a variable to an existing function rewrites every
-variable line in that function: location ranges are printed relative to the function start but end
-at its size, so any change to a function's body shifts them all. Reordering declarations is cheap
-by comparison — it swaps the affected entries and their stack slots and nothing else.
-
-Either way the churn is confined to the function you touched, so a large diff in one function and
-none anywhere else is the expected shape.
+Add whatever exercises the new support to `variables.c`, rebuild, and refresh the snapshot. Since
+addresses are absolute, the diff usually also shifts every function placed after the one you
+touched; that churn is expected. What to review is that the variables you added show up the way
+you expect.
 
 The snapshot deliberately includes types symbolic cannot resolve yet, which show up as `Unknown`.
 That is what makes it useful: adding support for a type turns into a visible snapshot diff instead
