@@ -47,27 +47,14 @@ impl fmt::Debug for FilesDebug<'_> {
     }
 }
 
-/// Selects which parts of a function tree [`FunctionsDebug`] prints, and how.
-#[derive(Clone, Copy)]
-enum DebugMode {
-    /// The full function tree: absolute addresses, line records, and variables.
-    Full,
-    /// Only the variables of each function, with location ranges relative to the start of their
-    /// function, so the snapshot only changes when variable debug info changes and not when the
-    /// fixture is merely relinked or relocated.
-    RelativeVariables,
-}
-
 /// Helper to create neat snapshots for function trees.
 struct FunctionsDebug<'data, 'session> {
     session: &'session ObjectDebugSession<'data>,
     functions: &'session [Function<'session>],
     depth: usize,
-    mode: DebugMode,
 }
 
 impl<'data, 'session> FunctionsDebug<'data, 'session> {
-    /// Prints the full function tree: line records, variables, and absolute addresses.
     fn new(
         session: &'session ObjectDebugSession<'data>,
         functions: &'session [Function<'session>],
@@ -76,143 +63,94 @@ impl<'data, 'session> FunctionsDebug<'data, 'session> {
             session,
             functions,
             depth: 0,
-            mode: DebugMode::Full,
-        }
-    }
-
-    /// Prints only the variables of a function tree, see [`DebugMode::RelativeVariables`].
-    fn variables(
-        session: &'session ObjectDebugSession<'data>,
-        functions: &'session [Function<'session>],
-    ) -> Self {
-        Self {
-            session,
-            functions,
-            depth: 0,
-            mode: DebugMode::RelativeVariables,
-        }
-    }
-
-    /// Returns a printer for the inlinees of `function`, indented one level deeper.
-    fn inlinees(&self, function: &'session Function<'session>) -> Self {
-        Self {
-            session: self.session,
-            functions: &function.inlinees,
-            depth: self.depth + 1,
-            mode: self.mode,
         }
     }
 }
 
 impl fmt::Debug for FunctionsDebug<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let indent = self.depth * 2;
-
         for function in self.functions {
-            match self.mode {
-                DebugMode::Full => {
-                    writeln!(
-                        f,
-                        "\n{:indent$}> {:#x}: {} ({:#x})",
-                        "", function.address, function.name, function.size,
-                    )?;
+            writeln!(
+                f,
+                "\n{:indent$}> {:#x}: {} ({:#x})",
+                "",
+                function.address,
+                function.name,
+                function.size,
+                indent = self.depth * 2
+            )?;
 
-                    for line in &function.lines {
-                        writeln!(
-                            f,
-                            "{:indent$}  {:#x}: {}:{} ({})",
-                            "",
-                            line.address,
-                            line.file.name_str(),
-                            line.line,
-                            line.file.dir_str(),
-                        )?;
-                    }
-                }
-                DebugMode::RelativeVariables => {
-                    writeln!(
+            for line in &function.lines {
+                writeln!(
+                    f,
+                    "{:indent$}  {:#x}: {}:{} ({})",
+                    "",
+                    line.address,
+                    line.file.name_str(),
+                    line.line,
+                    line.file.dir_str(),
+                    indent = self.depth * 2
+                )?;
+            }
+
+            if !function.variables.is_empty() {
+                writeln!(f, "{:indent$}  variables:", "", indent = self.depth * 2)?;
+            }
+
+            for variable in &function.variables {
+                writeln!(
+                    f,
+                    "{:indent$}    {} ({})",
+                    "",
+                    variable.name,
+                    variable.kind,
+                    indent = self.depth * 2
+                )?;
+
+                if let Some(ty) = &variable.ty {
+                    writeln!(f, "{:indent$}      type:", "", indent = self.depth * 2)?;
+                    write!(
                         f,
-                        "\n{:indent$}> {} ({:#x})",
-                        "", function.name, function.size
+                        "{:?}",
+                        TypeDebug {
+                            session: self.session,
+                            ty,
+                            depth: self.depth + 4,
+                        }
                     )?;
+                }
+
+                for location in &variable.locations {
+                    match location.location {
+                        VariableLocation::Register { id } => writeln!(
+                            f,
+                            "{:indent$}      {:#x}..{:#x}: register {id}",
+                            "",
+                            location.address,
+                            location.address.saturating_add(location.size),
+                            indent = self.depth * 2
+                        )?,
+                        VariableLocation::FrameOffset { offset } => writeln!(
+                            f,
+                            "{:indent$}      {:#x}..{:#x}: frame base {offset:+}",
+                            "",
+                            location.address,
+                            location.address.saturating_add(location.size),
+                            indent = self.depth * 2
+                        )?,
+                    }
                 }
             }
 
             write!(
                 f,
                 "{:?}",
-                VariablesDebug {
+                FunctionsDebug {
                     session: self.session,
-                    function,
-                    depth: self.depth,
-                    mode: self.mode,
+                    functions: &function.inlinees,
+                    depth: self.depth + 1,
                 }
             )?;
-
-            write!(f, "{:?}", self.inlinees(function))?;
-        }
-
-        Ok(())
-    }
-}
-
-/// Helper to create neat snapshots for the variables of a single function.
-struct VariablesDebug<'data, 'session> {
-    session: &'session ObjectDebugSession<'data>,
-    function: &'session Function<'session>,
-    /// The number of levels this function is indented by.
-    depth: usize,
-    mode: DebugMode,
-}
-
-impl fmt::Debug for VariablesDebug<'_, '_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.function.variables.is_empty() {
-            return Ok(());
-        }
-
-        let indent = self.depth * 2;
-        let base = match self.mode {
-            DebugMode::Full => 0,
-            DebugMode::RelativeVariables => self.function.address,
-        };
-
-        writeln!(f, "{:indent$}  variables:", "")?;
-
-        for variable in &self.function.variables {
-            writeln!(f, "{:indent$}    {} ({})", "", variable.name, variable.kind)?;
-
-            if let Some(ty) = &variable.ty {
-                writeln!(f, "{:indent$}      type:", "")?;
-                write!(
-                    f,
-                    "{:?}",
-                    TypeDebug {
-                        session: self.session,
-                        ty,
-                        depth: self.depth + 4,
-                    }
-                )?;
-            }
-
-            for location in &variable.locations {
-                let start = location
-                    .address
-                    .checked_sub(base)
-                    .expect("location range starts before its function");
-                let end = start.saturating_add(location.size);
-
-                match location.location {
-                    VariableLocation::Register { id } => {
-                        writeln!(f, "{:indent$}      {start:#x}..{end:#x}: register {id}", "")?
-                    }
-                    VariableLocation::FrameOffset { offset } => writeln!(
-                        f,
-                        "{:indent$}      {start:#x}..{end:#x}: frame base {offset:+}",
-                        ""
-                    )?,
-                }
-            }
         }
 
         Ok(())
@@ -582,23 +520,20 @@ fn test_elf_functions() -> Result<(), Error> {
 
 #[test]
 fn test_elf_variables() -> Result<(), Error> {
-    let view = ByteView::open(fixture("linux/variables"))?;
+    let view = ByteView::open(fixture("linux/variables/variables"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
 
-    insta::assert_debug_snapshot!(
-        "elf_variables",
-        FunctionsDebug::variables(&session, &functions)
-    );
+    insta::assert_debug_snapshot!("elf_variables", FunctionsDebug::new(&session, &functions));
 
     Ok(())
 }
 
 #[test]
 fn test_elf_variables_opt() -> Result<(), Error> {
-    let view = ByteView::open(fixture("linux/variables_opt"))?;
+    let view = ByteView::open(fixture("linux/variables/variables_opt"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
@@ -606,7 +541,7 @@ fn test_elf_variables_opt() -> Result<(), Error> {
 
     insta::assert_debug_snapshot!(
         "elf_variables_opt",
-        FunctionsDebug::variables(&session, &functions)
+        FunctionsDebug::new(&session, &functions)
     );
 
     Ok(())

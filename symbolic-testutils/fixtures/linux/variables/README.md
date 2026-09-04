@@ -1,38 +1,35 @@
 # Variables fixture
 
-`variables.c` is the single source for the debug info fixtures (ELF/DWARF 5, x86-64) asserted by
-`test_elf_variables` and `test_elf_variables_opt` in `symbolic-debuginfo/tests/test_objects.rs`.
-It is compiled twice:
+`variables.c` is the single source for the debug info fixtures (ELF/DWARF 5, x86-64) used by the
+variable extraction tests, asserted by `test_elf_variables` and `test_elf_variables_opt` in
+`symbolic-debuginfo/tests/test_objects.rs`. It is compiled twice, into this directory:
 
-- `fixtures/linux/variables` (`-O0`): types and variable kinds; every variable has a single
-  whole-function stack location.
-- `fixtures/linux/variables_opt` (`-O2`): locations — registers, sub-function ranges, and
-  multi-range location lists.
+- `variables` (`-O0`): types and variable kinds; every variable has a single whole-function
+  stack location.
+- `variables_opt` (`-O2`): locations — registers, sub-function ranges, and multi-range location
+  lists.
 
-Run both tests without rebuilding:
-
-```sh
-cargo test -p symbolic-debuginfo --test test_objects test_elf_variables
-```
+`variables.c` is meant to grow along with symbolic's variable support.
 
 ## Rebuilding
 
-After changing `variables.c`, rebuild the fixtures — from *this* directory, writing to
-`../fixtures/linux/`:
+If you change `variables.c`, rebuild from *this* directory — it rewrites both binaries next to
+the source:
 
 ```sh
 docker run --rm --platform linux/amd64 \
-    -v "$PWD/..:/testutils" -w /testutils/variables gcc:14.4.0 ./build.sh
+    -v "$PWD:/fixture" -w /fixture gcc:14.4.0 ./build.sh
 ```
 
-Docker pins the compiler, the target architecture, and the embedded paths (`DW_AT_comp_dir` is the
-container working directory).
+Docker keeps the binaries reproducible (pinned compiler, architecture, and embedded paths) — don't
+build outside it.
 
-Then refresh the snapshots, check the diff is what you expected, and commit the rebuilt binaries
-together with the updated snapshots:
+The snapshots record absolute addresses and line records, so every rebuild changes them. Refresh
+them from the repository root (the filter matches both tests), review the diff, and commit the
+rebuilt binaries together with the updated snapshots:
 
 ```sh
-cargo insta test --accept -p symbolic-debuginfo --test test_objects
+cargo insta test -p symbolic-debuginfo --test test_objects --accept -- test_elf_variables
 ```
 
 ## The -O2 build
@@ -61,9 +58,10 @@ When extending location coverage, we should be mindful of the following:
 
 ## Adding coverage
 
-Prefer adding a new function over growing an existing one: a new function is a purely additive
-snapshot diff, while adding a variable to an existing function rewrites all of its location ranges
-(they end at the function's size), and for `-O2` all register allocations might shift.
+Add whatever exercises the new support to `variables.c`, rebuild, and refresh the snapshots. Since
+addresses are absolute, the diff usually also shifts every function placed after the one you
+touched, and at `-O2` register allocations may shift as well; that churn is expected. What to
+review is that the variables you added show up the way you expect.
 
 The snapshots deliberately record what symbolic can *not* do yet, so adding support turns into a
 visible snapshot diff instead of a new test someone must remember to write: unresolvable types

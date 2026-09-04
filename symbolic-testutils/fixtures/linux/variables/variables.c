@@ -6,12 +6,8 @@
  * variables live in registers with partial and multi-range location ranges.
  * Each build has its own fixture binary and snapshot.
  *
- * Extending this fixture:
- *   - Prefer adding new functions over growing out existing ones; a new
- *     function is just an addition to the snapshot diff, adding a variable to an
- *     existing function rewrites every variable line in it (because each
- *     location range ends at the function's size).
- *   - Rebuild and refresh the snapshots as described in README.md.
+ * After changing this file, rebuild both binaries and refresh the snapshots
+ * as described in README.md.
  *
  * Sections marked "not supported yet" render as `Unknown` in the snapshot.
  * That is intentional: the snapshot doubles as a record of what symbolic can
@@ -107,15 +103,8 @@ NOINLINE void aggregates(void)
 }
 
 /*
- * Inlined functions. `always_inline` forces inlining even at -O0, which is the
- * only way this fixture can produce a `DW_TAG_inlined_subroutine`.
- *
- * The variables of the inlinee are not supported yet: their concrete DIEs
- * carry only a location and a `DW_AT_abstract_origin` reference, with name and
- * type living on the abstract DIE, which symbolic does not follow for
- * variables. Both `param` and `doubled` have plain frame-base locations at
- * -O0, so `inlined` rendering with no variables at all in the snapshot is
- * purely the missing origin lookup.
+ * Inlined variables are not supported yet; DW_AT_abstract_origin is not
+ * followed so we don't resolve these (for now).
  */
 static inline __attribute__((always_inline)) int inlined(int param)
 {
