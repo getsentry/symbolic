@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds the ELF/DWARF variable fixture from variables.c.
+# Builds the ELF/DWARF variable fixtures from variables.c.
 #
 # Run this via Docker so the output does not depend on your machine:
 #
@@ -12,3 +12,4 @@ set -eu
 cd "$(dirname "$0")"
 
 gcc -g -gdwarf-5 -O0 -o variables variables.c
+gcc -g -gdwarf-5 -O2 -o variables_opt variables.c

@@ -2,155 +2,297 @@
 source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug::new(&session, &functions)"
 ---
-> 0x11ee: main (0x3e)
-  0x11ee: variables.c:92 (/fixture)
-  0x11f2: variables.c:93 (/fixture)
-  0x11f7: variables.c:94 (/fixture)
-  0x1216: variables.c:95 (/fixture)
-  0x121b: variables.c:96 (/fixture)
-  0x1225: variables.c:97 (/fixture)
-  0x122a: variables.c:98 (/fixture)
+> 0x130f: main (0xc3)
+  0x130f: variables.c:204 (/fixture)
+  0x1318: variables.c:205 (/fixture)
+  0x131d: variables.c:206 (/fixture)
+  0x133c: variables.c:207 (/fixture)
+  0x1341: variables.c:208 (/fixture)
+  0x134b: variables.c:210 (/fixture)
+  0x135a: variables.c:210 (/fixture)
+  0x1367: variables.c:210 (/fixture)
+  0x1369: variables.c:210 (/fixture)
+  0x1376: variables.c:210 (/fixture)
+  0x137b: variables.c:211 (/fixture)
+  0x1388: variables.c:211 (/fixture)
+  0x138b: variables.c:212 (/fixture)
+  0x13b7: variables.c:212 (/fixture)
+  0x13bb: variables.c:212 (/fixture)
+  0x13be: variables.c:213 (/fixture)
+  0x13c7: variables.c:214 (/fixture)
+  0x13cc: variables.c:215 (/fixture)
+  variables:
+    result (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x130f..0x13d2: frame base -36
 
-> 0x11cd: inlining (0x21)
-  0x11cd: variables.c:87 (/fixture)
-  0x11da: variables.c:88 (/fixture)
-  0x11e8: variables.c:88 (/fixture)
-  0x11eb: variables.c:89 (/fixture)
+> 0x12fa: stack_home (0x15)
+  0x12fa: variables.c:198 (/fixture)
+  0x1301: variables.c:199 (/fixture)
+  0x1307: variables.c:200 (/fixture)
+  0x130d: variables.c:201 (/fixture)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x12fa..0x130f: frame base -36
+    slot (local)
+      type:
+        > Unknown
+      0x12fa..0x130f: frame base -20
+
+> 0x12e2: optimized_out (0x18)
+  0x12e2: variables.c:186 (/fixture)
+  0x12e9: variables.c:187 (/fixture)
+  0x12f0: variables.c:188 (/fixture)
+  0x12f8: variables.c:189 (/fixture)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x12e2..0x12fa: frame base -36
+    gone (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x12e2..0x12fa: frame base -20
+
+> 0x12af: external_call (0x33)
+  0x12af: variables.c:172 (/fixture)
+  0x12ba: variables.c:173 (/fixture)
+  0x12c0: variables.c:173 (/fixture)
+  0x12c8: variables.c:174 (/fixture)
+  0x12cb: variables.c:175 (/fixture)
+  0x12d3: variables.c:176 (/fixture)
+  0x12db: variables.c:176 (/fixture)
+  0x12e0: variables.c:177 (/fixture)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x12af..0x12e2: frame base -36
+    kept (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x12af..0x12e2: frame base -20
+    r (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x12af..0x12e2: frame base -24
+
+> 0x127d: across_call (0x32)
+  0x127d: variables.c:158 (/fixture)
+  0x1288: variables.c:159 (/fixture)
+  0x1290: variables.c:160 (/fixture)
+  0x1293: variables.c:161 (/fixture)
+  0x12a5: variables.c:162 (/fixture)
+  0x12ad: variables.c:163 (/fixture)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x127d..0x12af: frame base -36
+    doubled (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x127d..0x12af: frame base -20
+    other (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x127d..0x12af: frame base -24
+
+> 0x123b: float_registers (0x42)
+  0x123b: variables.c:143 (/fixture)
+  0x1249: variables.c:144 (/fixture)
+  0x1258: variables.c:145 (/fixture)
+  0x125d: variables.c:146 (/fixture)
+  0x126c: variables.c:147 (/fixture)
+  0x1271: variables.c:148 (/fixture)
+  0x127b: variables.c:149 (/fixture)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: float (Float, 4 bytes)
+      0x123b..0x127d: frame base -36
+    b (parameter)
+      type:
+        > Primitive: float (Float, 4 bytes)
+      0x123b..0x127d: frame base -40
+    sum (local)
+      type:
+        > Primitive: float (Float, 4 bytes)
+      0x123b..0x127d: frame base -20
+    scaled (local)
+      type:
+        > Primitive: float (Float, 4 bytes)
+      0x123b..0x127d: frame base -24
+
+> 0x120e: registers (0x2d)
+  0x120e: variables.c:130 (/fixture)
+  0x1218: variables.c:131 (/fixture)
+  0x1223: variables.c:132 (/fixture)
+  0x1226: variables.c:133 (/fixture)
+  0x1230: variables.c:134 (/fixture)
+  0x1233: variables.c:135 (/fixture)
+  0x1239: variables.c:136 (/fixture)
+  variables:
+    a (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x120e..0x123b: frame base -36
+    b (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x120e..0x123b: frame base -40
+    sum (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x120e..0x123b: frame base -20
+    product (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x120e..0x123b: frame base -24
+
+> 0x11ed: inlining (0x21)
+  0x11ed: variables.c:116 (/fixture)
+  0x11fa: variables.c:117 (/fixture)
+  0x1208: variables.c:117 (/fixture)
+  0x120b: variables.c:118 (/fixture)
   variables:
     outer (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x11cd..0x11ee: frame base -36
+      0x11ed..0x120e: frame base -36
     result (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x11cd..0x11ee: frame base -20
+      0x11ed..0x120e: frame base -20
 
-  > 0x11da: inlined (0xe)
-    0x11da: variables.c:82 (/fixture)
-    0x11e2: variables.c:83 (/fixture)
+  > 0x11fa: inlined (0xe)
+    0x11fa: variables.c:111 (/fixture)
+    0x1202: variables.c:112 (/fixture)
 
-> 0x118e: aggregates (0x3f)
-  0x118e: variables.c:68 (/fixture)
-  0x1192: variables.c:69 (/fixture)
-  0x11a0: variables.c:70 (/fixture)
-  0x11b5: variables.c:71 (/fixture)
-  0x11bc: variables.c:72 (/fixture)
-  0x11c3: variables.c:73 (/fixture)
-  0x11ca: variables.c:74 (/fixture)
+> 0x11ae: aggregates (0x3f)
+  0x11ae: variables.c:97 (/fixture)
+  0x11b2: variables.c:98 (/fixture)
+  0x11c0: variables.c:99 (/fixture)
+  0x11d5: variables.c:100 (/fixture)
+  0x11dc: variables.c:101 (/fixture)
+  0x11e3: variables.c:102 (/fixture)
+  0x11ea: variables.c:103 (/fixture)
   variables:
     point (local)
       type:
         > Unknown
-      0x118e..0x11cd: frame base -32
+      0x11ae..0x11ed: frame base -32
     array (local)
       type:
         > Unknown
-      0x118e..0x11cd: frame base -44
+      0x11ae..0x11ed: frame base -44
     color (local)
       type:
         > Unknown
-      0x118e..0x11cd: frame base -20
+      0x11ae..0x11ed: frame base -20
     value (local)
       type:
         > Unknown
-      0x118e..0x11cd: frame base -48
+      0x11ae..0x11ed: frame base -48
     constant (local)
       type:
         > Unknown
-      0x118e..0x11cd: frame base -24
+      0x11ae..0x11ed: frame base -24
 
-> 0x1173: pointers (0x1b)
-  0x1173: variables.c:46 (/fixture)
-  0x118b: variables.c:47 (/fixture)
+> 0x1193: pointers (0x1b)
+  0x1193: variables.c:75 (/fixture)
+  0x11ab: variables.c:76 (/fixture)
   variables:
     num (parameter)
       type:
         > Pointer (8 bytes)
           > Primitive: int (SignedInt, 4 bytes)
-      0x1173..0x118e: frame base -24
+      0x1193..0x11ae: frame base -24
     num_ptr (parameter)
       type:
         > Pointer (8 bytes)
           > Pointer (8 bytes)
             > Primitive: int (SignedInt, 4 bytes)
-      0x1173..0x118e: frame base -32
+      0x1193..0x11ae: frame base -32
     str (parameter)
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x1173..0x118e: frame base -40
+      0x1193..0x11ae: frame base -40
     any (parameter)
       type:
         > Unknown
-      0x1173..0x118e: frame base -48
+      0x1193..0x11ae: frame base -48
     fn (parameter)
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x1173..0x118e: frame base -56
+      0x1193..0x11ae: frame base -56
 
-> 0x1106: primitives (0x6d)
-  0x1106: variables.c:23 (/fixture)
-  0x110a: variables.c:24 (/fixture)
-  0x110e: variables.c:25 (/fixture)
-  0x1112: variables.c:26 (/fixture)
-  0x1118: variables.c:27 (/fixture)
-  0x111e: variables.c:28 (/fixture)
-  0x1125: variables.c:29 (/fixture)
-  0x112c: variables.c:30 (/fixture)
-  0x1134: variables.c:31 (/fixture)
-  0x113c: variables.c:32 (/fixture)
-  0x1149: variables.c:33 (/fixture)
-  0x1156: variables.c:34 (/fixture)
-  0x115a: variables.c:35 (/fixture)
-  0x1170: variables.c:36 (/fixture)
+> 0x1126: primitives (0x6d)
+  0x1126: variables.c:52 (/fixture)
+  0x112a: variables.c:53 (/fixture)
+  0x112e: variables.c:54 (/fixture)
+  0x1132: variables.c:55 (/fixture)
+  0x1138: variables.c:56 (/fixture)
+  0x113e: variables.c:57 (/fixture)
+  0x1145: variables.c:58 (/fixture)
+  0x114c: variables.c:59 (/fixture)
+  0x1154: variables.c:60 (/fixture)
+  0x115c: variables.c:61 (/fixture)
+  0x1169: variables.c:62 (/fixture)
+  0x1176: variables.c:63 (/fixture)
+  0x117a: variables.c:64 (/fixture)
+  0x1190: variables.c:65 (/fixture)
   variables:
     sc (local)
       type:
         > Primitive: signed char (SignedChar, 1 byte)
-      0x1106..0x1173: frame base -17
+      0x1126..0x1193: frame base -17
     uc (local)
       type:
         > Primitive: unsigned char (UnsignedChar, 1 byte)
-      0x1106..0x1173: frame base -18
+      0x1126..0x1193: frame base -18
     s (local)
       type:
         > Primitive: short int (SignedInt, 2 bytes)
-      0x1106..0x1173: frame base -20
+      0x1126..0x1193: frame base -20
     us (local)
       type:
         > Primitive: short unsigned int (UnsignedInt, 2 bytes)
-      0x1106..0x1173: frame base -22
+      0x1126..0x1193: frame base -22
     i (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1106..0x1173: frame base -28
+      0x1126..0x1193: frame base -28
     u (local)
       type:
         > Primitive: unsigned int (UnsignedInt, 4 bytes)
-      0x1106..0x1173: frame base -32
+      0x1126..0x1193: frame base -32
     ll (local)
       type:
         > Primitive: long long int (SignedInt, 8 bytes)
-      0x1106..0x1173: frame base -40
+      0x1126..0x1193: frame base -40
     ull (local)
       type:
         > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
-      0x1106..0x1173: frame base -48
+      0x1126..0x1193: frame base -48
     f (local)
       type:
         > Primitive: float (Float, 4 bytes)
-      0x1106..0x1173: frame base -52
+      0x1126..0x1193: frame base -52
     d (local)
       type:
         > Primitive: double (Float, 8 bytes)
-      0x1106..0x1173: frame base -64
+      0x1126..0x1193: frame base -64
     b (local)
       type:
         > Primitive: _Bool (Boolean, 1 byte)
-      0x1106..0x1173: frame base -65
+      0x1126..0x1193: frame base -65
     fc (local)
       type:
         > Primitive: complex float (ComplexFloat, 8 bytes)
-      0x1106..0x1173: frame base -76
+      0x1126..0x1193: frame base -76
