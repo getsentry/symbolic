@@ -1,3 +1,4 @@
+pub mod convert;
 pub mod lookup;
 pub mod raw;
 
@@ -7,7 +8,7 @@ use symbolic_common::Arch;
 use watto::{Pod, StringTable, align_to};
 
 /// The serialized SymCache V9 binary format.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct SymCache<'data> {
     pub header: &'data raw::Header,
     pub files: &'data [raw::File],
@@ -18,7 +19,7 @@ pub struct SymCache<'data> {
     pub variable_header: Option<&'data raw::VariableHeader>,
     pub function_variables: &'data [raw::FunctionVariables],
     pub variables: &'data [raw::Variable],
-    pub variable_locations: &'data [raw::VariableLocation],
+    pub variable_locations: &'data [raw::VariableLocationInfo],
     pub types: &'data [raw::Type],
 }
 
@@ -102,9 +103,11 @@ impl<'data> SymCache<'data> {
             variables = vars;
 
             let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidVariableLocations)?;
-            let (vl, rest) =
-                raw::VariableLocation::slice_from_prefix(rest, vh.num_variable_locations as usize)
-                    .ok_or(ErrorKind::InvalidVariableLocations)?;
+            let (vl, rest) = raw::VariableLocationInfo::slice_from_prefix(
+                rest,
+                vh.num_variable_locations as usize,
+            )
+            .ok_or(ErrorKind::InvalidVariableLocations)?;
             variable_locations = vl;
 
             let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidTypes)?;

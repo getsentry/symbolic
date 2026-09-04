@@ -990,6 +990,10 @@ pub struct CompactUnwindInfoIter<'a> {
     /// already loaded to know how many instructions the previous entry covered.
     next_entry: Option<RawCompactUnwindInfoEntry>,
     done_page: bool,
+
+    /// For sanity checking, ensure we don't see first-level entries pointing at
+    /// the same page.
+    last_visited_second_page_offset: u32,
 }
 
 impl<'a> CompactUnwindInfoIter<'a> {
@@ -1038,6 +1042,8 @@ impl<'a> CompactUnwindInfoIter<'a> {
             page_of_next_entry: None,
             next_entry: None,
             done_page: true,
+
+            last_visited_second_page_offset: 0,
         };
 
         Ok(iter)
@@ -1068,7 +1074,10 @@ impl<'a> CompactUnwindInfoIter<'a> {
         if let Some(cur_entry) = self.next_entry.take() {
             // Copy the first and second page data, as it may get overwritten
             // by next_raw, then peek the next entry.
-            let (first_page, second_page) = self.page_of_next_entry.clone().unwrap();
+            let Some((first_page, second_page)) = self.page_of_next_entry.clone() else {
+                // We can have a next_entry without a page_of_next_entry
+                return Ok(None);
+            };
             self.next_entry = self.next_raw()?;
             if let Some(next_entry) = self.next_entry.as_ref() {
                 let result = self.complete_entry(
@@ -1089,9 +1098,9 @@ impl<'a> CompactUnwindInfoIter<'a> {
         }
     }
 
-    // Yields a minimally parsed version of the next entry, and sets
+    // Yields a minimally parsed version of the next entry, and optionally sets
     // page_of_next_entry to the page matching it (so it can be further
-    // parsed when needed.
+    // parsed when needed.)
     fn next_raw(&mut self) -> Result<Option<RawCompactUnwindInfoEntry>> {
         // First, load up the page for this value if needed
         if self.done_page {
@@ -1110,7 +1119,19 @@ impl<'a> CompactUnwindInfoIter<'a> {
                         opcode_or_index: OpcodeOrIndex::Opcode(0),
                     }));
                 }
+                if entry.second_level_page_offset < self.last_visited_second_page_offset {
+                    return Err(MachError::from(Error::Malformed(
+                        "Non-increasing second-level page seen.".to_string(),
+                    )));
+                }
+
                 let second_level_page = self.second_level_page(entry.second_level_page_offset)?;
+
+                // Subsequent referenced pages should be strictly outside (and great than) this
+                // page.
+                self.last_visited_second_page_offset = entry
+                    .second_level_page_offset
+                    .saturating_add(second_level_page.size());
                 self.page_of_next_entry = Some((entry, second_level_page));
                 self.done_page = false;
             } else {
@@ -1158,17 +1179,32 @@ impl<'a> CompactUnwindInfoIter<'a> {
         const SECOND_LEVEL_REGULAR: u32 = 2;
         const SECOND_LEVEL_COMPRESSED: u32 = 3;
 
+        // See UnwindInfoSection.cpp in llvm-project
+        const SECOND_LEVEL_COMPRESSED_MAX_ENTRIES: u16 = 1021;
+        const SECOND_LEVEL_REGULAR_MAX_ENTRIES: u16 = 511;
+
         let mut offset = offset as usize;
 
         let kind: u32 = self.section.gread_with(&mut offset, self.endian)?;
         if kind == SECOND_LEVEL_REGULAR {
-            Ok(SecondLevelPage::Regular(
-                self.section.gread_with(&mut offset, self.endian)?,
-            ))
+            let page: RegularSecondLevelPage = self.section.gread_with(&mut offset, self.endian)?;
+            if page.entries_len > SECOND_LEVEL_REGULAR_MAX_ENTRIES {
+                return Err(MachError::from(Error::Malformed(format!(
+                    "Regular second-level page too big: {}",
+                    page.entries_len
+                ))));
+            }
+            Ok(SecondLevelPage::Regular(page))
         } else if kind == SECOND_LEVEL_COMPRESSED {
-            Ok(SecondLevelPage::Compressed(
-                self.section.gread_with(&mut offset, self.endian)?,
-            ))
+            let page: CompressedSecondLevelPage =
+                self.section.gread_with(&mut offset, self.endian)?;
+            if page.entries_len > SECOND_LEVEL_COMPRESSED_MAX_ENTRIES {
+                return Err(MachError::from(Error::Malformed(format!(
+                    "Compressed second-level page too big: {}",
+                    page.entries_len
+                ))));
+            }
+            Ok(SecondLevelPage::Compressed(page))
         } else {
             Err(MachError::from(Error::Malformed(format!(
                 "Unknown second-level page kind: {kind}"
@@ -1390,6 +1426,22 @@ impl SecondLevelPage {
         match *self {
             SecondLevelPage::Regular(ref page) => page.entries_len as u32,
             SecondLevelPage::Compressed(ref page) => page.entries_len as u32,
+        }
+    }
+
+    fn size(&self) -> u32 {
+        match *self {
+            SecondLevelPage::Regular(ref page) => {
+                (page.entries_offset as u32).saturating_add(page.entries_len as u32 * 8)
+            }
+            SecondLevelPage::Compressed(ref page) => {
+                let entries_end =
+                    (page.entries_offset as u32).saturating_add(page.entries_len as u32 * 4);
+                let locals_end = (page.local_opcodes_offset as u32)
+                    .saturating_add(page.local_opcodes_len as u32 * 4);
+
+                entries_end.max(locals_end)
+            }
         }
     }
 }

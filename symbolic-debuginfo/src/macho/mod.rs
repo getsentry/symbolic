@@ -62,7 +62,7 @@ pub struct MachObject<'d> {
     macho: mach::MachO<'d>,
     data: &'d [u8],
     bcsymbolmap: Option<Arc<BcSymbolMap<'d>>>,
-    max_inline_depth: u32,
+    max_function_parse_depth: u32,
 }
 
 impl<'d> MachObject<'d> {
@@ -78,7 +78,7 @@ impl<'d> MachObject<'d> {
                 macho,
                 data,
                 bcsymbolmap: None,
-                max_inline_depth: ParseObjectOptions::default().max_inline_depth,
+                max_function_parse_depth: ParseObjectOptions::default().max_function_parse_depth,
             })
             .map_err(MachError::new)
     }
@@ -326,7 +326,7 @@ impl<'d> MachObject<'d> {
             symbols,
             self.load_address() as i64,
             self.kind(),
-            self.max_inline_depth,
+            self.max_function_parse_depth,
         )?;
         session.load_symbolmap(self.bcsymbolmap.clone());
         Ok(session)
@@ -401,7 +401,7 @@ impl<'d> Parse<'d> for MachObject<'d> {
                 macho,
                 data,
                 bcsymbolmap: None,
-                max_inline_depth: opts.max_inline_depth,
+                max_function_parse_depth: opts.max_function_parse_depth,
             })
             .map_err(MachError::new)
     }
@@ -480,8 +480,51 @@ impl<'data> Dwarf<'data> for MachObject<'data> {
 
     fn raw_section(&self, section_name: &str) -> Option<DwarfSection<'data>> {
         for segment in &self.macho.segments {
+            // The overflow checks have been adapted from `object`'s implementation in:
+            // <https://github.com/gimli-rs/object/pull/923>.
+            //
+            // LLVM: <https://github.com/llvm/llvm-project/blob/5dc8ac225fa7965518fb49cce90516b46c745e0f/llvm/lib/Object/MachOObjectFile.cpp#L1992-L2016>
+            // object: <https://github.com/gimli-rs/object/blob/400e64fbcb03fddb4b1ae8aef1868976ab999acc/src/read/macho/file.rs#L171-L198>
+            let segment_end = segment.fileoff.checked_add(segment.filesize);
+            let overflow_possible =
+                self.macho.is_64 && segment_end.is_some_and(|end| end > u64::from(u32::MAX));
+            let mut previous_offset = segment.fileoff;
+
             for section in segment.into_iter() {
                 let (header, data) = section.ok()?;
+
+                // This check is equivalent to what `object` does in its `file_size` and `file_range`
+                // implementation. The zerofill sections only occupy virtual memory.
+                let has_file_data = !matches!(
+                    header.flags & mach::constants::SECTION_TYPE,
+                    mach::constants::S_ZEROFILL
+                        | mach::constants::S_GB_ZEROFILL
+                        | mach::constants::S_THREAD_LOCAL_ZEROFILL
+                );
+
+                // Mach-O section offsets are only 32 bits, so they can overflow for files larger
+                // than 4 GiB. Reconstruct the high bits by relying on sections being ordered by
+                // file offset.
+                //
+                // This follows LLVM and the `object` crate.
+                let offset = if overflow_possible && has_file_data {
+                    let offset32 = u64::from(header.offset);
+                    let mut offset = (previous_offset & !u64::from(u32::MAX)) | offset32;
+                    if offset < previous_offset {
+                        offset = offset.checked_add(1 << 32)?;
+                    }
+                    previous_offset = offset;
+
+                    let section_end = offset.checked_add(header.size)?;
+                    if section_end > segment_end? {
+                        return None;
+                    }
+
+                    offset
+                } else {
+                    u64::from(header.offset)
+                };
+
                 if let Ok(sec) = header.name() {
                     if sec.starts_with("__") && map_section_name(&sec[2..]) == section_name {
                         // In some cases, dsymutil leaves sections headers but removes their
@@ -492,27 +535,14 @@ impl<'data> Dwarf<'data> for MachObject<'data> {
                             return None;
                         }
 
-                        let (data, offset) = if self.macho.is_64 {
-                            // The section header's `offset` field is only 32 bits wide, so for
-                            // files larger than 4 GiB (e.g. produced with thin LTO) it is
-                            // truncated and the section data goblin slices out is wrong. Recompute
-                            // the real 64-bit file offset from the enclosing segment's `fileoff`
-                            // and `vmaddr`, which are both 64-bit, and re-slice the file data.
-                            header
-                                .addr
-                                .checked_sub(segment.vmaddr)
-                                .and_then(|rel| rel.checked_add(segment.fileoff))
-                                .and_then(|file_offset| {
-                                    let start = usize::try_from(file_offset).ok()?;
-                                    let len = usize::try_from(header.size).ok()?;
-                                    let end = start.checked_add(len)?;
-                                    Some((self.data.get(start..end)?, file_offset))
-                                })
-                                // Fall back to the data goblin provided if the segment-relative
-                                // computation is out of bounds or overflows.
-                                .unwrap_or((data, u64::from(header.offset)))
-                        } else {
-                            (data, u64::from(header.offset))
+                        let data = match offset == u64::from(header.offset) {
+                            true => data,
+                            false => {
+                                let start = usize::try_from(offset).ok()?;
+                                let len = usize::try_from(header.size).ok()?;
+                                let end = start.checked_add(len)?;
+                                self.data.get(start..end)?
+                            }
                         };
 
                         return Some(DwarfSection {

@@ -126,9 +126,7 @@ impl Error for ObjectError {
     }
 }
 
-// For reference, macOS Chromium (around July 2026) has a max inlinee depth of around 60, so
-// let's double it; 128 ought to be enough for anybody.
-const MAX_INLINE_DEPTH_DEFAULT: u32 = 128;
+const MAX_FUNCTION_PARSE_DEPTH_DEFAULT: u32 = 800;
 
 /// Options for parsing object files.
 #[non_exhaustive]
@@ -145,7 +143,7 @@ pub struct ParseObjectOptions {
     pub max_decompressed_embedded_source_size: Option<usize>,
 
     /// The maximum inline nesting depth to process.
-    pub max_inline_depth: u32,
+    pub max_function_parse_depth: u32,
 }
 
 impl Default for ParseObjectOptions {
@@ -153,7 +151,7 @@ impl Default for ParseObjectOptions {
         Self {
             max_decompressed_section_size: Default::default(),
             max_decompressed_embedded_source_size: Default::default(),
-            max_inline_depth: MAX_INLINE_DEPTH_DEFAULT,
+            max_function_parse_depth: MAX_FUNCTION_PARSE_DEPTH_DEFAULT,
         }
     }
 }

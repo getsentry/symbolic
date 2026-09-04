@@ -7,10 +7,24 @@
 - Change the MSRV version to 1.85 and Rust Edition 2024. ([#1028](https://github.com/getsentry/symbolic/pull/1028))
 - Remove support for symcache version 7 and 8. ([#1033](https://github.com/getsentry/symbolic/pull/1033))
 - Adds variables to functions. ([#1025](https://github.com/getsentry/symbolic/pull/1025))
+- `SymCache` and `SourceLocation` no longer implement `PartialEq` and `Eq`. ([#1039](https://github.com/getsentry/symbolic/pull/1039))
+
+**Fixes**
+
+- No unwind info on certain dsym files with sparse sections. ([#1041](https://github.com/getsentry/symbolic/pull/1041))
+- Increase inlinee limits. ([#1046](https://github.com/getsentry/symbolic/pull/1046))
+- Patch a potential segfault in the vendored Swift demangler. ([#1052](https://github.com/getsentry/symbolic/pull/1052))
+- Patch potential aborts in the vendored Swift demangler. ([#1054](https://github.com/getsentry/symbolic/pull/1054), [#1059](https://github.com/getsentry/symbolic/pull/1059), [#1062](https://github.com/getsentry/symbolic/pull/1062))
+- Do not allocate based on untrusted input in unreal parser. ([#1055](https://github.com/getsentry/symbolic/pull/1055))
+- Ensure unwind sections contain any unwind information. ([#1058](https://github.com/getsentry/symbolic/pull/1058))
+- Only replace the first `*` in sourcelink expansion. ([#1064](https://github.com/getsentry/symbolic/pull/1064))
+- Remove recursive symcache writer. ([#1066](https://github.com/getsentry/symbolic/pull/1066))
+- Don't panic when seeing a no-entry second level compact page ([#1067](https://github.com/getsentry/symbolic/pull/1067))
 
 **Dependencies**
 
 - Bump `pdb-addr2line` to 0.12.1 to fix a potential infinite recursion. ([#1030](https://github.com/getsentry/symbolic/pull/1030))
+- Bump `js-source-scopes` to 0.7.3 to fix name resolution for private functions. ([#1057](https://github.com/getsentry/symbolic/pull/1057))
 
 **Features**
 

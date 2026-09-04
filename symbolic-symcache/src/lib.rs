@@ -112,6 +112,7 @@ mod error;
 mod lookup;
 mod raw;
 pub mod transform;
+mod utils;
 mod v9;
 mod writer;
 
@@ -143,7 +144,7 @@ pub const SYMCACHE_VERSION: u32 = 9;
 ///
 /// This can be parsed from a binary buffer via [`SymCache::parse`] and lookups on it can be performed
 /// via the [`SymCache::lookup`] method.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct SymCache<'data> {
     version: &'data raw::VersionInfo,
     inner: lookup::SymCacheInner<'data>,

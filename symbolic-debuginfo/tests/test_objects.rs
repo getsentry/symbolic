@@ -7,8 +7,8 @@ use symbolic_debuginfo::ObjectDebugSession;
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
 use symbolic_debuginfo::{
-    FileEntry, Function, LineInfo, Object, ParseObjectOptions, SymbolMap, Type, TypeRef, TypeSize,
-    VariableLocation, pe::PeObject,
+    FileEntry, Function, LineInfo, Object, ObjectKind, ParseObjectOptions, SymbolMap, Type,
+    TypeRef, TypeSize, VariableLocation, pe::PeObject,
 };
 use symbolic_testutils::fixture;
 
@@ -397,6 +397,22 @@ fn test_elf_debug() -> Result<(), Error> {
         },
     )
     "#);
+
+    Ok(())
+}
+
+#[test]
+fn test_elf_split_debug_info_empty_eh_frame_section() -> Result<(), Error> {
+    let code = ByteView::open(fixture("linux/arm32/empty-eh-frame/executable"))?;
+    let debug = ByteView::open(fixture("linux/arm32/empty-eh-frame/debuginfo"))?;
+    let code = Object::parse(&code)?;
+    let debug = Object::parse(&debug)?;
+
+    assert_eq!(code.kind(), ObjectKind::Library);
+    assert_eq!(debug.kind(), ObjectKind::Debug);
+    assert_eq!(code.debug_id(), debug.debug_id());
+    assert!(!code.has_unwind_info());
+    assert!(debug.has_unwind_info());
 
     Ok(())
 }

@@ -1,0 +1,26 @@
+diff --git a/symbolic-demangle/vendor/swift/lib/Demangling/Demangler.cpp b/symbolic-demangle/vendor/swift/lib/Demangling/Demangler.cpp
+index 2743c615..3c9a2327 100644
+--- a/symbolic-demangle/vendor/swift/lib/Demangling/Demangler.cpp
++++ b/symbolic-demangle/vendor/swift/lib/Demangling/Demangler.cpp
+@@ -2709,9 +2709,9 @@ NodePointer Demangler::demangleArchetype() {
+     auto boundGenerics = createNode(Node::Kind::TypeList);
+     for (unsigned i = boundGenericArgs.size(); i-- > 0;)
+       boundGenerics->addChild(boundGenericArgs[i], *this);
+-    opaque->addChild(boundGenerics, *this);
++    addChild(opaque, boundGenerics);
+     if (retroactiveConformances)
+-      opaque->addChild(retroactiveConformances, *this);
++      addChild(opaque, retroactiveConformances);
+     
+     auto opaqueTy = createType(opaque);
+     addSubstitution(opaqueTy);
+@@ -4613,8 +4613,7 @@ NodePointer Demangler::demangleMacroExpansion() {
+   } else {
+     result = createWithChildren(kind, context, macroName, discriminator);
+   }
+-  if (privateDiscriminator)
+-    result->addChild(privateDiscriminator, *this);
++  addChild(result, privateDiscriminator);
+   return result;
+ }
+ 
