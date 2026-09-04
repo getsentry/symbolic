@@ -50,6 +50,20 @@ fn cfi_from_macho() -> Result<(), Error> {
 }
 
 #[test]
+fn cfi_from_sparse_macho_dsym() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture(
+        "macos/symbolic-1040/symbolic-1040.dSYM/Contents/Resources/DWARF/symbolic-1040",
+    ))?;
+    let object = Object::parse(&buffer)?;
+
+    let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
+    let cfi = str::from_utf8(&buf)?;
+    assert!(cfi.contains("STACK CFI INIT 3ef8 58"));
+
+    Ok(())
+}
+
+#[test]
 fn cfi_from_sym_linux() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("linux/crash.sym"))?;
     let object = Object::parse(&buffer)?;
@@ -159,4 +173,25 @@ fn cfi_process_pe_self_loop_terminates() {
         ),
         Err(_) => panic!("process_pe did not terminate: loop is unbounded"),
     }
+}
+
+#[test]
+fn test_second_level_page_duplicates() {
+    use std::error::Error;
+    let data = std::fs::read("tests/fixtures/mal.bin").unwrap();
+
+    let obj = Object::parse(&data).unwrap();
+
+    let err = CfiCache::from_object(&obj).err().unwrap();
+    let inner = err.source().unwrap();
+    assert_eq!(inner.to_string(), "invalid MachO file");
+}
+
+#[test]
+fn test_missing_second_page() {
+    let view = std::fs::read("tests/fixtures/second_page.macho").unwrap();
+
+    let object = Object::parse(&view).unwrap();
+
+    let _ = CfiCache::from_object(&object).unwrap();
 }

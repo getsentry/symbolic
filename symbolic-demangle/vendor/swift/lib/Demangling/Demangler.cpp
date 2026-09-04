@@ -2709,9 +2709,9 @@ NodePointer Demangler::demangleArchetype() {
     auto boundGenerics = createNode(Node::Kind::TypeList);
     for (unsigned i = boundGenericArgs.size(); i-- > 0;)
       boundGenerics->addChild(boundGenericArgs[i], *this);
-    opaque->addChild(boundGenerics, *this);
+    addChild(opaque, boundGenerics);
     if (retroactiveConformances)
-      opaque->addChild(retroactiveConformances, *this);
+      addChild(opaque, retroactiveConformances);
     
     auto opaqueTy = createType(opaque);
     addSubstitution(opaqueTy);
@@ -4613,8 +4613,7 @@ NodePointer Demangler::demangleMacroExpansion() {
   } else {
     result = createWithChildren(kind, context, macroName, discriminator);
   }
-  if (privateDiscriminator)
-    result->addChild(privateDiscriminator, *this);
+  addChild(result, privateDiscriminator);
   return result;
 }
 

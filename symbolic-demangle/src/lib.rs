@@ -34,6 +34,7 @@
 #![warn(missing_docs)]
 
 use std::borrow::Cow;
+use std::ffi::NulError;
 #[cfg(feature = "swift")]
 use std::ffi::{CStr, CString};
 #[cfg(feature = "swift")]
@@ -308,12 +309,21 @@ fn try_demangle_rust(_ident: &str, _opts: DemangleOptions) -> Option<String> {
 }
 
 #[cfg(feature = "swift")]
-fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Option<String> {
+#[derive(PartialEq, Eq, Debug, thiserror::Error)]
+enum SwiftDemangleError {
+    #[error("demangle failed with: {0}")]
+    DemangleFail(String),
+    #[error("constructing CString failed")]
+    BadString(#[from] NulError),
+    // The output of demangling is currently capped at 4096 chars.
+    #[error("demangle output is too large")]
+    OutputTooLarge,
+}
+
+#[cfg(feature = "swift")]
+fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Result<String, SwiftDemangleError> {
     let mut buf = vec![0; 4096];
-    let sym = match CString::new(ident) {
-        Ok(sym) => sym,
-        Err(_) => return None,
-    };
+    let sym = CString::new(ident)?;
 
     let mut features = 0;
     if opts.return_type {
@@ -325,15 +335,14 @@ fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Option<String> {
 
     unsafe {
         match symbolic_demangle_swift(sym.as_ptr(), buf.as_mut_ptr(), buf.len(), features) {
-            0 => None,
-            _ => Some(CStr::from_ptr(buf.as_ptr()).to_string_lossy().to_string()),
+            2 => {
+                let error = CStr::from_ptr(buf.as_ptr()).to_string_lossy().to_string();
+                Err(SwiftDemangleError::DemangleFail(error))
+            }
+            1 => Err(SwiftDemangleError::OutputTooLarge),
+            _ => Ok(CStr::from_ptr(buf.as_ptr()).to_string_lossy().to_string()),
         }
     }
-}
-
-#[cfg(not(feature = "swift"))]
-fn try_demangle_swift(_ident: &str, _opts: DemangleOptions) -> Option<String> {
-    None
 }
 
 fn demangle_objc(ident: &str, _opts: DemangleOptions) -> String {
@@ -466,7 +475,8 @@ impl Demangle for Name<'_> {
             Language::ObjCpp => try_demangle_objcpp(self.as_str(), opts),
             Language::Rust => try_demangle_rust(self.as_str(), opts),
             Language::Cpp => try_demangle_cpp(self.as_str(), opts),
-            Language::Swift => try_demangle_swift(self.as_str(), opts),
+            #[cfg(feature = "swift")]
+            Language::Swift => try_demangle_swift(self.as_str(), opts).ok(),
             _ => None,
         }
     }
@@ -504,6 +514,8 @@ pub fn demangle(ident: &str) -> Cow<'_, str> {
 
 #[cfg(test)]
 mod test {
+    use std::assert_matches;
+
     use super::*;
 
     #[test]
@@ -539,5 +551,45 @@ mod test {
             strip_hash_suffix("hello$\u{1000}0123456789abcdef0123456789abcde"),
             "hello$\u{1000}0123456789abcdef0123456789abcde"
         );
+    }
+
+    #[test]
+    fn test_swift_demangle_abort() {
+        assert_eq!(
+            try_demangle_swift("$sRvs", DemangleOptions::name_only()),
+            Err(SwiftDemangleError::DemangleFail(
+                "should be printed as a child of a DependentGenericSignature".to_owned()
+            ))
+        );
+    }
+
+    #[test]
+    fn test_swift_demangle_segfault() {
+        assert_matches!(
+            try_demangle_swift("$sSS1-fMb_", DemangleOptions::name_only()),
+            Err(SwiftDemangleError::DemangleFail(msg))
+                if msg.starts_with("Assertion failed: (Node->getNumChildren() >= 4)")
+        );
+    }
+
+    #[test]
+    fn test_swift_demangle_assert() {
+        const SYMBOLS: &[&str] = &[
+            "$syxD4oE0F",
+            "$syTB3TJdSpSrQri",
+            "_T08mog)nalg4psoiyx_QrSGySGGtF",
+            "$sly_Is",
+            "$ssSVRVsLcSQQrSQF",
+            "$ss$MXYTJdSpSrQri",
+            "$sSS8SS9SP__PSS8SrQriSP__RPTJdSpSrQri",
+            "$sSSSu1%RcTJdSpSrQri",
+            "$s1E2sACST7EmlrQriRtTJdSpSrQri",
+        ];
+        for symbol in SYMBOLS {
+            assert_matches!(
+                try_demangle_swift(symbol, DemangleOptions::name_only()),
+                Err(SwiftDemangleError::DemangleFail(_))
+            );
+        }
     }
 }

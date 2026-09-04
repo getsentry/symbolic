@@ -119,7 +119,7 @@ fn gread_files(
     if count > bytes.len() / 12 {
         return Err(Unreal4ErrorKind::BadData.into());
     }
-    let mut files = Vec::with_capacity(count);
+    let mut files = vec![];
     for _ in 0..count {
         let file_offset = *offset;
         files.push(bytes.gread_with(offset, file_offset)?);

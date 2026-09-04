@@ -27,6 +27,7 @@ using namespace swift;
 using namespace Demangle;
 using llvm::StringRef;
 
+
 DemanglerPrinter &DemanglerPrinter::operator<<(unsigned long long n) & {
   char buffer[32];
   snprintf(buffer, sizeof(buffer), "%llu", n);
@@ -50,8 +51,7 @@ DemanglerPrinter &DemanglerPrinter::operator<<(long long n) & {
 
 [[noreturn]]
 static void printer_unreachable(const char *Message) {
-  fprintf(stderr, "fatal error: %s\n", Message);
-  std::abort();
+  throw std::logic_error(Message);
 }
 
 std::string Demangle::genericParameterName(uint64_t depth, uint64_t index) {
@@ -1591,6 +1591,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
 #define FREESTANDING_MACRO_ROLE(Name, Description)
 #define ATTACHED_MACRO_ROLE(Name, Description, MangledChar)                \
   case Node::Kind::Name##AttachedMacroExpansion:                           \
+    assert(Node->getNumChildren() >= 4);                                   \
     return printEntity(Node, depth, asPrefixContext,                       \
                        TypePrinting::NoType, /*hasName*/true,              \
                        (Description " macro @" +                           \
@@ -2889,7 +2890,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
     return nullptr;
   case Node::Kind::ImplErasedIsolation:
     Printer << "@isolated(any)";
-    return nullptr;    
+    return nullptr;
   case Node::Kind::ImplCoroutineKind:
     // Skip if text is empty.
     if (Node->getText().empty())
@@ -2984,7 +2985,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
   case Node::Kind::ErrorType:
     Printer << "<ERROR TYPE>";
     return nullptr;
-      
+
   case Node::Kind::DependentPseudogenericSignature:
   case Node::Kind::DependentGenericSignature: {
     printGenericSignature(Node, depth);
@@ -3605,10 +3606,7 @@ NodePointer NodePrinter::printEntity(NodePointer Entity, unsigned depth,
   if (TypePr != TypePrinting::NoType) {
     NodePointer type = getChildIf(Entity, Node::Kind::Type);
     assert(type && "malformed entity");
-    if (!type) {
-      setInvalid();
-      return nullptr;
-    }
+
     type = type->getChild(0);
     if (TypePr == TypePrinting::FunctionStyle) {
       // We expect to see a function type here, but if we don't, use the colon.

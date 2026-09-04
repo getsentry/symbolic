@@ -63,7 +63,8 @@ pub struct FunctionBuilder<'s> {
     lines: Vec<LineInfo<'s>>,
     /// All variables found inside the function.
     variables: Vec<Variable<'s>>,
-    max_inline_depth: u32,
+    /// The maximum function parse depth we allow.
+    max_function_parse_depth: u32,
 }
 
 impl<'s> FunctionBuilder<'s> {
@@ -73,7 +74,7 @@ impl<'s> FunctionBuilder<'s> {
         compilation_dir: &'s [u8],
         address: u64,
         size: u64,
-        max_inline_depth: u32,
+        max_function_parse_depth: u32,
     ) -> Self {
         Self {
             name,
@@ -83,7 +84,7 @@ impl<'s> FunctionBuilder<'s> {
             inlinees: BinaryHeap::new(),
             lines: Vec::new(),
             variables: Vec::new(),
-            max_inline_depth,
+            max_function_parse_depth,
         }
     }
 
@@ -93,7 +94,7 @@ impl<'s> FunctionBuilder<'s> {
     pub fn add_inlinee(&mut self, inlinee: FunctionBuilderInlinee<'s>) {
         // An inlinee that starts before the function is obviously bogus same for an inlinee that
         // has a depth deeper than the limit.
-        if inlinee.address < self.address || inlinee.depth > self.max_inline_depth {
+        if inlinee.address < self.address || inlinee.depth > self.max_function_parse_depth {
             return;
         }
 
@@ -144,7 +145,7 @@ impl<'s> FunctionBuilder<'s> {
             inlinees,
             variables,
             mut lines,
-            max_inline_depth: _,
+            max_function_parse_depth: _,
         } = self;
 
         let inlinees = ensure_proper_nesting(inlinees)?;
@@ -359,7 +360,7 @@ impl<'s> FunctionBuilderStack<'s> {
 }
 
 /// Bounds to ensure that the maximum number of inlinees does not get too large.
-const MAX_NESTED_INLINEES: usize = 100000;
+const MAX_NESTED_INLINEES: usize = 400000;
 
 /// Converts the `BinaryHeap` of inlinees into a sorted `Vec` of inlinees, while ensuring proper
 /// inlinee nesting.

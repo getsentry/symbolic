@@ -1133,9 +1133,9 @@ checksum = "72167d68f5fce3b8655487b8038691a3c9984ee769590f93f2a631f4ad64e4f5"
 
 [[package]]
 name = "js-source-scopes"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aad7db26c7e0013043d3f79f3a676305885c73c52a3b97e98d804ef5d6465514"
+checksum = "34ab3d2856a5b0a928d8aa637fa40fa734ebdfb8c4ff7f2055c0f15ae0f3ddfa"
 dependencies = [
  "indexmap",
  "sourcemap",
@@ -2580,6 +2580,7 @@ dependencies = [
  "rustc-demangle",
  "similar-asserts",
  "symbolic-common",
+ "thiserror",
 ]
 
 [[package]]
