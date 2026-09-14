@@ -34,7 +34,6 @@ pub struct WasmObject<'data> {
     data: &'data [u8],
     code_offset: u64,
     kind: ObjectKind,
-    max_function_parse_depth: u32,
 }
 
 impl<'data> WasmObject<'data> {
@@ -119,13 +118,7 @@ impl<'data> WasmObject<'data> {
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'data>, DwarfError> {
         let symbols = self.symbol_map();
         // WASM is offset by the negative offset to the code section instead of the load address
-        DwarfDebugSession::parse(
-            self,
-            symbols,
-            -(self.code_offset() as i64),
-            self.kind(),
-            self.max_function_parse_depth,
-        )
+        DwarfDebugSession::parse(self, symbols, -(self.code_offset() as i64), self.kind())
     }
 
     /// Determines whether this object contains stack unwinding information.

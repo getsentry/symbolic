@@ -70,7 +70,6 @@ pub struct PeObject<'data> {
     pe: pe::PE<'data>,
     data: &'data [u8],
     is_stub: bool,
-    max_function_parse_depth: u32,
 }
 
 impl<'data> PeObject<'data> {
@@ -95,12 +94,7 @@ impl<'data> PeObject<'data> {
             .with_parse_imports(false);
         let pe = pe::PE::parse_with_opts(data, &opts).map_err(PeError::new)?;
         let is_stub = is_pe_stub(&pe);
-        Ok(PeObject {
-            pe,
-            data,
-            is_stub,
-            max_function_parse_depth: ParseObjectOptions::default().max_function_parse_depth,
-        })
+        Ok(PeObject { pe, data, is_stub })
     }
 
     /// The code identifier of this object.
@@ -257,13 +251,7 @@ impl<'data> PeObject<'data> {
     /// [`has_debug_info`](struct.PeObject.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'data>, DwarfError> {
         let symbols = self.symbol_map();
-        DwarfDebugSession::parse(
-            self,
-            symbols,
-            self.load_address() as i64,
-            self.kind(),
-            self.max_function_parse_depth,
-        )
+        DwarfDebugSession::parse(self, symbols, self.load_address() as i64, self.kind())
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -409,18 +397,13 @@ impl<'data> Parse<'data> for PeObject<'data> {
         Self::test(data)
     }
 
-    fn parse_with_opts(data: &'data [u8], popts: ParseObjectOptions) -> Result<Self, Self::Error> {
+    fn parse_with_opts(data: &'data [u8], _popts: ParseObjectOptions) -> Result<Self, Self::Error> {
         let opts = pe::options::ParseOptions::default()
             .with_parse_mode(goblin::pe::options::ParseMode::Permissive)
             .with_parse_imports(false);
         let pe = pe::PE::parse_with_opts(data, &opts).map_err(PeError::new)?;
         let is_stub = is_pe_stub(&pe);
-        Ok(PeObject {
-            pe,
-            data,
-            is_stub,
-            max_function_parse_depth: popts.max_function_parse_depth,
-        })
+        Ok(PeObject { pe, data, is_stub })
     }
 }
 
