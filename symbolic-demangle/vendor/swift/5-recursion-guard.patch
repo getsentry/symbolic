@@ -1,0 +1,45 @@
+diff --git a/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangler.h b/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangler.h
+index 62f0298c..df7d291a 100644
+--- a/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangler.h
++++ b/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangler.h
+@@ -421,6 +421,19 @@ protected:
+   StringRef Words[MaxNumWords];
+   int NumWords = 0;
+   
++  /// Same value as MaxDepth in NodePrinter (set by upstream).
++  static const int MaxRecursionDepth = 768;
++  int RecursionDepth = 0;
++
++  struct RecursionGuard {
++    Demangler &Dem;
++    RecursionGuard(Demangler &Dem) : Dem(Dem) {
++      ++Dem.RecursionDepth;
++      assert(Dem.RecursionDepth <= MaxRecursionDepth);
++    }
++    ~RecursionGuard() { --Dem.RecursionDepth; }
++  };
++
+   std::function<SymbolicReferenceResolver_t> SymbolicReferenceResolver;
+ 
+   bool nextIf(StringRef str) {
+diff --git a/symbolic-demangle/vendor/swift/lib/Demangling/Demangler.cpp b/symbolic-demangle/vendor/swift/lib/Demangling/Demangler.cpp
+index 3c9a2327..4b613c65 100644
+--- a/symbolic-demangle/vendor/swift/lib/Demangling/Demangler.cpp
++++ b/symbolic-demangle/vendor/swift/lib/Demangling/Demangler.cpp
+@@ -800,6 +800,7 @@ NodePointer Demangler::demangleSymbol(StringRef MangledName,
+ NodePointer Demangler::demangleType(StringRef MangledName,
+         std::function<SymbolicReferenceResolver_t> Resolver) {
+   DemangleInitRAII state(*this, MangledName, std::move(Resolver));
++  RecursionGuard guard(*this);
+ 
+   if (!parseAndPushNodes())
+     return nullptr;
+@@ -2157,6 +2158,8 @@ bool Demangle::nodeConsumesGenericArgs(Node *node) {
+ NodePointer Demangler::demangleBoundGenericArgs(NodePointer Nominal,
+                                     const Vector<NodePointer> &TypeLists,
+                                     size_t TypeListIdx) {
++
++  RecursionGuard guard(*this);
+   // TODO: This would be a lot easier if we represented bound generic args
+   // flatly in the demangling tree, since that's how they're mangled and also
+   // how the runtime generally wants to consume them.
