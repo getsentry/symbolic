@@ -421,6 +421,19 @@ protected:
   StringRef Words[MaxNumWords];
   int NumWords = 0;
   
+  /// Same value as MaxDepth in NodePrinter (set by upstream).
+  static const int MaxRecursionDepth = 768;
+  int RecursionDepth = 0;
+
+  struct RecursionGuard {
+    Demangler &Dem;
+    RecursionGuard(Demangler &Dem) : Dem(Dem) {
+      ++Dem.RecursionDepth;
+      assert(Dem.RecursionDepth <= MaxRecursionDepth);
+    }
+    ~RecursionGuard() { --Dem.RecursionDepth; }
+  };
+
   std::function<SymbolicReferenceResolver_t> SymbolicReferenceResolver;
 
   bool nextIf(StringRef str) {

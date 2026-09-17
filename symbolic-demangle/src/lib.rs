@@ -592,4 +592,15 @@ mod test {
             );
         }
     }
+
+    #[test]
+    fn test_swift_demangle_recursion() {
+        let d = 1000;
+        let input = format!("$s4main{}y{}G", "1AV".repeat(d), "_".repeat(d - 1));
+
+        assert_matches!(
+            try_demangle_swift(&input, DemangleOptions::name_only()),
+            Err(SwiftDemangleError::DemangleFail(_))
+        );
+    }
 }

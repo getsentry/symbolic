@@ -800,6 +800,7 @@ NodePointer Demangler::demangleSymbol(StringRef MangledName,
 NodePointer Demangler::demangleType(StringRef MangledName,
         std::function<SymbolicReferenceResolver_t> Resolver) {
   DemangleInitRAII state(*this, MangledName, std::move(Resolver));
+  RecursionGuard guard(*this);
 
   if (!parseAndPushNodes())
     return nullptr;
@@ -2157,6 +2158,8 @@ bool Demangle::nodeConsumesGenericArgs(Node *node) {
 NodePointer Demangler::demangleBoundGenericArgs(NodePointer Nominal,
                                     const Vector<NodePointer> &TypeLists,
                                     size_t TypeListIdx) {
+
+  RecursionGuard guard(*this);
   // TODO: This would be a lot easier if we represented bound generic args
   // flatly in the demangling tree, since that's how they're mangled and also
   // how the runtime generally wants to consume them.
