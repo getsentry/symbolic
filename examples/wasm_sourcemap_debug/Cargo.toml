@@ -1,0 +1,14 @@
+[package]
+name = "wasm_sourcemap_debug"
+version = "14.0.0-alpha.3"
+authors = ["Jan Michael Auer <mail@jauer.org>"]
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+symbolic = { version = "14.0.0-alpha.3", path = "../../symbolic", features = [
+    "symcache",
+    "wasm-sourcemap",
+] }
