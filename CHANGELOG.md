@@ -33,6 +33,7 @@
 - Adds variable information to symcaches. ([#1036](https://github.com/getsentry/symbolic/pull/1036), [#1037](https://github.com/getsentry/symbolic/pull/1037))
 - Implements variables at a frame offset. ([#1026](https://github.com/getsentry/symbolic/pull/1026))
 - Implement resolution for primitive and pointer type references contained in variables. ([#1032](https://github.com/getsentry/symbolic/pull/1032))
+- Build symcaches for WASM modules from an Emscripten source map, behind the `wasm-sourcemap` feature.
 
 ## 14.0.0-alpha.3
 

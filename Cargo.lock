@@ -2632,6 +2632,7 @@ dependencies = [
  "criterion",
  "indexmap",
  "insta",
+ "sourcemap",
  "symbolic-common",
  "symbolic-debuginfo",
  "symbolic-il2cpp",
@@ -3125,6 +3126,15 @@ name = "wasm-bindgen-test-shared"
 version = "0.2.125"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3746ad029217960123cf2ebf939dda51eb931ba9f8f09c117e39c820b96aa794"
+
+[[package]]
+name = "wasm_sourcemap_debug"
+version = "14.0.0-alpha.3"
+dependencies = [
+ "anyhow",
+ "clap",
+ "symbolic",
+]
 
 [[package]]
 name = "wasmparser"
