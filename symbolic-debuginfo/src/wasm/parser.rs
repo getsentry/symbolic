@@ -185,8 +185,10 @@ impl<'d> Parse<'d> for WasmObject<'d> {
                 // There are several custom sections that we need
                 Payload::CustomSection(reader) => {
                     match reader.name() {
+                        // this section is not defined yet
+                        // see https://github.com/WebAssembly/tool-conventions/issues/133
                         "build_id" => {
-                            build_id = Some(parse_build_id(reader.data()));
+                            build_id = Some(reader.data());
                         }
                         // All of the dwarf debug sections (.debug_frame, .debug_info etc) start with a `.`, and
                         // are the only ones we need for walking the debug info
@@ -247,32 +249,6 @@ impl<'d> Parse<'d> for WasmObject<'d> {
     }
 }
 
-/// Extracts the identifier from the payload of a `build_id` custom section.
-///
-/// The [tool convention] prefixes the identifier with its length, which is what emscripten and
-/// `wasm-ld` emit. Producers that predate the convention wrote the bare identifier instead, so the
-/// payload is used as-is when the prefix does not describe the bytes that follow it.
-///
-/// [tool convention]: https://github.com/WebAssembly/tool-conventions/blob/main/BuildId.md
-fn parse_build_id(payload: &[u8]) -> &[u8] {
-    let mut length: u32 = 0;
-
-    // A `varuint32` is at most five bytes.
-    for (index, byte) in payload.iter().take(5).enumerate() {
-        length |= u32::from(byte & 0x7f) << (index * 7);
-
-        if byte & 0x80 == 0 {
-            let id = &payload[index + 1..];
-            if length as usize == id.len() {
-                return id;
-            }
-            break;
-        }
-    }
-
-    payload
-}
-
 fn get_function_info(
     body: wasmparser::FunctionBody,
     validator: &mut wasmparser::FuncValidator<wasmparser::ValidatorResources>,
@@ -303,51 +279,4 @@ fn get_function_info(
         function_address,
         operators_reader.original_position() as u64 - function_address,
     ))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    const UUID: [u8; 16] = [
-        0x90, 0xf5, 0xbe, 0x01, 0x27, 0x02, 0x55, 0xa1, 0x82, 0x55, 0xe7, 0xc3, 0xe5, 0x01, 0xbc,
-        0x25,
-    ];
-
-    #[test]
-    fn test_build_id_length_prefixed() {
-        let mut payload = vec![16];
-        payload.extend_from_slice(&UUID);
-
-        assert_eq!(parse_build_id(&payload), UUID);
-    }
-
-    #[test]
-    fn test_build_id_sha1() {
-        let id = [0xab; 20];
-        let mut payload = vec![20];
-        payload.extend_from_slice(&id);
-
-        assert_eq!(parse_build_id(&payload), id);
-    }
-
-    #[test]
-    fn test_build_id_without_prefix() {
-        // Producers that predate the convention wrote the identifier without a length.
-        assert_eq!(parse_build_id(&UUID), UUID);
-    }
-
-    #[test]
-    fn test_build_id_prefix_mismatch_is_kept_verbatim() {
-        // A leading byte that happens to parse as a length but does not match the remaining bytes
-        // is part of the identifier, not a prefix.
-        let payload = [0x04, 0x01, 0x02, 0x03];
-
-        assert_eq!(parse_build_id(&payload), payload);
-    }
-
-    #[test]
-    fn test_build_id_empty() {
-        assert_eq!(parse_build_id(&[]), &[] as &[u8]);
-    }
 }
