@@ -18,6 +18,7 @@ extern "C" int symbolic_demangle_swift(const char *symbol,
 
         opts.ShowFunctionReturnType = return_type;
         opts.ShowFunctionArgumentTypes = argument_types;
+        opts.MaxOutputBytes = buffer_length;
     }
 
     std::string demangled;
