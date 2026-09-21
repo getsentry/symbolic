@@ -8,6 +8,12 @@ use similar_asserts::assert_eq;
 
 use crate::{error::Unreal4Error, xml::XMLReader};
 
+// Bounds for custom/unknown child nodes within the RuntimeProperties tag.
+const MAX_CUSTOM_NODES: usize = 100_000;
+
+// Bounds for all child nodes loaded with `load_databag`.
+const MAX_DATA_BAG_NODES: usize = 100_000;
+
 /// RuntimeProperties context element.
 ///
 /// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L274)
@@ -226,10 +232,12 @@ impl Unreal4ContextRuntimeProperties {
                 b"CrashReportClientVersion" => rv.crash_reporter_client_version = child.value()?,
                 b"Modules" => rv.modules = child.value()?,
                 _ => {
-                    rv.custom.insert(
-                        String::from_utf8_lossy(child.tag().name().as_ref()).to_string(),
-                        child.value()?.unwrap_or_default(),
-                    );
+                    if rv.custom.len() < MAX_CUSTOM_NODES {
+                        rv.custom.insert(
+                            String::from_utf8_lossy(child.tag().name().as_ref()).to_string(),
+                            child.value()?.unwrap_or_default(),
+                        );
+                    }
                 }
             }
         }
@@ -326,6 +334,10 @@ fn load_data_bag(
             let name = String::from_utf8_lossy(child.tag().name().as_ref()).to_string();
             let value = child.value::<String>()?.unwrap_or_default();
             dest_data.insert(name, value);
+
+            if dest_data.len() > MAX_DATA_BAG_NODES {
+                break;
+            }
         }
     }
 
