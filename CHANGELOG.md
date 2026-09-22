@@ -26,6 +26,7 @@
 - Do not undecorate function names from DWARF debug information in PE files. ([#1074](https://github.com/getsentry/symbolic/pull/1074), [#1075](https://github.com/getsentry/symbolic/pull/1075))
 - Bound output string size. ([#1073](https://github.com/getsentry/symbolic/pull/1073))
 - Don't accept unbounded custom nodes in RuntimeProperties. ([#1072](https://github.com/getsentry/symbolic/pull/1072))
+- Prevent cycles when iterating on inline sourcelocations in symcache. ([#1080](https://github.com/getsentry/symbolic/pull/1080))
 
 **Dependencies**
 
