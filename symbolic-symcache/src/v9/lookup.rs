@@ -1,5 +1,6 @@
 use std::cell::Cell;
 use std::cmp::Ordering;
+use std::collections::HashSet;
 
 use symbolic_common::Language;
 
@@ -20,6 +21,7 @@ impl<'data> SymCache<'data> {
                     cache: self,
                     source_location_idx: u32::MAX,
                     addr: u32::MAX,
+                    visited: HashSet::new(),
                 };
             }
         };
@@ -41,6 +43,7 @@ impl<'data> SymCache<'data> {
             cache: self,
             source_location_idx,
             addr,
+            visited: HashSet::new(),
         }
     }
 
@@ -199,6 +202,7 @@ pub struct SourceLocations<'data, 'cache> {
     cache: &'cache SymCache<'data>,
     source_location_idx: u32,
     addr: u32,
+    visited: HashSet<u32>,
 }
 
 impl<'data, 'cache> Iterator for SourceLocations<'data, 'cache> {
@@ -211,14 +215,19 @@ impl<'data, 'cache> Iterator for SourceLocations<'data, 'cache> {
         self.cache
             .source_locations
             .get(self.source_location_idx as usize)
-            .map(|source_location| {
+            .and_then(|source_location| {
                 self.source_location_idx = source_location.inlined_into_idx;
-                SourceLocation {
+
+                if !self.visited.insert(self.source_location_idx) {
+                    return None;
+                }
+
+                Some(SourceLocation {
                     cache: self.cache,
                     source_location,
                     addr: self.addr,
                     base_fn: None.into(),
-                }
+                })
             })
     }
 }
@@ -400,5 +409,68 @@ impl<'data> Iterator for VariableLocations<'data> {
         }
 
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use symbolic_common::DebugId;
+
+    use super::*;
+
+    /// A symcache whose source locations are inlined into each other in a cycle.
+    ///
+    /// Source location `2` is the one the single range at address `0` resolves to, and the
+    /// inline chain from there is `2 -> 1 -> 2 -> ...`.
+    #[test]
+    fn test_lookup_terminates_on_inline_cycle() {
+        let header = raw::Header {
+            debug_id: DebugId::default(),
+            arch: 0,
+            num_files: 0,
+            num_functions: 1,
+            num_source_locations: 3,
+            num_ranges: 1,
+            string_bytes: 0,
+            variable_header: 0,
+            _reserved: [0; 14],
+        };
+
+        let functions = [raw::Function {
+            name_offset: u32::MAX,
+            _comp_dir_offset: u32::MAX,
+            entry_pc: 0,
+            lang: 0,
+        }];
+
+        let source_location = |inlined_into_idx| raw::SourceLocation {
+            file_idx: u32::MAX,
+            line: 0,
+            function_idx: 0,
+            inlined_into_idx,
+        };
+        let source_locations = [
+            source_location(u32::MAX),
+            source_location(2),
+            source_location(1),
+        ];
+        let ranges = [raw::Range(0)];
+
+        let cache = SymCache {
+            header: &header,
+            files: &[],
+            functions: &functions,
+            source_locations: &source_locations,
+            ranges: &ranges,
+            string_bytes: &[],
+            variable_header: None,
+            function_variables: &[],
+            variables: &[],
+            variable_locations: &[],
+            types: &[],
+        };
+
+        // Without cycle detection, this iterator would never terminate.
+        assert_eq!(cache.lookup(0).count(), 2);
     }
 }
