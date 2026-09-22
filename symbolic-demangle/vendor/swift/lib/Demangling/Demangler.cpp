@@ -3235,6 +3235,14 @@ NodePointer Demangler::demangleAutoDiffFunctionKind() {
 
 NodePointer Demangler::demangleAutoDiffSubsetParametersThunk() {
   auto result = createNode(Node::Kind::AutoDiffSubsetParametersThunk);
+
+  // We require at least one child to exist.
+  auto *firstChild = popNode();
+  if (!firstChild) {
+    return nullptr;
+  }
+  result = addChild(result, firstChild);
+
   while (auto *node = popNode())
     result = addChild(result, node);
   result->reverseChildren();
