@@ -27,9 +27,14 @@ pub struct SymCacheConverter<'a> {
     /// CPU architecture of the object file.
     arch: Arch,
 
-    /// A flag that indicates that we are currently processing a Windows object, which
-    /// will inform us if we should undecorate function names.
-    is_windows_object: bool,
+    /// Whether function names from the current object should be undecorated.
+    ///
+    /// See also: [`undecorate_win_symbol`].
+    win_undecorate_function_names: bool,
+    /// Whether symbol names from the current object should be undecorated.
+    ///
+    /// See also: [`undecorate_win_symbol`].
+    win_undecorate_symbol_names: bool,
 
     /// A flag whether variable information from functions should be embedded into the symcache.
     collect_variables: bool,
@@ -127,7 +132,18 @@ impl<'a> SymCacheConverter<'a> {
         self.set_arch(object.arch());
         self.set_debug_id(object.debug_id());
 
-        self.is_windows_object = matches!(object.file_format(), FileFormat::Pe | FileFormat::Pdb);
+        let file_format = object.file_format();
+
+        // Symbols/Functions from PDB files are generally already formatted already, but they may
+        // still contain some decorated fallbacks.
+        //
+        // PE files not necessarily. The debug session used to query function names below, uses the
+        // embedded DWARF information from the PE. Function names from the DWARF info may be mangled,
+        // but they are never decorated.
+        self.win_undecorate_function_names = file_format == FileFormat::Pdb;
+        // Symbol names on the other hand are coming directly from the object, not from the DWARF info,
+        // hence they may be decorated and need the decorations removed.
+        self.win_undecorate_symbol_names = matches!(file_format, FileFormat::Pe | FileFormat::Pdb);
 
         for function in session.functions() {
             let function = function.map_err(|e| Error::new(ErrorKind::BadDebugFile, e))?;
@@ -146,7 +162,8 @@ impl<'a> SymCacheConverter<'a> {
             self.process_symbolic_symbol(&symbol);
         }
 
-        self.is_windows_object = false;
+        self.win_undecorate_function_names = false;
+        self.win_undecorate_symbol_names = false;
 
         Ok(())
     }
@@ -199,7 +216,7 @@ impl<'a> SymCacheConverter<'a> {
                     function = transformer.transform_function(function);
                 }
 
-                let function_name = if self.is_windows_object {
+                let function_name = if self.win_undecorate_function_names {
                     undecorate_win_symbol(&function.name)
                 } else {
                     &function.name
@@ -607,7 +624,7 @@ impl<'a> SymCacheConverter<'a> {
                 function = transformer.transform_function(function);
             }
 
-            let function_name = if self.is_windows_object {
+            let function_name = if self.win_undecorate_symbol_names {
                 undecorate_win_symbol(&function.name)
             } else {
                 &function.name
