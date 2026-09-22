@@ -22,6 +22,7 @@
 - Remove recursive symcache writer. ([#1066](https://github.com/getsentry/symbolic/pull/1066))
 - Don't panic when seeing a no-entry second level compact page ([#1067](https://github.com/getsentry/symbolic/pull/1067))
 - Add recursion limit to swift `Demangler` ([#1068](https://github.com/getsentry/symbolic/pull/1068))
+- Preserve _Z mangled itanium prefixes. ([#1074](https://github.com/getsentry/symbolic/pull/1074))
 - Don't accept unbounded custom nodes in RuntimeProperties ([#1072](https://github.com/getsentry/symbolic/pull/1072))
 
 **Dependencies**
