@@ -22,6 +22,7 @@
 - Remove recursive symcache writer. ([#1066](https://github.com/getsentry/symbolic/pull/1066))
 - Don't panic when seeing a no-entry second level compact page ([#1067](https://github.com/getsentry/symbolic/pull/1067))
 - Add recursion limit to swift `Demangler` ([#1068](https://github.com/getsentry/symbolic/pull/1068))
+- Bound output string size ([#1073](https://github.com/getsentry/symbolic/pull/1073))
 
 **Dependencies**
 
