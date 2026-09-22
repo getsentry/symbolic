@@ -331,13 +331,13 @@ fn load_data_bag(
 
     if r.next_instance_of_tag(tag)? {
         while let Some(mut child) = r.next_child()? {
+            if dest_data.len() >= MAX_DATA_BAG_NODES {
+                break;
+            }
+
             let name = String::from_utf8_lossy(child.tag().name().as_ref()).to_string();
             let value = child.value::<String>()?.unwrap_or_default();
             dest_data.insert(name, value);
-
-            if dest_data.len() > MAX_DATA_BAG_NODES {
-                break;
-            }
         }
     }
 
@@ -461,6 +461,58 @@ fn test_deeply_nested_xml() {
     data.push_str("</FGenericCrashContext>");
 
     let _ = Unreal4Context::parse(data.as_bytes()).unwrap();
+}
+
+#[test]
+fn test_excessive_runtime_properites() {
+    let mut data = r#"<FGenericCrashContext>
+    <PlatformProperties>
+    </PlatformProperties>
+    <RuntimeProperties>"#
+        .to_owned();
+
+    for i in 0..1_000_000 {
+        data.push_str(&format!("<n{i}></n{i}>"));
+    }
+    data.push_str("</RuntimeProperties>");
+
+    let r = Unreal4Context::parse(data.as_bytes()).unwrap();
+    assert_eq!(r.runtime_properties.unwrap().custom.len(), 100_000);
+}
+
+#[test]
+fn test_excessive_enginedata_gamedata_properites() {
+    let mut data = r#"<FGenericCrashContext>
+    <RuntimeProperties>
+    </RuntimeProperties>
+    <PlatformProperties>
+    </PlatformProperties>
+    <EngineData>"#
+        .to_owned();
+
+    for i in 0..1_000_000 {
+        data.push_str(&format!("<n{i}></n{i}>"));
+    }
+    data.push_str("</EngineData></FGenericCrashContext>");
+
+    let r = Unreal4Context::parse(data.as_bytes()).unwrap();
+    assert_eq!(r.engine_data.len(), 100_000);
+
+    let mut data = r#"<FGenericCrashContext>
+    <RuntimeProperties>
+    </RuntimeProperties>
+    <PlatformProperties>
+    </PlatformProperties>
+    <GameData>"#
+        .to_owned();
+
+    for i in 0..1_000_000 {
+        data.push_str(&format!("<n{i}></n{i}>"));
+    }
+    data.push_str("</GameData></FGenericCrashContext>");
+
+    let r = Unreal4Context::parse(data.as_bytes()).unwrap();
+    assert_eq!(r.game_data.len(), 100_000);
 }
 
 #[test]
