@@ -841,7 +841,7 @@ fn insert_source_location<K, F>(
 /// This code is adapted from `dump_syms`:
 /// See <https://github.com/mozilla/dump_syms/blob/325cf2c61b2cacc55a7f1af74081b57237c7f9de/src/symbol.rs#L169-L216>
 fn undecorate_win_symbol(name: &str) -> &str {
-    if name.starts_with('?') || name.contains([':', '(', '<']) {
+    if name.starts_with('?') || name.contains([':', '(', '<']) || name.starts_with("_Z") {
         return name;
     }
 
@@ -921,6 +921,16 @@ impl TypeResolver for NoopTypeResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_undecorate_win_symbol() {
+        assert_eq!(undecorate_win_symbol("_malloc"), "malloc");
+        assert_eq!(undecorate_win_symbol("_foo@8"), "foo");
+        assert_eq!(undecorate_win_symbol("@foo@8"), "foo");
+        assert_eq!(undecorate_win_symbol("foo@@8"), "foo");
+        // Itanium ABI
+        assert_eq!(undecorate_win_symbol("_ZN3foo3barEv"), "_ZN3foo3barEv");
+    }
 
     /// Tests that computing a range with a large size naively
     /// results in an empty range, but using `line_boundaries`
