@@ -3461,10 +3461,12 @@ NodePointer Demangler::demangleFuncSpecParam(Node::Kind Kind) {
          Node::Kind::FunctionSignatureSpecializationParamPayload, (Node::IndexType)prevArgIdx));
     }
     case 'p': {
+      bool didWork = false;
       for (;;) {
         switch (nextChar()) {
           case 'S':
             // Consumes an identifier parameter, which will be added later.
+            didWork = true;
             addChild(
                 Param,
                 createNode(Node::Kind::FunctionSignatureSpecializationParamKind,
@@ -3473,6 +3475,7 @@ NodePointer Demangler::demangleFuncSpecParam(Node::Kind Kind) {
             break;
           case 'f':
             // Consumes an identifier parameter, which will be added later.
+            didWork = true;
             addChild(
                 Param,
                 createNode(Node::Kind::FunctionSignatureSpecializationParamKind,
@@ -3481,6 +3484,7 @@ NodePointer Demangler::demangleFuncSpecParam(Node::Kind Kind) {
             break;
           case 'g':
             // Consumes an identifier parameter, which will be added later.
+            didWork = true;
             addChild(
                 Param,
                 createNode(
@@ -3489,18 +3493,21 @@ NodePointer Demangler::demangleFuncSpecParam(Node::Kind Kind) {
                         FunctionSigSpecializationParamKind::ConstantPropGlobal)));
             break;
           case 'i':
+            didWork = true;
             if (!addFuncSpecParamNumber(Param,
                       FunctionSigSpecializationParamKind::ConstantPropInteger)) {
               return nullptr;
             }
             break;
           case 'd':
+            didWork = true;
             if (!addFuncSpecParamNumber(Param,
                         FunctionSigSpecializationParamKind::ConstantPropFloat)) {
               return nullptr;
             }
             break;
           case 's': {
+            didWork = true;
             // Consumes an identifier parameter (the string constant),
             // which will be added later.
             const char *Encoding = nullptr;
@@ -3522,6 +3529,7 @@ NodePointer Demangler::demangleFuncSpecParam(Node::Kind Kind) {
             break;
           }
           case 'k': {
+            didWork = true;
             // Consumes two types and a SHA1 identifier.
             addChild(
                 Param,
@@ -3531,7 +3539,9 @@ NodePointer Demangler::demangleFuncSpecParam(Node::Kind Kind) {
             break;
           }
           default:
-            pushBack();
+            if (didWork) {
+              pushBack();
+            }
             return Param;
         }
       }
