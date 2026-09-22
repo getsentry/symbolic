@@ -853,18 +853,16 @@ fn undecorate_win_symbol(name: &str) -> &str {
     }
 
     // Parse the other three.
-    if !name.is_empty() {
-        if let ("@" | "_", rest) = name.split_at(1) {
-            if let Some((name, param_size)) = rest.rsplit_once('@') {
-                if param_size.parse::<u32>().is_ok() {
-                    // __stdcall or __fastcall
-                    return name;
-                }
-            }
-            if let Some(name) = name.strip_prefix('_') {
-                // __cdecl
+    if let Some(rest) = name.strip_prefix(['@', '_']) {
+        if let Some((name, param_size)) = rest.rsplit_once('@') {
+            if param_size.parse::<u32>().is_ok() {
+                // __stdcall or __fastcall
                 return name;
             }
+        }
+        if let Some(name) = name.strip_prefix('_') {
+            // __cdecl
+            return name;
         }
     }
 
@@ -930,6 +928,10 @@ mod tests {
         assert_eq!(undecorate_win_symbol("foo@@8"), "foo");
         // Itanium ABI
         assert_eq!(undecorate_win_symbol("_ZN3foo3barEv"), "_ZN3foo3barEv");
+        // Unicode/multi-byte symbols which used to panic.
+        assert_eq!(undecorate_win_symbol("é"), "é");
+        assert_eq!(undecorate_win_symbol("é@4"), "é@4");
+        assert_eq!(undecorate_win_symbol("日本@8"), "日本@8");
     }
 
     /// Tests that computing a range with a large size naively
