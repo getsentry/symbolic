@@ -26,7 +26,7 @@
 - Do not undecorate function names from DWARF debug information in PE files. ([#1074](https://github.com/getsentry/symbolic/pull/1074), [#1075](https://github.com/getsentry/symbolic/pull/1075))
 - Bound output string size. ([#1073](https://github.com/getsentry/symbolic/pull/1073))
 - Don't accept unbounded custom nodes in RuntimeProperties. ([#1072](https://github.com/getsentry/symbolic/pull/1072))
-- Guard against empty children ([#1078](https://github.com/getsentry/symbolic/pull/1078))
+- Guard against empty NodePrinter children in the Swift demanger. ([#1078](https://github.com/getsentry/symbolic/pull/1078))
 
 **Dependencies**
 
