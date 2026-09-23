@@ -1,7 +1,7 @@
 fn main() {
     #[cfg(feature = "swift")]
     {
-        println!("cargo:rerun-if-changed=vendor/swift/include");
+        println!("cargo:rerun-if-changed=vendor/swift/");
 
         cc::Build::new()
             .cpp(true)

@@ -594,11 +594,26 @@ mod test {
     }
 
     #[test]
+    fn test_swift_const_prop_attack() {
+        const SYMBOL: &str = "$STf2spp";
+        let result = try_demangle_swift(SYMBOL, DemangleOptions::complete());
+        assert!(result.is_ok());
+    }
+
+    #[test]
     fn test_swift_demangle_big() {
         const SYMBOL: &str = "$sSiSgSDyAAAAGSDyABABGSDyACACGSDyADADGSDyAEAEGSDyAFAFGSDyAGAGGSDyAHAHGSDyAIAIGSDyAJAJGSDyAKAKGSDyALALGSDyAMAMGSDyANANGSDyAOAOGSDyAPAPGSDyAQAQGSDyARARGSDyASASGSDyATATGSDyAUAUGSDyAVAVGSDyAWAWGSDyAXAXGSDyAYAYGSDyAZAZGSDyAZAZGSDyA0_A0_GSDyA1_A1_GSDyA2_A2_G";
         let result = try_demangle_swift(SYMBOL, DemangleOptions::complete());
 
         assert_matches!(result, Err(SwiftDemangleError::OutputTooLarge));
+    }
+
+    #[test]
+    fn test_swift_demangle_empty_children_guard() {
+        const SYMBOL: &str = "_$sTJSdSpSSSrSPS144z";
+        let result = try_demangle_swift(SYMBOL, DemangleOptions::complete());
+
+        assert!(result.is_ok());
     }
 
     #[test]
