@@ -8,7 +8,7 @@ use similar_asserts::assert_eq;
 
 use crate::{error::Unreal4Error, xml::XMLReader};
 
-// Bounds for custom/unknown child nodes within the RuntimeProperties tag.
+/// Bounds for custom/unknown child nodes within the RuntimeProperties tag.
 const MAX_CUSTOM_NODES: usize = 100_000;
 
 // Bounds for all child nodes loaded with `load_databag`.
