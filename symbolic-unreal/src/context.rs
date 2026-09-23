@@ -11,7 +11,7 @@ use crate::{error::Unreal4Error, xml::XMLReader};
 /// Bounds for custom/unknown child nodes within the RuntimeProperties tag.
 const MAX_CUSTOM_NODES: usize = 100_000;
 
-// Bounds for all child nodes loaded with `load_databag`.
+/// Bounds for all child nodes loaded with `load_databag`.
 const MAX_DATA_BAG_NODES: usize = 100_000;
 
 /// RuntimeProperties context element.
