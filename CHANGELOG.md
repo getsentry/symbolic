@@ -28,6 +28,7 @@
 - Don't accept unbounded custom nodes in RuntimeProperties. ([#1072](https://github.com/getsentry/symbolic/pull/1072))
 - Avoid infinite looping in the swift demangler with bad const prop codes. ([#1079](https://github.com/getsentry/symbolic/pull/1079))
 - Guard against empty NodePrinter children in the Swift demanger. ([#1078](https://github.com/getsentry/symbolic/pull/1078))
+- Prevent cycles when iterating on inline sourcelocations in symcache. ([#1080](https://github.com/getsentry/symbolic/pull/1080))
 
 **Dependencies**
 
