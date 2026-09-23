@@ -23,6 +23,7 @@
 - Don't panic when seeing a no-entry second level compact page ([#1067](https://github.com/getsentry/symbolic/pull/1067))
 - Add recursion limit to swift `Demangler` ([#1068](https://github.com/getsentry/symbolic/pull/1068))
 - Do not undecorate function names from DWARF debug information in PE files. ([#1074](https://github.com/getsentry/symbolic/pull/1074), [#1075](https://github.com/getsentry/symbolic/pull/1075))
+- Don't artificially extend WASM symbol sizes. ([#1081](https://github.com/getsentry/symbolic/pull/1081))
 
 **Dependencies**
 
