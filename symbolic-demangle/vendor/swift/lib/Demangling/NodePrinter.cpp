@@ -29,21 +29,34 @@ using llvm::StringRef;
 
 
 DemanglerPrinter &DemanglerPrinter::operator<<(unsigned long long n) & {
-  char buffer[32];
-  snprintf(buffer, sizeof(buffer), "%llu", n);
-  Stream.append(buffer);
+  if (Stream.size() < max_bytes) {
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), "%llu", n);
+    Stream.append(buffer);
+  } else {
+    is_exhausted = true;
+  }
+
   return *this;
 }
 DemanglerPrinter &DemanglerPrinter::writeHex(unsigned long long n) & {
-  char buffer[32];
-  snprintf(buffer, sizeof(buffer), "%llX", n);
-  Stream.append(buffer);
+  if (Stream.size() < max_bytes) {
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), "%llX", n);
+    Stream.append(buffer);
+  } else {
+    is_exhausted = true;
+  }
   return *this;
 }
 DemanglerPrinter &DemanglerPrinter::operator<<(long long n) & {
-  char buffer[32];
-  snprintf(buffer, sizeof(buffer), "%lld",n);
-  Stream.append(buffer);
+  if (Stream.size() < max_bytes) {
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), "%lld",n);
+    Stream.append(buffer);
+  } else {
+    is_exhausted = true;
+  }
   return *this;
 }
 
@@ -55,7 +68,10 @@ static void printer_unreachable(const char *Message) {
 }
 
 std::string Demangle::genericParameterName(uint64_t depth, uint64_t index) {
-  DemanglerPrinter name;
+  DemangleOptions options;
+  // This function's output gets consumed by the caller's Printer, so it's probably okay to just
+  // give it new output quota here.
+  DemanglerPrinter name(options.MaxOutputBytes);
   do {
     name << (char)('A' + (index % 26));
     index /= 26;
@@ -1421,6 +1437,10 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
     return nullptr;
   }
 
+  if (Printer.exhausted()) {
+    return nullptr;
+  }
+
   if (!Node) {
     Printer << "<null node pointer>";
     return nullptr;
@@ -1595,7 +1615,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
     return printEntity(Node, depth, asPrefixContext,                       \
                        TypePrinting::NoType, /*hasName*/true,              \
                        (Description " macro @" +                           \
-                        nodeToString(Node->getChild(2)) + " expansion #"), \
+                        nodeToString(Node->getChild(2), Options) + " expansion #"), \
                        (int)Node->getChild(3)->getIndex() + 1);
 #include "swift/Basic/MacroRoles.def"
   case Node::Kind::FreestandingMacroExpansion:
