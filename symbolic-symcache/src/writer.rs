@@ -27,9 +27,14 @@ pub struct SymCacheConverter<'a> {
     /// CPU architecture of the object file.
     arch: Arch,
 
-    /// A flag that indicates that we are currently processing a Windows object, which
-    /// will inform us if we should undecorate function names.
-    is_windows_object: bool,
+    /// Whether function names from the current object should be undecorated.
+    ///
+    /// See also: [`undecorate_win_symbol`].
+    win_undecorate_function_names: bool,
+    /// Whether symbol names from the current object should be undecorated.
+    ///
+    /// See also: [`undecorate_win_symbol`].
+    win_undecorate_symbol_names: bool,
 
     /// A flag whether variable information from functions should be embedded into the symcache.
     collect_variables: bool,
@@ -127,7 +132,18 @@ impl<'a> SymCacheConverter<'a> {
         self.set_arch(object.arch());
         self.set_debug_id(object.debug_id());
 
-        self.is_windows_object = matches!(object.file_format(), FileFormat::Pe | FileFormat::Pdb);
+        let file_format = object.file_format();
+
+        // Symbols/Functions from PDB files are generally already formatted, but they may
+        // still contain some decorated fallbacks.
+        //
+        // PE files not necessarily. The debug session used to query function names below, uses the
+        // embedded DWARF information from the PE. Function names from the DWARF info may be mangled,
+        // but they are never decorated.
+        self.win_undecorate_function_names = file_format == FileFormat::Pdb;
+        // Symbol names on the other hand are coming directly from the object, not from the DWARF info,
+        // hence they may be decorated and need the decorations removed.
+        self.win_undecorate_symbol_names = matches!(file_format, FileFormat::Pe | FileFormat::Pdb);
 
         for function in session.functions() {
             let function = function.map_err(|e| Error::new(ErrorKind::BadDebugFile, e))?;
@@ -146,7 +162,8 @@ impl<'a> SymCacheConverter<'a> {
             self.process_symbolic_symbol(&symbol);
         }
 
-        self.is_windows_object = false;
+        self.win_undecorate_function_names = false;
+        self.win_undecorate_symbol_names = false;
 
         Ok(())
     }
@@ -199,7 +216,7 @@ impl<'a> SymCacheConverter<'a> {
                     function = transformer.transform_function(function);
                 }
 
-                let function_name = if self.is_windows_object {
+                let function_name = if self.win_undecorate_function_names {
                     undecorate_win_symbol(&function.name)
                 } else {
                     &function.name
@@ -607,7 +624,7 @@ impl<'a> SymCacheConverter<'a> {
                 function = transformer.transform_function(function);
             }
 
-            let function_name = if self.is_windows_object {
+            let function_name = if self.win_undecorate_symbol_names {
                 undecorate_win_symbol(&function.name)
             } else {
                 &function.name
@@ -841,7 +858,7 @@ fn insert_source_location<K, F>(
 /// This code is adapted from `dump_syms`:
 /// See <https://github.com/mozilla/dump_syms/blob/325cf2c61b2cacc55a7f1af74081b57237c7f9de/src/symbol.rs#L169-L216>
 fn undecorate_win_symbol(name: &str) -> &str {
-    if name.starts_with('?') || name.contains([':', '(', '<']) || name.starts_with("_Z") {
+    if name.starts_with('?') || name.contains([':', '(', '<']) {
         return name;
     }
 
@@ -853,18 +870,16 @@ fn undecorate_win_symbol(name: &str) -> &str {
     }
 
     // Parse the other three.
-    if !name.is_empty() {
-        if let ("@" | "_", rest) = name.split_at(1) {
-            if let Some((name, param_size)) = rest.rsplit_once('@') {
-                if param_size.parse::<u32>().is_ok() {
-                    // __stdcall or __fastcall
-                    return name;
-                }
-            }
-            if let Some(name) = name.strip_prefix('_') {
-                // __cdecl
+    if let Some(rest) = name.strip_prefix(['@', '_']) {
+        if let Some((name, param_size)) = rest.rsplit_once('@') {
+            if param_size.parse::<u32>().is_ok() {
+                // __stdcall or __fastcall
                 return name;
             }
+        }
+        if let Some(name) = name.strip_prefix('_') {
+            // __cdecl
+            return name;
         }
     }
 
@@ -928,8 +943,14 @@ mod tests {
         assert_eq!(undecorate_win_symbol("_foo@8"), "foo");
         assert_eq!(undecorate_win_symbol("@foo@8"), "foo");
         assert_eq!(undecorate_win_symbol("foo@@8"), "foo");
-        // Itanium ABI
-        assert_eq!(undecorate_win_symbol("_ZN3foo3barEv"), "_ZN3foo3barEv");
+        assert_eq!(
+            undecorate_win_symbol("_ZwGetContextThread@8"),
+            "ZwGetContextThread"
+        );
+        // Unicode/multi-byte symbols which used to panic.
+        assert_eq!(undecorate_win_symbol("é"), "é");
+        assert_eq!(undecorate_win_symbol("é@4"), "é@4");
+        assert_eq!(undecorate_win_symbol("日本@8"), "日本@8");
     }
 
     /// Tests that computing a range with a large size naively

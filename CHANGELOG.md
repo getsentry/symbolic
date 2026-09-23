@@ -23,12 +23,14 @@
 - Don't panic when seeing a no-entry second level compact page ([#1067](https://github.com/getsentry/symbolic/pull/1067))
 - Add recursion limit to swift `Demangler` ([#1068](https://github.com/getsentry/symbolic/pull/1068))
 - Preserve _Z mangled itanium prefixes. ([#1074](https://github.com/getsentry/symbolic/pull/1074))
-- Bound output string size ([#1073](https://github.com/getsentry/symbolic/pull/1073))
+- Do not undecorate function names from DWARF debug information in PE files. ([#1074](https://github.com/getsentry/symbolic/pull/1074), [#1075](https://github.com/getsentry/symbolic/pull/1075))
+- Bound output string size. ([#1073](https://github.com/getsentry/symbolic/pull/1073))
 
 **Dependencies**
 
 - Bump `pdb-addr2line` to 0.12.1 to fix a potential infinite recursion. ([#1030](https://github.com/getsentry/symbolic/pull/1030))
 - Bump `js-source-scopes` to 0.7.3 to fix name resolution for private functions. ([#1057](https://github.com/getsentry/symbolic/pull/1057))
+- Bump `cpp_demangle` to 0.5.1. ([#1077](https://github.com/getsentry/symbolic/pull/1077))
 
 **Features**
 
