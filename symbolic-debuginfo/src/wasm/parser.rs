@@ -79,7 +79,7 @@ impl<'d> Parse<'d> for WasmObject<'d> {
         let mut func_sigs = BitVec::new();
         let features = WasmFeatures::all();
         let mut validator = Validator::new_with_features(features);
-        let mut funcs = Vec::<Symbol>::new();
+        let mut funcs = Vec::new();
         let mut num_imported_funcs = 0u32;
         let mut func_allocs = FuncValidatorAllocations::default();
 
@@ -159,13 +159,6 @@ impl<'d> Parse<'d> for WasmObject<'d> {
                     let (address, size) = get_function_info(body, &mut validator)?;
 
                     func_allocs = validator.into_allocations();
-
-                    // Though we have an accurate? size of the function body, the old method of symbol
-                    // iterating with walrus extends the size of each body to be contiguous with the
-                    // next function, so we do the same, other than the final function
-                    if let Some(prev) = funcs.last_mut() {
-                        prev.size = address - prev.address;
-                    }
 
                     funcs.push(Symbol {
                         name: None,
