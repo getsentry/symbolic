@@ -594,6 +594,14 @@ mod test {
     }
 
     #[test]
+    fn test_swift_demangle_big() {
+        const SYMBOL: &str = "$sSiSgSDyAAAAGSDyABABGSDyACACGSDyADADGSDyAEAEGSDyAFAFGSDyAGAGGSDyAHAHGSDyAIAIGSDyAJAJGSDyAKAKGSDyALALGSDyAMAMGSDyANANGSDyAOAOGSDyAPAPGSDyAQAQGSDyARARGSDyASASGSDyATATGSDyAUAUGSDyAVAVGSDyAWAWGSDyAXAXGSDyAYAYGSDyAZAZGSDyAZAZGSDyA0_A0_GSDyA1_A1_GSDyA2_A2_G";
+        let result = try_demangle_swift(SYMBOL, DemangleOptions::complete());
+
+        assert_matches!(result, Err(SwiftDemangleError::OutputTooLarge));
+    }
+
+    #[test]
     fn test_swift_demangle_recursion() {
         let d = 1000;
         let input = format!("$s4main{}y{}G", "1AV".repeat(d), "_".repeat(d - 1));

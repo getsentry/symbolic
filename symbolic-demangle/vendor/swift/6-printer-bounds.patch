@@ -1,0 +1,191 @@
+diff --git a/symbolic-demangle/src/swiftdemangle.cpp b/symbolic-demangle/src/swiftdemangle.cpp
+index 56031a42..715ac370 100644
+--- a/symbolic-demangle/src/swiftdemangle.cpp
++++ b/symbolic-demangle/src/swiftdemangle.cpp
+@@ -18,6 +18,7 @@ extern "C" int symbolic_demangle_swift(const char *symbol,
+
+         opts.ShowFunctionReturnType = return_type;
+         opts.ShowFunctionArgumentTypes = argument_types;
++        opts.MaxOutputBytes = buffer_length;
+     }
+
+     std::string demangled;
+diff --git a/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h b/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
+index e24aa0a3..7af69c54 100644
+--- a/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
++++ b/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
+@@ -69,6 +69,7 @@ struct DemangleOptions {
+   bool PrintForTypeName = false;
+   bool ShowAsyncResumePartial = true;
+   bool ShowClosureSignature = true;
++  size_t MaxOutputBytes = 4096;
+
+   /// If this is nonempty, entities in this module name will not be qualified.
+   llvm::StringRef HidingCurrentModule;
+@@ -202,7 +203,7 @@ public:
+   using RemoteAddressType = std::pair<uint64_t, uint8_t>;
+
+   friend class NodeFactory;
+-
++
+ private:
+
+   struct NodeVector {
+@@ -642,7 +643,7 @@ demangleTypeAsString(llvm::StringRef MangledName,
+   return demangleTypeAsString(MangledName.data(),
+                               MangledName.size(), Options);
+ }
+-
++
+
+ enum class OperatorKind {
+   NotOperator,
+@@ -794,15 +795,23 @@ std::string keyPathSourceString(const char *MangledName,
+ /// A class for printing to a std::string.
+ class DemanglerPrinter {
+ public:
+-  DemanglerPrinter() = default;
++  DemanglerPrinter(size_t max_bytes) : max_bytes(max_bytes) {}
+
+   DemanglerPrinter &operator<<(llvm::StringRef Value) & {
+-    Stream.append(Value.data(), Value.size());
++    if (Stream.size() < max_bytes) {
++      Stream.append(Value.data(), Value.size());
++    } else {
++      is_exhausted = true;
++    }
+     return *this;
+   }
+-
++
+   DemanglerPrinter &operator<<(char c) & {
+-    Stream.push_back(c);
++    if (Stream.size() < max_bytes) {
++      Stream.push_back(c);
++    } else {
++      is_exhausted = true;
++    }
+     return *this;
+   }
+   DemanglerPrinter &operator<<(unsigned long long n) &;
+@@ -829,6 +838,8 @@ public:
+
+   std::string &&str() && { return std::move(Stream); }
+
++  bool exhausted() const { return is_exhausted; }
++
+   llvm::StringRef getStringRef() const { return Stream; }
+
+   size_t getStreamLength() { return Stream.length(); }
+@@ -841,6 +852,8 @@ public:
+
+ private:
+   std::string Stream;
++  size_t max_bytes = 4096;
++  bool is_exhausted = false;
+ };
+
+ /// Returns a the node kind \p k as string.
+@@ -892,7 +905,7 @@ protected:
+   bool isValid = true;
+
+ public:
+-  NodePrinter(DemangleOptions options) : Options(options) {}
++  NodePrinter(DemangleOptions options) : Options(options), Printer(options.MaxOutputBytes) {}
+
+   virtual ~NodePrinter() = default;
+
+diff --git a/symbolic-demangle/vendor/swift/lib/Demangling/NodeDumper.cpp b/symbolic-demangle/vendor/swift/lib/Demangling/NodeDumper.cpp
+index 5b7a353f..01bf13d1 100644
+--- a/symbolic-demangle/vendor/swift/lib/Demangling/NodeDumper.cpp
++++ b/symbolic-demangle/vendor/swift/lib/Demangling/NodeDumper.cpp
+@@ -50,7 +50,8 @@ static void printNode(DemanglerPrinter &Out, const Node *node, unsigned depth) {
+ }
+
+ std::string Demangle::getNodeTreeAsString(NodePointer Root) {
+-  DemanglerPrinter Printer;
++  DemangleOptions options;
++  DemanglerPrinter Printer(options.MaxOutputBytes);
+   printNode(Printer, Root, 0);
+   return std::move(Printer).str();
+ }
+diff --git a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
+index 99d0d4ce..0f50708d 100644
+--- a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
++++ b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
+@@ -29,21 +29,34 @@ using llvm::StringRef;
+
+
+ DemanglerPrinter &DemanglerPrinter::operator<<(unsigned long long n) & {
+-  char buffer[32];
+-  snprintf(buffer, sizeof(buffer), "%llu", n);
+-  Stream.append(buffer);
++  if (Stream.size() < max_bytes) {
++    char buffer[32];
++    snprintf(buffer, sizeof(buffer), "%llu", n);
++    Stream.append(buffer);
++  } else {
++    is_exhausted = true;
++  }
++
+   return *this;
+ }
+ DemanglerPrinter &DemanglerPrinter::writeHex(unsigned long long n) & {
+-  char buffer[32];
+-  snprintf(buffer, sizeof(buffer), "%llX", n);
+-  Stream.append(buffer);
++  if (Stream.size() < max_bytes) {
++    char buffer[32];
++    snprintf(buffer, sizeof(buffer), "%llX", n);
++    Stream.append(buffer);
++  } else {
++    is_exhausted = true;
++  }
+   return *this;
+ }
+ DemanglerPrinter &DemanglerPrinter::operator<<(long long n) & {
+-  char buffer[32];
+-  snprintf(buffer, sizeof(buffer), "%lld",n);
+-  Stream.append(buffer);
++  if (Stream.size() < max_bytes) {
++    char buffer[32];
++    snprintf(buffer, sizeof(buffer), "%lld",n);
++    Stream.append(buffer);
++  } else {
++    is_exhausted = true;
++  }
+   return *this;
+ }
+
+@@ -55,7 +68,10 @@ static void printer_unreachable(const char *Message) {
+ }
+
+ std::string Demangle::genericParameterName(uint64_t depth, uint64_t index) {
+-  DemanglerPrinter name;
++  DemangleOptions options;
++  // This function's output gets consumed by the caller's Printer, so it's probably okay to just
++  // give it new output quota here.
++  DemanglerPrinter name(options.MaxOutputBytes);
+   do {
+     name << (char)('A' + (index % 26));
+     index /= 26;
+@@ -1421,6 +1437,10 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
+     return nullptr;
+   }
+
++  if (Printer.exhausted()) {
++    return nullptr;
++  }
++
+   if (!Node) {
+     Printer << "<null node pointer>";
+     return nullptr;
+@@ -1595,7 +1615,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
+     return printEntity(Node, depth, asPrefixContext,                       \
+                        TypePrinting::NoType, /*hasName*/true,              \
+                        (Description " macro @" +                           \
+-                        nodeToString(Node->getChild(2)) + " expansion #"), \
++                        nodeToString(Node->getChild(2), Options) + " expansion #"), \
+                        (int)Node->getChild(3)->getIndex() + 1);
+ #include "swift/Basic/MacroRoles.def"
+   case Node::Kind::FreestandingMacroExpansion:
