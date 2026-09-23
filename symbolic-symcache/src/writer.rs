@@ -134,7 +134,7 @@ impl<'a> SymCacheConverter<'a> {
 
         let file_format = object.file_format();
 
-        // Symbols/Functions from PDB files are generally already formatted already, but they may
+        // Symbols/Functions from PDB files are generally already formatted, but they may
         // still contain some decorated fallbacks.
         //
         // PE files not necessarily. The debug session used to query function names below, uses the
