@@ -216,11 +216,11 @@ impl<'data, 'cache> Iterator for SourceLocations<'data, 'cache> {
             .source_locations
             .get(self.source_location_idx as usize)
             .and_then(|source_location| {
-                self.source_location_idx = source_location.inlined_into_idx;
-
                 if !self.visited.insert(self.source_location_idx) {
                     return None;
                 }
+
+                self.source_location_idx = source_location.inlined_into_idx;
 
                 Some(SourceLocation {
                     cache: self.cache,
