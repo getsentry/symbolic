@@ -301,6 +301,27 @@ impl<'a> SymCacheConverter<'a> {
                 }
                 let inlined_into_idx = current_call_location.1;
 
+                // A record with neither a line nor a file marks a range that belongs to the
+                // function but has no source location. Keeping the function and dropping the
+                // location stops lookups in the range from inheriting the preceding record.
+                if line.line == 0
+                    && line.file.name_str().is_empty()
+                    && line.file.dir_str().is_empty()
+                    && next_inline
+                        .as_ref()
+                        .is_none_or(|next| next.start >= line_range_end)
+                {
+                    let source_location = v9::raw::SourceLocation {
+                        file_idx: u32::MAX,
+                        line: 0,
+                        function_idx,
+                        inlined_into_idx,
+                    };
+                    self.ranges.insert(line_range_start, source_location);
+                    next_line = line_iter.next();
+                    continue;
+                }
+
                 let mut location = transform::SourceLocation {
                     file: transform::File {
                         name: line.file.name_str(),
