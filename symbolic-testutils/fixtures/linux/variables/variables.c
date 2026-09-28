@@ -1,0 +1,94 @@
+/*
+ * Test fixture for variable extraction from debug info.
+ *
+ * After changing this file, rebuild the binary and refresh the snapshot as
+ * described in README.md.
+ *
+ * Sections marked "not supported yet" render as `Unknown` in the snapshot.
+ * That is intentional: the snapshot doubles as a record of what symbolic can
+ * and cannot resolve (yet), so adding support shows up as a snapshot diff.
+ */
+
+#include <stdbool.h>
+
+/*
+ * Primitive types, as locals. Covers every `PrimitiveTypeEncoding` variant
+ * except `Address`, which no ordinary C type maps to (see README.md).
+ */
+void primitives(void)
+{
+    signed char sc = -1;
+    unsigned char uc = 1;
+    short s = -2;
+    unsigned short us = 2;
+    int i = -3;
+    unsigned int u = 3;
+    long long ll = -4;
+    unsigned long long ull = 4;
+    float f = 1.5f;
+    double d = 2.5;
+    bool b = true;
+    float _Complex fc = 1.0f;
+}
+
+/*
+ * Pointer types, as parameters, so the fixture covers `Kind::Parameter` too.
+ *
+ * `str`, `any` and `fn` are not resolvable yet: `const char *` points at a
+ * `DW_TAG_const_type`, `void *` has no `DW_AT_type` at all, and `int (*)(int)`
+ * points at a `DW_TAG_subroutine_type`.
+ */
+void pointers(int *num, int **num_ptr, const char *str, void *any, int (*fn)(int))
+{
+}
+
+/*
+ * Aggregate types. Not supported yet -- all of these resolve to `Unknown`.
+ */
+typedef struct {
+    int x;
+    int y;
+} Point;
+
+enum Color {
+    RED = 0,
+    GREEN = 1,
+};
+
+union Value {
+    int as_int;
+    float as_float;
+};
+
+void aggregates(void)
+{
+    Point point = {1, 2};
+    int array[3] = {1, 2, 3};
+    enum Color color = GREEN;
+    union Value value = {.as_int = 7};
+    const int constant = 42;
+}
+
+/*
+ * Inlined variables are not supported yet; DW_AT_abstract_origin is not
+ * followed so we don't resolve these (for now).
+ */
+static inline __attribute__((always_inline)) int inlined(int param)
+{
+    int doubled = param * 2;
+    return doubled + 1;
+}
+
+void inlining(int outer)
+{
+    int result = inlined(outer);
+}
+
+int main(void)
+{
+    primitives();
+    pointers(0, 0, 0, 0, 0);
+    aggregates();
+    inlining(5);
+    return 0;
+}
