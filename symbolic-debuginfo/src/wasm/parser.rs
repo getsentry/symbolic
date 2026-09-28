@@ -80,6 +80,7 @@ impl<'d> Parse<'d> for WasmObject<'d> {
         let features = WasmFeatures::all();
         let mut validator = Validator::new_with_features(features);
         let mut funcs = Vec::<Symbol>::new();
+        let mut body_sizes = Vec::<u64>::new();
         let mut num_imported_funcs = 0u32;
         let mut func_allocs = FuncValidatorAllocations::default();
 
@@ -162,7 +163,9 @@ impl<'d> Parse<'d> for WasmObject<'d> {
 
                     // Though we have an accurate? size of the function body, the old method of symbol
                     // iterating with walrus extends the size of each body to be contiguous with the
-                    // next function, so we do the same, other than the final function
+                    // next function, so we do the same, other than the final function. The exact
+                    // size is kept alongside for consumers that need the real bounds.
+                    body_sizes.push(size);
                     if let Some(prev) = funcs.last_mut() {
                         prev.size = address - prev.address;
                     }
@@ -240,6 +243,8 @@ impl<'d> Parse<'d> for WasmObject<'d> {
             data,
             code_offset,
             kind,
+            body_sizes,
+            num_imported_funcs,
         })
     }
 }

@@ -23,6 +23,7 @@ all-features = true
 
 [dependencies]
 indexmap = { workspace = true }
+sourcemap = { workspace = true, optional = true }
 symbolic-common = { version = "14.0.0-alpha.3", path = "../symbolic-common" }
 symbolic-debuginfo = { version = "14.0.0-alpha.3", path = "../symbolic-debuginfo" }
 symbolic-il2cpp = { version = "14.0.0-alpha.3", path = "../symbolic-il2cpp", optional = true }
@@ -38,6 +39,8 @@ symbolic-testutils = { path = "../symbolic-testutils" }
 [features]
 bench = []
 il2cpp = ["symbolic-il2cpp"]
+# Synthesize SymCaches for WASM modules from Emscripten source maps
+wasm-sourcemap = ["dep:sourcemap", "symbolic-debuginfo/wasm"]
 
 [[bench]]
 name = "bench_writer"

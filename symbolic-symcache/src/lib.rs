@@ -114,6 +114,8 @@ mod raw;
 pub mod transform;
 mod utils;
 mod v9;
+#[cfg(feature = "wasm-sourcemap")]
+pub mod wasm_sourcemap;
 mod writer;
 
 use symbolic_common::{Arch, AsSelf, DebugId};

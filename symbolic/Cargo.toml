@@ -32,6 +32,7 @@ ppdb = ["symbolic-ppdb"]
 sourcemapcache = ["symbolic-sourcemapcache"]
 symcache = ["symbolic-symcache", "debuginfo"]
 unreal = ["symbolic-unreal"]
+wasm-sourcemap = ["symcache", "symbolic-symcache/wasm-sourcemap"]
 unreal-serde = ["unreal", "common-serde", "symbolic-unreal/serde"]
 
 [dependencies]

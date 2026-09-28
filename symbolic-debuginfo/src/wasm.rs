@@ -34,6 +34,25 @@ pub struct WasmObject<'data> {
     data: &'data [u8],
     code_offset: u64,
     kind: ObjectKind,
+    /// True body size of every function, parallel to `funcs`.
+    ///
+    /// The sizes in `funcs` are stretched to be contiguous with the next function, which hides the
+    /// padding between two bodies. Consumers that need exact bounds use these instead.
+    body_sizes: Vec<u64>,
+    num_imported_funcs: u32,
+}
+
+/// A function body in the code section of a [`WasmObject`].
+#[derive(Clone, Copy, Debug)]
+pub struct WasmFunctionBody<'data> {
+    /// The wasm function index, counting imported functions.
+    pub index: u32,
+    /// Offset of the body in the module, relative to the start of the file.
+    pub address: u64,
+    /// Exact size of the body, excluding any padding to the next function.
+    pub size: u64,
+    /// Name from the `name` section, if the module has one.
+    pub name: Option<&'data str>,
 }
 
 impl<'data> WasmObject<'data> {
@@ -99,6 +118,22 @@ impl<'data> WasmObject<'data> {
             funcs: self.funcs.clone().into_iter(),
             _marker: std::marker::PhantomData,
         }
+    }
+
+    /// Returns an iterator over the function bodies in the code section, in code section order.
+    ///
+    /// Unlike [`symbols`](Self::symbols) this reports exact body bounds and wasm function indices.
+    pub fn function_bodies(&self) -> impl Iterator<Item = WasmFunctionBody<'_>> + '_ {
+        self.funcs
+            .iter()
+            .zip(self.body_sizes.iter())
+            .enumerate()
+            .map(move |(i, (func, size))| WasmFunctionBody {
+                index: self.num_imported_funcs + i as u32,
+                address: func.address,
+                size: *size,
+                name: func.name.as_deref(),
+            })
     }
 
     /// Returns an ordered map of symbols in the symbol table.
