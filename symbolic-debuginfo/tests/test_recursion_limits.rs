@@ -1,4 +1,3 @@
-use std::assert_matches;
 use symbolic_debuginfo::Object;
 
 #[test]
@@ -25,5 +24,5 @@ fn test_function_inlining() {
 
     let func = session.functions().next().unwrap();
 
-    assert_matches!(func, Err(_));
+    assert!(func.is_ok());
 }

@@ -285,6 +285,18 @@ fn test_undecorate_windows_symbols() -> Result<(), Error> {
     Ok(())
 }
 
+#[test]
+fn test_dont_undecorate_dwarf_function_names() -> Result<(), Error> {
+    let buffer = serialize_fixture("windows/hello-dwarf.exe", false)?;
+    let symcache = SymCache::parse(&buffer)?;
+
+    let symbols = symcache.lookup(0x1180).collect::<Vec<_>>();
+    assert_eq!(symbols.len(), 1);
+    assert_eq!(symbols[0].function().name(), "__tmainCRTStartup");
+
+    Ok(())
+}
+
 /// Tests that the cache is lenient toward adding additional flags at the end.
 #[test]
 fn test_trailing_marker() -> Result<(), Error> {

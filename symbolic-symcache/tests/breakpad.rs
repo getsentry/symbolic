@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::io::Cursor;
 
 use symbolic_common::{ByteView, clean_path};
-use symbolic_debuginfo::{Object, ParseObjectOptions, breakpad::BreakpadObject};
+use symbolic_debuginfo::{Object, breakpad::BreakpadObject};
 use symbolic_symcache::{SymCache, SymCacheConverter};
 use symbolic_testutils::fixture;
 
@@ -165,10 +165,7 @@ FUNC 1000 2000 0 outer
         sym.push_str(&format!("INLINE {depth} 1 0 0 1000 2000\n"));
     }
 
-    let limit = 512;
-    let mut opts = ParseObjectOptions::default();
-    opts.max_function_parse_depth = limit;
-    let breakpad = Object::parse_with_opts(sym.as_bytes(), opts).unwrap();
+    let breakpad = Object::parse(sym.as_bytes()).unwrap();
 
     let mut buffer = Vec::new();
     let mut converter = SymCacheConverter::new();
@@ -177,5 +174,5 @@ FUNC 1000 2000 0 outer
     let symcache = SymCache::parse(&buffer).unwrap();
 
     let lookup_result: Vec<_> = symcache.lookup(0x1000).collect();
-    assert_eq!(lookup_result.len(), limit as usize + 2);
+    assert_eq!(lookup_result.len(), 1001);
 }

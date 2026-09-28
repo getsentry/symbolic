@@ -1078,7 +1078,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         &self,
         index: usize,
         depth: isize,
-        max_parse_depth: usize,
         dw_die_offset: gimli::UnitOffset<usize>,
         entries: &mut EntriesRaw<'d, '_>,
         abbrev: &gimli::Abbreviation,
@@ -1157,13 +1156,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 let size = range.end - range.begin;
                 (
                     *range,
-                    FunctionBuilder::new(
-                        name.clone(),
-                        self.compilation_dir(),
-                        address,
-                        size,
-                        max_parse_depth as u32,
-                    ),
+                    FunctionBuilder::new(name.clone(), self.compilation_dir(), address, size),
                 )
             })
             .collect();
@@ -1245,7 +1238,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         &self,
         entries: &mut EntriesRaw<'d, '_>,
         output: &mut FunctionsOutput<'_, 'd>,
-        max_parse_depth: usize,
     ) -> Result<(), DwarfError> {
         let mut function_stack: Vec<InProgressSubProgram<'d>> = vec![];
 
@@ -1280,7 +1272,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     let program = self.consume_subprogram_tag(
                         function_stack.len(),
                         next_depth,
-                        max_parse_depth,
                         dw_die_offset,
                         entries,
                         abbrev,
@@ -1324,12 +1315,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 _ => {
                     entries.skip_attributes(abbrev.attributes())?;
                 }
-            }
-            if function_stack.len() > max_parse_depth {
-                return Err(DwarfError::new(
-                    DwarfErrorKind::CorruptedData,
-                    "Exceeded max parse depth",
-                ));
             }
         }
 
@@ -1494,11 +1479,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     fn functions(
         &self,
         seen_ranges: &mut BTreeSet<(u64, u64)>,
-        max_parse_depth: u32,
     ) -> Result<Vec<Function<'d>>, DwarfError> {
         let mut entries = self.inner.unit.entries_raw(None)?;
         let mut output = FunctionsOutput::with_seen_ranges(seen_ranges);
-        self.parse_functions(&mut entries, &mut output, max_parse_depth as usize)?;
+        self.parse_functions(&mut entries, &mut output)?;
         Ok(output.functions)
     }
 }
@@ -1942,7 +1926,6 @@ impl std::iter::FusedIterator for DwarfUnitIterator<'_> {}
 pub struct DwarfDebugSession<'data> {
     cell: SelfCell<Box<DwarfSections<'data>>, DwarfInfo<'data>>,
     bcsymbolmap: Option<Arc<BcSymbolMap<'data>>>,
-    max_parse_depth: u32,
 }
 
 impl<'data> DwarfDebugSession<'data> {
@@ -1952,7 +1935,6 @@ impl<'data> DwarfDebugSession<'data> {
         symbol_map: SymbolMap<'data>,
         address_offset: i64,
         kind: ObjectKind,
-        max_parse_depth: u32,
     ) -> Result<Self, DwarfError>
     where
         D: Dwarf<'data>,
@@ -1965,7 +1947,6 @@ impl<'data> DwarfDebugSession<'data> {
         Ok(DwarfDebugSession {
             cell,
             bcsymbolmap: None,
-            max_parse_depth,
         })
     }
 
@@ -1994,7 +1975,6 @@ impl<'data> DwarfDebugSession<'data> {
             functions: Vec::new().into_iter(),
             seen_ranges: BTreeSet::new(),
             finished: false,
-            max_parse_depth: self.max_parse_depth,
         }
     }
 
@@ -2141,7 +2121,6 @@ pub struct DwarfFunctionIterator<'s> {
     functions: std::vec::IntoIter<Function<'s>>,
     seen_ranges: BTreeSet<(u64, u64)>,
     finished: bool,
-    max_parse_depth: u32,
 }
 
 impl<'s> Iterator for DwarfFunctionIterator<'s> {
@@ -2163,7 +2142,7 @@ impl<'s> Iterator for DwarfFunctionIterator<'s> {
                 None => break,
             };
 
-            self.functions = match unit.functions(&mut self.seen_ranges, self.max_parse_depth) {
+            self.functions = match unit.functions(&mut self.seen_ranges) {
                 Ok(functions) => functions.into_iter(),
                 Err(error) => return Some(Err(error)),
             };
