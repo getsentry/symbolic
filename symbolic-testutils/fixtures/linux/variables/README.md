@@ -20,12 +20,8 @@ If you change `variables.c`, rebuild from *this* directory — it rewrites both 
 the source:
 
 ```sh
-docker run --rm --platform linux/amd64 \
-    -v "$PWD:/fixture" -w /fixture gcc:14.4.0 ./build.sh
+docker run --rm --platform linux/amd64 -v "$PWD:/fixture" -w /fixture gcc:14.4.0 ./build.sh
 ```
-
-Docker keeps the binaries reproducible (pinned compiler, architecture, and embedded paths) — don't
-build outside it.
 
 The snapshots record absolute addresses and line records, so changes to the source can shift other
 functions' addresses. Refresh both from the repository root, review the diff, and commit the

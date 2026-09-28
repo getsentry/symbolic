@@ -11,5 +11,6 @@ set -eu
 
 cd "$(dirname "$0")"
 
-gcc -g -gdwarf-5 -O0 -o variables variables.c
-gcc -g -gdwarf-5 -O2 -o variables_opt variables.c
+file_prefix_map="-ffile-prefix-map=$(pwd -P)=/fixture"
+gcc "$file_prefix_map" -g -gdwarf-5 -O0 -o variables variables.c
+gcc "$file_prefix_map" -g -gdwarf-5 -O2 -o variables_opt variables.c
