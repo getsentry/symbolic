@@ -69,6 +69,7 @@ struct DemangleOptions {
   bool PrintForTypeName = false;
   bool ShowAsyncResumePartial = true;
   bool ShowClosureSignature = true;
+  size_t MaxOutputBytes = 4096;
 
   /// If this is nonempty, entities in this module name will not be qualified.
   llvm::StringRef HidingCurrentModule;
@@ -202,7 +203,7 @@ public:
   using RemoteAddressType = std::pair<uint64_t, uint8_t>;
 
   friend class NodeFactory;
-  
+
 private:
 
   struct NodeVector {
@@ -642,7 +643,7 @@ demangleTypeAsString(llvm::StringRef MangledName,
   return demangleTypeAsString(MangledName.data(),
                               MangledName.size(), Options);
 }
-  
+
 
 enum class OperatorKind {
   NotOperator,
@@ -794,15 +795,23 @@ std::string keyPathSourceString(const char *MangledName,
 /// A class for printing to a std::string.
 class DemanglerPrinter {
 public:
-  DemanglerPrinter() = default;
+  DemanglerPrinter(size_t max_bytes) : max_bytes(max_bytes) {}
 
   DemanglerPrinter &operator<<(llvm::StringRef Value) & {
-    Stream.append(Value.data(), Value.size());
+    if (Stream.size() < max_bytes) {
+      Stream.append(Value.data(), Value.size());
+    } else {
+      is_exhausted = true;
+    }
     return *this;
   }
-  
+
   DemanglerPrinter &operator<<(char c) & {
-    Stream.push_back(c);
+    if (Stream.size() < max_bytes) {
+      Stream.push_back(c);
+    } else {
+      is_exhausted = true;
+    }
     return *this;
   }
   DemanglerPrinter &operator<<(unsigned long long n) &;
@@ -829,6 +838,8 @@ public:
  
   std::string &&str() && { return std::move(Stream); }
 
+  bool exhausted() const { return is_exhausted; }
+
   llvm::StringRef getStringRef() const { return Stream; }
 
   size_t getStreamLength() { return Stream.length(); }
@@ -841,6 +852,8 @@ public:
 
 private:
   std::string Stream;
+  size_t max_bytes = 4096;
+  bool is_exhausted = false;
 };
 
 /// Returns a the node kind \p k as string.
@@ -892,7 +905,7 @@ protected:
   bool isValid = true;
 
 public:
-  NodePrinter(DemangleOptions options) : Options(options) {}
+  NodePrinter(DemangleOptions options) : Options(options), Printer(options.MaxOutputBytes) {}
 
   virtual ~NodePrinter() = default;
 

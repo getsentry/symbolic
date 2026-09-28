@@ -50,7 +50,8 @@ static void printNode(DemanglerPrinter &Out, const Node *node, unsigned depth) {
 }
 
 std::string Demangle::getNodeTreeAsString(NodePointer Root) {
-  DemanglerPrinter Printer;
+  DemangleOptions options;
+  DemanglerPrinter Printer(options.MaxOutputBytes);
   printNode(Printer, Root, 0);
   return std::move(Printer).str();
 }

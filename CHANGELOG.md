@@ -22,7 +22,13 @@
 - Remove recursive symcache writer. ([#1066](https://github.com/getsentry/symbolic/pull/1066))
 - Don't panic when seeing a no-entry second level compact page ([#1067](https://github.com/getsentry/symbolic/pull/1067))
 - Add recursion limit to swift `Demangler` ([#1068](https://github.com/getsentry/symbolic/pull/1068))
+- Preserve _Z mangled itanium prefixes. ([#1074](https://github.com/getsentry/symbolic/pull/1074))
 - Do not undecorate function names from DWARF debug information in PE files. ([#1074](https://github.com/getsentry/symbolic/pull/1074), [#1075](https://github.com/getsentry/symbolic/pull/1075))
+- Bound output string size. ([#1073](https://github.com/getsentry/symbolic/pull/1073))
+- Don't accept unbounded custom nodes in RuntimeProperties. ([#1072](https://github.com/getsentry/symbolic/pull/1072))
+- Avoid infinite looping in the swift demangler with bad const prop codes. ([#1079](https://github.com/getsentry/symbolic/pull/1079))
+- Guard against empty NodePrinter children in the Swift demanger. ([#1078](https://github.com/getsentry/symbolic/pull/1078))
+- Prevent cycles when iterating on inline sourcelocations in symcache. ([#1080](https://github.com/getsentry/symbolic/pull/1080))
 - Don't artificially extend WASM symbol sizes. ([#1081](https://github.com/getsentry/symbolic/pull/1081))
 
 **Dependencies**
@@ -30,6 +36,7 @@
 - Bump `pdb-addr2line` to 0.12.1 to fix a potential infinite recursion. ([#1030](https://github.com/getsentry/symbolic/pull/1030))
 - Bump `js-source-scopes` to 0.7.3 to fix name resolution for private functions. ([#1057](https://github.com/getsentry/symbolic/pull/1057))
 - Bump `cpp_demangle` to 0.5.1. ([#1077](https://github.com/getsentry/symbolic/pull/1077))
+- Bump `minidump` to 0.27.0. ([#1082](https://github.com/getsentry/symbolic/pull/1082))
 
 **Features**
 
