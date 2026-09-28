@@ -555,7 +555,10 @@ fn test_elf_variables_opt() -> Result<(), Error> {
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
 
-    insta::assert_debug_snapshot!("elf_variables_opt", FunctionsDebug::new(&session, &functions));
+    insta::assert_debug_snapshot!(
+        "elf_variables_opt",
+        FunctionsDebug::new(&session, &functions)
+    );
 
     Ok(())
 }
