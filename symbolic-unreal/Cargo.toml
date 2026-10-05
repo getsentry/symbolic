@@ -40,3 +40,6 @@ time = { workspace = true }
 insta = { workspace = true }
 similar-asserts = { workspace = true }
 symbolic-testutils = { path = "../symbolic-testutils" }
+
+[lints]
+workspace = true

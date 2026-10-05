@@ -123,3 +123,6 @@ symbolic-testutils = { path = "../symbolic-testutils" }
 name = "breakpad_parser"
 harness = false
 required-features = ["breakpad"]
+
+[lints]
+workspace = true
