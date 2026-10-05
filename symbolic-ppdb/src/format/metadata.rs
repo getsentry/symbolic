@@ -693,7 +693,7 @@ impl<'data> MetadataStream<'data> {
     /// Returns the size in bytes of an index into this stream's `table` table, based on the table's
     /// number of rows.
     fn table_index_size(&self, table: TableType, referenced_table_sizes: &[u32; 64]) -> usize {
-        if self.table_size(table, referenced_table_sizes) >= u16::MAX as usize {
+        if self.table_size(table, referenced_table_sizes) > u16::MAX as usize {
             4
         } else {
             2
@@ -1007,5 +1007,53 @@ impl CustomDebugInformationTag {
             x if x == Self::ImportScope as u32 => Self::ImportScope,
             _ => return Err(FormatErrorKind::InvalidCustomDebugInformationTag(value).into()),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Parses a `#~` stream that holds one `LocalScope` row and `local_variables`
+    /// `LocalVariable` rows, with `method_defs` `MethodDef` rows referenced from the
+    /// `#Pdb` stream, and returns the width of a `LocalScope` row.
+    ///
+    /// The row data is sized as ECMA-335 II.24.2.6 prescribes: a simple index is
+    /// 2 bytes wide if the table has fewer than 2^16 rows and 4 bytes otherwise.
+    fn local_scope_width(local_variables: u32, method_defs: u32) -> usize {
+        let index_size = |rows: u32| if rows < 1 << 16 { 2 } else { 4 };
+        // Method, ImportScope, VariableList, ConstantList, StartOffset, Length
+        let scope_width = index_size(method_defs) + 2 + index_size(local_variables) + 2 + 4 + 4;
+        // Attributes, Index, Name
+        let local_variable_width = 2 + 2 + 2;
+
+        let valid_tables: u64 =
+            (1 << TableType::LocalScope as usize) | (1 << TableType::LocalVariable as usize);
+
+        let mut buf = Vec::new();
+        buf.extend_from_slice(&0u32.to_le_bytes()); // reserved
+        buf.extend_from_slice(&[2, 0, 0, 1]); // major, minor, heap sizes, reserved
+        buf.extend_from_slice(&valid_tables.to_le_bytes());
+        buf.extend_from_slice(&0u64.to_le_bytes()); // sorted
+        buf.extend_from_slice(&1u32.to_le_bytes()); // LocalScope rows
+        buf.extend_from_slice(&local_variables.to_le_bytes()); // LocalVariable rows
+        let table_data = scope_width + local_variable_width * local_variables as usize;
+        buf.resize(buf.len() + table_data, 0);
+
+        let mut referenced_table_sizes = [0; 64];
+        referenced_table_sizes[TableType::MethodDef as usize] = method_defs;
+
+        let stream = MetadataStream::parse(&buf, referenced_table_sizes).unwrap();
+        stream[TableType::LocalScope].width
+    }
+
+    #[test]
+    fn test_table_index_size() {
+        assert_eq!(local_scope_width(1, 1), 16);
+        assert_eq!(local_scope_width(65_535, 1), 16);
+        assert_eq!(local_scope_width(65_536, 1), 18);
+        // Row counts of type-system tables come from the #Pdb stream.
+        assert_eq!(local_scope_width(1, 65_535), 16);
+        assert_eq!(local_scope_width(1, 65_536), 18);
     }
 }
