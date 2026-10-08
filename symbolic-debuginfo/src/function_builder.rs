@@ -153,7 +153,7 @@ impl<'s> FunctionBuilder<'s> {
             variables,
             inline: false,
         };
-        let outer_function_end = address + size;
+        let outer_function_end = address.saturating_add(size);
         let mut stack = FunctionBuilderStack::new(outer_function);
 
         let mut inlinee_iter = inlinees.into_iter();
