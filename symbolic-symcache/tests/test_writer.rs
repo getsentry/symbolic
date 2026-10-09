@@ -1,7 +1,7 @@
-use std::{fmt::Write as _, io::Cursor};
+use std::{borrow::Cow, fmt::Write as _, io::Cursor};
 
 use symbolic_common::ByteView;
-use symbolic_debuginfo::Object;
+use symbolic_debuginfo::{Object, Symbol};
 use symbolic_symcache::{FunctionsDebug, SymCache, SymCacheConverter};
 use symbolic_testutils::fixture;
 
@@ -406,4 +406,33 @@ fn test_lookup_between_functions() {
 
     assert_eq!(function.name(), "-[CRLCrashNXPage crash]");
     assert_eq!(function.entry_pc(), 0x8b38);
+}
+
+#[test]
+fn test_high_addr_symbol_does_not_truncate_into_low_ranges() -> Result<(), Error> {
+    let mut converter = SymCacheConverter::new();
+    // A regular low symbol covering [0x10, 0x40).
+    converter.process_symbolic_symbol(&Symbol {
+        name: Some(Cow::Borrowed("low")),
+        address: 0x10,
+        size: 0x30,
+    });
+    // A symbol living entirely above the u32 address range. Its end marker
+    // must not be truncated down into the low symbol's address space.
+    converter.process_symbolic_symbol(&Symbol {
+        name: Some(Cow::Borrowed("high")),
+        address: 0x1_0000_0010,
+        size: 0x10,
+    });
+
+    let mut symcache = Vec::new();
+    converter.serialize(&mut Cursor::new(&mut symcache))?;
+    let cache = SymCache::parse(&symcache)?;
+
+    let mut source_locations = cache.lookup(0x20);
+    let source_location = source_locations
+        .next()
+        .ok_or("expected a source location at 0x20")?;
+    assert_eq!(source_location.function().name(), "low");
+    Ok(())
 }
