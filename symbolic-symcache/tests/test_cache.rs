@@ -256,3 +256,47 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
 
     Ok(())
 }
+
+#[test]
+fn test_malformed_section_relationship_rejected() {
+    use std::borrow::Cow;
+    use symbolic_debuginfo::Symbol;
+    use symbolic_symcache::ErrorKind;
+
+    let mut converter = SymCacheConverter::new();
+    converter.process_symbolic_symbol(&Symbol {
+        name: Some(Cow::Borrowed("some_function_with_a_long_name")),
+        address: 0x1000,
+        size: 0x10,
+    });
+    let mut buf = Vec::new();
+    converter.serialize(&mut Cursor::new(&mut buf)).unwrap();
+    assert!(SymCache::parse(&buf).is_ok());
+
+    // Locate the consecutive `num_files` / `num_functions` /
+    // `num_source_locations` / `num_ranges` counts in the serialized header
+    // without hardcoding field offsets, then inflate the range count past the
+    // source location count. The string section provides enough trailing bytes
+    // for the inflated range slice to still succeed, so the dedicated
+    // relationship check is what rejects the cache.
+    let mut rejected = false;
+    for i in (0..48).step_by(4) {
+        let num_source_locations = u32::from_le_bytes(buf[i + 8..i + 12].try_into().unwrap());
+        let num_ranges = u32::from_le_bytes(buf[i + 12..i + 16].try_into().unwrap());
+        if num_source_locations == 0 || num_ranges > num_source_locations {
+            continue;
+        }
+        let mut corrupted = buf.clone();
+        corrupted[i + 12..i + 16].copy_from_slice(&(num_source_locations + 1).to_le_bytes());
+        if let Err(err) = SymCache::parse(&corrupted) {
+            if matches!(err.kind(), ErrorKind::InvalidRanges) {
+                rejected = true;
+                break;
+            }
+        }
+    }
+    assert!(
+        rejected,
+        "inflating num_ranges did not invalidate the cache"
+    );
+}
