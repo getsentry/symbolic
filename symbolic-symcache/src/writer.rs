@@ -612,6 +612,12 @@ impl<'a> SymCacheConverter<'a> {
 
     /// Processes an individual [`Symbol`].
     pub fn process_symbolic_symbol(&mut self, symbol: &Symbol<'_>) {
+        // Mirroring `process_symbolic_functions`, skip symbols outside the u32
+        // address range; casting their addresses down would truncate them and
+        // corrupt range mappings of low addresses.
+        if symbol.address > u32::MAX as u64 {
+            return;
+        }
         let name_idx = {
             let mut function = transform::Function {
                 name: match symbol.name {
@@ -667,9 +673,17 @@ impl<'a> SymCacheConverter<'a> {
         // If the next symbol starts right at this symbols's end, that's no trouble,
         // it will just overwrite this mapping.
         if symbol.size > 0 {
-            let end_address = (symbol.address + symbol.size) as u32;
-            if let btree_map::Entry::Vacant(vacant_entry) = self.ranges.entry(end_address) {
-                vacant_entry.insert(v9::raw::NO_SOURCE_LOCATION);
+            // Only insert the end mapping if the end of the symbol is still
+            // representable; a straddling symbol's end must not truncate into
+            // low addresses.
+            if let Some(end_address) = symbol
+                .address
+                .checked_add(symbol.size)
+                .and_then(|end| u32::try_from(end).ok())
+            {
+                if let btree_map::Entry::Vacant(vacant_entry) = self.ranges.entry(end_address) {
+                    vacant_entry.insert(v9::raw::NO_SOURCE_LOCATION);
+                }
             }
         }
     }
