@@ -430,8 +430,9 @@ fn test_high_addr_symbol_does_not_truncate_into_low_ranges() -> Result<(), Error
     let cache = SymCache::parse(&symcache)?;
 
     let mut source_locations = cache.lookup(0x20);
-    let source_location =
-        source_locations.next().ok_or("expected a source location at 0x20")?;
+    let source_location = source_locations
+        .next()
+        .ok_or("expected a source location at 0x20")?;
     assert_eq!(source_location.function().name(), "low");
     Ok(())
 }
