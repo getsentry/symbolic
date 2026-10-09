@@ -26,6 +26,8 @@ impl<'data> SymCache<'data> {
             }
         };
 
+        // The ranges section indexes into the tail of the source locations
+        // section; `SymCache::parse` rejects caches violating that relationship.
         let source_location_start = (self.source_locations.len() - self.ranges.len()) as u32;
         let mut source_location_idx = match self.ranges.binary_search_by_key(&addr, |r| r.0) {
             Ok(idx) => source_location_start + idx as u32,

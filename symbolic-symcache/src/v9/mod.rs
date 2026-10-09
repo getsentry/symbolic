@@ -67,6 +67,14 @@ impl<'data> SymCache<'data> {
         let (ranges, rest) = raw::Range::slice_from_prefix(rest, header.num_ranges as usize)
             .ok_or(ErrorKind::InvalidRanges)?;
 
+        // The ranges section indexes into the tail of the source locations
+        // section (`SymCache::lookup` relies on this relationship); reject
+        // malformed caches that break it instead of wrapping around during
+        // lookups.
+        if ranges.len() > source_locations.len() {
+            return Err(ErrorKind::InvalidRanges.into());
+        }
+
         let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::UnexpectedStringBytes {
             expected: header.string_bytes as usize,
             found: 0,

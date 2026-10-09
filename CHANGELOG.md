@@ -29,6 +29,7 @@
 - Avoid infinite looping in the swift demangler with bad const prop codes. ([#1079](https://github.com/getsentry/symbolic/pull/1079))
 - Guard against empty NodePrinter children in the Swift demanger. ([#1078](https://github.com/getsentry/symbolic/pull/1078))
 - Skip symbols outside the u32 address range in the symcache writer. ([#1092](https://github.com/getsentry/symbolic/pull/1092))
+- Reject malformed symcaches whose ranges section outgrows their source locations section. ([#1091](https://github.com/getsentry/symbolic/pull/1091))
 - Prevent cycles when iterating on inline sourcelocations in symcache. ([#1080](https://github.com/getsentry/symbolic/pull/1080))
 - Don't artificially extend WASM symbol sizes. ([#1081](https://github.com/getsentry/symbolic/pull/1081))
 - Use 2-byte simple indexes for Portable PDB tables with exactly 65,535 rows. ([#1085](https://github.com/getsentry/symbolic/pull/1085))
