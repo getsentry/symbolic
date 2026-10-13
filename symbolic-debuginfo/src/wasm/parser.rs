@@ -113,14 +113,17 @@ impl<'d> Parse<'d> for WasmObject<'d> {
                 Payload::ImportSection(isr) => {
                     validator.import_section(&isr)?;
 
-                    for import in isr {
-                        let import = import?;
-                        if let TypeRef::Func(id) = import.ty {
-                            if !func_sigs.get(id as usize).unwrap_or(false) {
-                                return Err(WasmError::UnknownFunctionType);
-                            }
+                    for imports in isr {
+                        let imports = imports?;
+                        for import in imports {
+                            let (_start, import) = import?;
+                            if let TypeRef::Func(id) = import.ty {
+                                if !func_sigs.get(id as usize).unwrap_or(false) {
+                                    return Err(WasmError::UnknownFunctionType);
+                                }
 
-                            num_imported_funcs += 1;
+                                num_imported_funcs += 1;
+                            }
                         }
                     }
                 }
@@ -147,7 +150,7 @@ impl<'d> Parse<'d> for WasmObject<'d> {
                 // the beginning of the section. This one is important as the code section offset is
                 // used to calculate relative addresses in a `DwarfDebugSession`
                 Payload::CodeSectionStart { range, .. } => {
-                    code_offset = range.start as u64;
+                    code_offset = range.start;
                     validator.code_section_start(&range)?;
                 }
                 // We get one of these for each local function body
@@ -242,7 +245,7 @@ fn get_function_info(
     validator: &mut wasmparser::FuncValidator<wasmparser::ValidatorResources>,
 ) -> Result<(u64, u64), WasmError> {
     let mut locals_reader = body.get_binary_reader();
-    let function_address = locals_reader.original_position() as u64;
+    let function_address = locals_reader.original_position();
 
     // locals, we _can_ just skip this, but might as well validate while we're here
     {
@@ -265,6 +268,6 @@ fn get_function_info(
 
     Ok((
         function_address,
-        operators_reader.original_position() as u64 - function_address,
+        operators_reader.original_position() - function_address,
     ))
 }
