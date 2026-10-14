@@ -49,7 +49,8 @@ impl<'data> WasmObject<'data> {
 
     /// The code identifier of this object.
     ///
-    /// Wasm does not yet provide code IDs.
+    /// Wasm build IDs are defined in
+    /// <https://github.com/WebAssembly/tool-conventions/blob/main/BuildId.md>.
     #[inline]
     pub fn code_id(&self) -> Option<CodeId> {
         self.build_id.map(CodeId::from_binary)
@@ -57,7 +58,8 @@ impl<'data> WasmObject<'data> {
 
     /// The debug information identifier of a WASM file.
     ///
-    /// Wasm does not yet provide debug IDs.
+    /// There is no official definition of debug IDs for wasm,
+    /// so we take the first 16 bytes of the build ID as the debug ID.
     #[inline]
     pub fn debug_id(&self) -> DebugId {
         self.build_id

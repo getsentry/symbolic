@@ -180,10 +180,18 @@ impl<'d> Parse<'d> for WasmObject<'d> {
                 // There are several custom sections that we need
                 Payload::CustomSection(reader) => {
                     match reader.name() {
-                        // this section is not defined yet
-                        // see https://github.com/WebAssembly/tool-conventions/issues/133
+                        // https://github.com/WebAssembly/tool-conventions/blob/main/BuildId.md defines
+                        // the build iD section to contain a varuint32 length followed by the actual ID.
                         "build_id" => {
-                            build_id = Some(reader.data());
+                            let mut reader = reader.data_reader();
+                            if reader.bytes_remaining() == 16 {
+                                // If the section contains exactly 16 bytes, we assume that the contents
+                                // are a UUID written before the length + payload format was standardized.
+                                build_id = Some(reader.read_bytes(16)?);
+                            } else {
+                                let len = reader.read_var_u32()?;
+                                build_id = Some(reader.read_bytes(len as usize)?);
+                            }
                         }
                         // All of the dwarf debug sections (.debug_frame, .debug_info etc) start with a `.`, and
                         // are the only ones we need for walking the debug info
