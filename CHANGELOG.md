@@ -9,6 +9,7 @@
 - Adds variables to functions. ([#1025](https://github.com/getsentry/symbolic/pull/1025))
 - `SymCache` and `SourceLocation` no longer implement `PartialEq` and `Eq`. ([#1039](https://github.com/getsentry/symbolic/pull/1039))
 - Remove depth limits from function parsing. ([#1065](https://github.com/getsentry/symbolic/pull/1065))
+- WASM build IDs are now read according to the specification in <https://github.com/WebAssembly/tool-conventions/blob/main/BuildId.md>. ([#1093](https://github.com/getsentry/symbolic/pull/1093))
 
 **Fixes**
 
