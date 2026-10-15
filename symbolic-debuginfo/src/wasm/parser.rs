@@ -113,14 +113,17 @@ impl<'d> Parse<'d> for WasmObject<'d> {
                 Payload::ImportSection(isr) => {
                     validator.import_section(&isr)?;
 
-                    for import in isr {
-                        let import = import?;
-                        if let TypeRef::Func(id) = import.ty {
-                            if !func_sigs.get(id as usize).unwrap_or(false) {
-                                return Err(WasmError::UnknownFunctionType);
-                            }
+                    for imports in isr {
+                        let imports = imports?;
+                        for import in imports {
+                            let (_start, import) = import?;
+                            if let TypeRef::Func(id) = import.ty {
+                                if !func_sigs.get(id as usize).unwrap_or(false) {
+                                    return Err(WasmError::UnknownFunctionType);
+                                }
 
-                            num_imported_funcs += 1;
+                                num_imported_funcs += 1;
+                            }
                         }
                     }
                 }
@@ -146,9 +149,11 @@ impl<'d> Parse<'d> for WasmObject<'d> {
                 // The code section contains the actual function bodies, this payload is emitted at
                 // the beginning of the section. This one is important as the code section offset is
                 // used to calculate relative addresses in a `DwarfDebugSession`
-                Payload::CodeSectionStart { range, .. } => {
-                    code_offset = range.start as u64;
-                    validator.code_section_start(&range)?;
+                Payload::CodeSectionStart {
+                    unchecked_range, ..
+                } => {
+                    validator.code_section_start(&unchecked_range)?;
+                    code_offset = unchecked_range.start;
                 }
                 // We get one of these for each local function body
                 Payload::CodeSectionEntry(body) => {
@@ -175,10 +180,18 @@ impl<'d> Parse<'d> for WasmObject<'d> {
                 // There are several custom sections that we need
                 Payload::CustomSection(reader) => {
                     match reader.name() {
-                        // this section is not defined yet
-                        // see https://github.com/WebAssembly/tool-conventions/issues/133
+                        // https://github.com/WebAssembly/tool-conventions/blob/main/BuildId.md defines
+                        // the build iD section to contain a varuint32 length followed by the actual ID.
                         "build_id" => {
-                            build_id = Some(reader.data());
+                            let mut reader = reader.data_reader();
+                            if reader.bytes_remaining() == 16 {
+                                // If the section contains exactly 16 bytes, we assume that the contents
+                                // are a UUID written before the length + payload format was standardized.
+                                build_id = Some(reader.read_bytes(16)?);
+                            } else {
+                                let len = reader.read_var_u32()?;
+                                build_id = Some(reader.read_bytes(len as usize)?);
+                            }
                         }
                         // All of the dwarf debug sections (.debug_frame, .debug_info etc) start with a `.`, and
                         // are the only ones we need for walking the debug info
@@ -242,7 +255,7 @@ fn get_function_info(
     validator: &mut wasmparser::FuncValidator<wasmparser::ValidatorResources>,
 ) -> Result<(u64, u64), WasmError> {
     let mut locals_reader = body.get_binary_reader();
-    let function_address = locals_reader.original_position() as u64;
+    let function_address = locals_reader.original_position();
 
     // locals, we _can_ just skip this, but might as well validate while we're here
     {
@@ -265,6 +278,6 @@ fn get_function_info(
 
     Ok((
         function_address,
-        operators_reader.original_position() as u64 - function_address,
+        operators_reader.original_position() - function_address,
     ))
 }

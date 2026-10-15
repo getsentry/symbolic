@@ -1220,6 +1220,10 @@ fn test_wasm_line_program() -> Result<(), Error> {
 fn test_wasm_functions() -> Result<(), Error> {
     let view = ByteView::open(fixture("wasm/emscripten/index.wasm"))?;
     let object = Object::parse(&view)?;
+    assert_eq!(
+        object.debug_id(),
+        "da03eb5d-63d7-50fa-ab0f-b8e7cc12a1c3".parse().unwrap()
+    );
 
     let session = object.debug_session().unwrap();
     let r = session.functions().collect::<Vec<_>>();
