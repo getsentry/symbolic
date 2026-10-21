@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+**Breaking Changes**
+
+- Change `symbolic_debuginfo::PointerType::pointee` from `TypeRef` to `Option<TypeRef>`. ([#1100](https://github.com/getsentry/symbolic/pull/1100))
+
+**Features**
+
+- Resolve `void` pointers in variable types as `PointerType` with `pointee` set to `None`. ([#1100](https://github.com/getsentry/symbolic/pull/1100))
+
 **Fixes**
 
 - Keep ARM64 CFI rows after `DW_CFA_AARCH64_negate_ra_state` in binaries built with pointer authentication. ([#1106](https://github.com/getsentry/symbolic/pull/1106))
