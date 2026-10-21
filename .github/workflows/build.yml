@@ -78,7 +78,8 @@ jobs:
 
   sdist:
     name: Python sdist
-    runs-on: ubuntu-latest
+    # Pinned: Python 3.8 is not available on ubuntu-26.04 (ubuntu-latest).
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
