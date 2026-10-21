@@ -161,6 +161,8 @@ impl PointerType {
     /// The referenced type.
     ///
     /// This returns `None` for pointers without a referenced type, like `void*`.
+    /// If the pointer references a type that could not be resolved, this returns `Some` with a
+    /// [`TypeId`] for which [`SymCache::lookup_type`] returns `None`.
     pub fn pointee(&self) -> Option<TypeId> {
         self.pointee
     }
