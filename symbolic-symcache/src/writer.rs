@@ -600,7 +600,9 @@ impl<'a> SymCacheConverter<'a> {
             }
             .into(),
             di::Type::Pointer(ty) => v9::raw::PointerType {
-                pointee_idx: self.process_symbolic_type(tr, &ty.pointee, depth + 1),
+                pointee_idx: ty.pointee.map_or(u32::MAX, |pointee| {
+                    self.process_symbolic_type(tr, &pointee, depth + 1)
+                }),
                 size: size(ty.size),
                 _reserved: [0; _],
             }

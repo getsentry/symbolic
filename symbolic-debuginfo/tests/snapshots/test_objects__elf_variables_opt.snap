@@ -177,7 +177,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x11b0..0x11b1: register 1
     any (parameter)
       type:
-        > Unknown
+        > Pointer (8 bytes)
+          > Void
       0x11b0..0x11b1: register 2
     fn (parameter)
       type:

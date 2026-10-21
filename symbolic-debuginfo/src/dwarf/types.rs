@@ -1,7 +1,7 @@
 use gimli::{AttributeValue, DebuggingInformationEntry, UnitOffset, constants};
 
 use crate::dwarf::{DwarfError, Slice, UnitRef};
-use crate::{PointerType, PrimitiveType, PrimitiveTypeEncoding, Type, TypeRef, TypeSize};
+use crate::{PointerType, PrimitiveType, PrimitiveTypeEncoding, Type, TypeSize};
 
 pub fn parse_type<'d>(
     unit: UnitRef<'d, '_>,
@@ -82,7 +82,7 @@ fn parse_pointer_type<'d>(
     }
 
     Some(PointerType {
-        pointee: pointee.map(TypeRef::from)?,
+        pointee: pointee.map(Into::into),
         size: TypeSize::Bytes(size.unwrap_or_else(|| unit.unit.encoding().address_size.into())),
     })
 }
