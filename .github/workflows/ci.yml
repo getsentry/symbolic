@@ -74,16 +74,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # `os` keeps the job name stable for required status checks.
         # Ubuntu is pinned because Python 3.8 is not available on ubuntu-26.04 (ubuntu-latest).
-        include:
-          - os: ubuntu-latest
-            runner: ubuntu-24.04
-          - os: macos-15
-            runner: macos-15
+        os: [ubuntu-24.04, macos-15]
 
     name: Python Test on ${{ matrix.os }}
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ matrix.os }}
 
     env:
       SYMBOLIC_DEBUG: 1
