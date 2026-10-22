@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING
 
 from symbolic._lowlevel import lib
 
-
 __all__ = ["SymbolicError"]
 exceptions_by_code: dict[int, type[SymbolicError]] = {}
 
@@ -66,5 +65,4 @@ _make_exceptions()
 
 if TYPE_CHECKING:
     # treat unknown attribute names as exception types
-    def __getattr__(name: str) -> type[SymbolicError]:
-        ...
+    def __getattr__(name: str) -> type[SymbolicError]: ...

@@ -13,7 +13,6 @@ from symbolic.utils import (
 from symbolic.common import parse_addr
 from symbolic import exceptions
 
-
 __all__ = [
     "SourceLocation",
     "SymCache",

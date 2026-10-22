@@ -13,7 +13,6 @@ from symbolic.utils import (
     encode_path,
 )
 
-
 __all__ = ["ProguardMapper", "JavaStackFrame"]
 
 

@@ -9,7 +9,6 @@ import subprocess
 from setuptools import setup, find_packages
 from setuptools.command.sdist import sdist
 
-
 _version_re = re.compile(r'(?m)^version\s*=\s*"(.*?)"\s*$')
 
 
@@ -117,7 +116,7 @@ setup(
     # milksnake specifies cffi>=1.6.0 as dependency while cffi does not specify a
     # minimum version for pycparser
     setup_requires=["milksnake>=0.1.2", "cffi>=1.6.0", "pycparser"],
-    python_requires=">=3.14",
+    python_requires=">=3.11",
     milksnake_tasks=[build_native],
     cmdclass={"sdist": CustomSDist},
 )
