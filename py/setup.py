@@ -117,7 +117,7 @@ setup(
     # milksnake specifies cffi>=1.6.0 as dependency while cffi does not specify a
     # minimum version for pycparser
     setup_requires=["milksnake>=0.1.2", "cffi>=1.6.0", "pycparser"],
-    python_requires=">=3.8",
+    python_requires=">=3.14.6",
     milksnake_tasks=[build_native],
     cmdclass={"sdist": CustomSDist},
 )
