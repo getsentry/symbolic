@@ -32,7 +32,6 @@ Symbolic provides the following functionality:
   - Basic token mapping
   - Heuristics to find original function names based on minified sources
   - Indexed sourcemap to sourcemap merging
-- Proguard function mappings
 - Generate Breakpad symbol files from Mach, ELF and PDBs
 - Convenient C and Python library
 - Processing of Unreal Engine 4 native crash reports
@@ -70,7 +69,6 @@ A lot of functionality exposed by this library come from independent Rust crates
 for better use:
 
 - [sourcemap](https://github.com/getsentry/rust-sourcemap)
-- [proguard](https://github.com/getsentry/rust-proguard)
 - [gimli](https://github.com/gimli-rs/gimli)
 - [goblin](https://github.com/m4b/goblin)
 - [pdb](https://github.com/willglynn/pdb)
