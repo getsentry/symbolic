@@ -18,11 +18,12 @@ build:
 .PHONY: build
 
 sdist: .venv/bin/python
+	.venv/bin/pip install -U setuptools
 	cd py && ../.venv/bin/python setup.py sdist
 .PHONY: sdist
 
 wheel: .venv/bin/python
-	cd py && ../.venv/bin/pip install -U wheel && ../.venv/bin/python setup.py bdist_wheel $(PLATFORM:%=-p %)
+	cd py && ../.venv/bin/pip install -U setuptools wheel && ../.venv/bin/python setup.py bdist_wheel $(PLATFORM:%=-p %)
 .PHONY: wheel
 
 wheel-manylinux:
