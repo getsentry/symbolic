@@ -224,7 +224,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x1193..0x11ae: frame base -40
     any (parameter)
       type:
-        > Unknown
+        > Pointer (8 bytes)
+          > Void
       0x1193..0x11ae: frame base -48
     fn (parameter)
       type:

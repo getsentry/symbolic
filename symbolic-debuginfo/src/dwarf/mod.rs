@@ -2001,7 +2001,7 @@ impl<'data> DwarfDebugSession<'data> {
                 offset,
             } => Some(info.find_types_unit_offset(*offset)?),
             DwarfTypeRefInner::Signature(signature) => info.find_type_signature(*signature)?,
-            _ => None,
+            DwarfTypeRefInner::Offset { .. } => None,
         };
         let Some((unit, offset)) = unit else {
             return Ok(None);
