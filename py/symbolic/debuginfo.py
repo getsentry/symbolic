@@ -10,7 +10,6 @@ from symbolic.common import parse_addr, arch_is_known
 from symbolic.symcache import SymCache
 from symbolic.cfi import CfiCache
 
-
 __all__ = [
     "Archive",
     "Object",
@@ -272,13 +271,11 @@ def normalize_code_id(code_id):
 
 
 @overload
-def normalize_debug_id(debug_id: None) -> None:
-    ...
+def normalize_debug_id(debug_id: None) -> None: ...
 
 
 @overload
-def normalize_debug_id(debug_id: str) -> str:
-    ...
+def normalize_debug_id(debug_id: str) -> str: ...
 
 
 def normalize_debug_id(debug_id: str | None) -> str | None:

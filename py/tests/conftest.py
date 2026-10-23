@@ -183,6 +183,8 @@ def change_some_failed_to_skipped(item, rep):
         and "-debug-" in item.nodeid
     ):
         rep.outcome = "skipped"
+        # pytest expects skip reports to carry a (path, lineno, reason) tuple
+        rep.longrepr = (*rep.location[:2], "Skipped: debug build failed")
         rep._wasdebugskip = True
 
 

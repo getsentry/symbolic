@@ -7,7 +7,6 @@ from symbolic._lowlevel import lib, ffi
 from symbolic.utils import rustcall, encode_str, decode_str
 from symbolic import exceptions
 
-
 __all__ = ["arch_is_known", "arch_get_ip_reg_name", "normalize_arch", "parse_addr"]
 
 
@@ -27,13 +26,11 @@ def arch_is_known(arch: str) -> bool:
 
 
 @overload
-def normalize_arch(arch: None) -> None:
-    ...
+def normalize_arch(arch: None) -> None: ...
 
 
 @overload
-def normalize_arch(arch: str) -> str:
-    ...
+def normalize_arch(arch: str) -> str: ...
 
 
 def normalize_arch(arch: str | None) -> str | None:
