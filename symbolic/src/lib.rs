@@ -19,7 +19,6 @@
 //!   - Rust
 //!   - Swift
 //! - JavaScript sourcemap expansion (via `symbolic-cabi` only, use `sourcemap` crate instead)
-//! - Proguard function mappings (via `symbolic-cabi` only, use `proguard` crate instead)
 //! - Breakpad processing
 //!   - Generate Breakpad symbol files from Mach, ELF and PDBs
 //! - Convenient C and Python library

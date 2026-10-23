@@ -10,8 +10,7 @@ homepage = "https://github.com/getsentry/symbolic"
 repository = "https://github.com/getsentry/symbolic"
 description = """
 C interface wrapper for symbolic, a library to symbolicate and process stack
-traces from native applications, minidumps, minified JavaScript or ProGuard
-optimized Android apps.
+traces from native applications, minidumps or minified JavaScript.
 """
 edition = "2021"
 publish = false
@@ -20,7 +19,6 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-proguard = { workspace = true, features = ["uuid"] }
 sourcemap = { workspace = true }
 symbolic = { version = "14.0.0-alpha.4", path = "../symbolic", features = [
     "cfi",
