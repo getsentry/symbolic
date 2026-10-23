@@ -75,7 +75,9 @@ fn parse_pointer_type<'d>(
 
     for attr in entry.attrs {
         match attr.name() {
-            constants::DW_AT_type => pointee = unit.to_type_ref(attr),
+            // Return `None` if `DW_AT_type` is present but cannot be resolved, rather than
+            // treating the pointer as `void*`.
+            constants::DW_AT_type => pointee = Some(unit.to_type_ref(attr)?),
             constants::DW_AT_byte_size => size = attr.udata_value(),
             _ => {}
         }
