@@ -9,6 +9,7 @@
 **Features**
 
 - Resolve `void` pointers in variable types as `PointerType` with `pointee` set to `None`. ([#1100](https://github.com/getsentry/symbolic/pull/1100))
+- Distinguish `void` pointers from pointers to unknown types in symcaches. ([#1101](https://github.com/getsentry/symbolic/pull/1101))
 
 ## 14.0.0-alpha.4
 
