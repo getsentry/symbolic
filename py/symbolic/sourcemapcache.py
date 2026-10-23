@@ -3,7 +3,6 @@ from __future__ import annotations
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, decode_str
 
-
 __all__ = ["SourceMapCache", "SourceMapCacheToken"]
 
 

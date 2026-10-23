@@ -5,7 +5,6 @@ import pytest
 
 from symbolic.common import arch_get_ip_reg_name
 
-
 TEST_PARAMETER = [
     ("1.4.1", "release", "arm64"),
     ("1.4.1", "release", "armv7"),

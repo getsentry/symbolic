@@ -9,7 +9,6 @@ from typing import Protocol
 from symbolic._lowlevel import ffi, lib
 from symbolic.exceptions import exceptions_by_code, SymbolicError
 
-
 __all__ = ["common_path_join", "strip_common_path_prefix"]
 
 
@@ -31,8 +30,7 @@ def common_path_join(a: str, b: str) -> str:
 class _PathMod(Protocol):
     sep: str
 
-    def normpath(self, s: str) -> str:
-        ...
+    def normpath(self, s: str) -> str: ...
 
 
 def strip_common_path_prefix(base: str, prefix: str) -> str:

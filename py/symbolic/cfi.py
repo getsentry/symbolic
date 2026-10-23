@@ -1,4 +1,5 @@
 """Minidump processing"""
+
 from __future__ import annotations
 
 import shutil
@@ -56,5 +57,4 @@ class CfiCache(RustObject):
 
     def write_to(self, f: IO[bytes]) -> None:
         """Writes the CFI cache into a file object."""
-        # https://github.com/python/mypy/issues/15031
-        shutil.copyfileobj(self.open_stream(), f)  # type: ignore[misc]
+        shutil.copyfileobj(self.open_stream(), f)

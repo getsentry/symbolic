@@ -5,7 +5,6 @@ from typing import Generator, overload
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, decode_str, encode_str, attached_refs
 
-
 __all__ = ["SourceView", "SourceMapView", "SourceMapTokenMatch"]
 
 
@@ -84,12 +83,10 @@ class SourceView(RustObject):
         return self._methodcall(lib.symbolic_sourceview_get_line_count)
 
     @overload
-    def __getitem__(self, idx: int) -> str:
-        ...
+    def __getitem__(self, idx: int) -> str: ...
 
     @overload
-    def __getitem__(self, idx: slice) -> list[str]:
-        ...
+    def __getitem__(self, idx: slice) -> list[str]: ...
 
     def __getitem__(self, idx: int | slice) -> str | list[str]:
         if not isinstance(idx, slice):
