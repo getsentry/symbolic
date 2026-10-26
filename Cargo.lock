@@ -2546,6 +2546,7 @@ dependencies = [
  "nom-supreme",
  "parking_lot",
  "pdb-addr2line",
+ "percent-encoding",
  "proptest",
  "regex",
  "scroll 0.13.0",
