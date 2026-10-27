@@ -16,6 +16,16 @@ aarch64-linux-gnu-gcc \
     -o cfi_test \
     cfi_test.c
 
+# Sign return addresses with pointer authentication, which emits
+# `DW_CFA_AARCH64_negate_ra_state` in CFI.
+aarch64-linux-gnu-gcc \
+    -g \
+    -O2 \
+    -mbranch-protection=pac-ret \
+    -Wl,-z,max-page-size=4096 \
+    -o cfi_pac_ret \
+    cfi_pac_ret.c
+
 # Verify the output
-file cfi_test
-echo "ARM64 fixture generated: cfi_test"
+file cfi_test cfi_pac_ret
+echo "ARM64 fixtures generated: cfi_test cfi_pac_ret"

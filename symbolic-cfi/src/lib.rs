@@ -31,7 +31,7 @@ use symbolic_debuginfo::dwarf::Dwarf;
 use symbolic_debuginfo::dwarf::gimli::{
     BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error as GimliError,
     FrameDescriptionEntry, Reader, ReaderOffset, Register, RegisterRule, UnwindContext,
-    UnwindSection,
+    UnwindSection, Vendor,
 };
 use symbolic_debuginfo::macho::{
     CompactCfiOp, CompactCfiRegister, CompactUnwindInfoIter, CompactUnwindOp, MachError, MachObject,
@@ -259,17 +259,27 @@ where
     R: Reader,
 {
     fn set_address_size(&mut self, address_size: u8);
+
+    fn set_vendor(&mut self, vendor: Vendor);
 }
 
 impl<R: Reader> UnwindSectionExt<R> for EhFrame<R> {
     fn set_address_size(&mut self, address_size: u8) {
         self.set_address_size(address_size)
     }
+
+    fn set_vendor(&mut self, vendor: Vendor) {
+        self.set_vendor(vendor)
+    }
 }
 
 impl<R: Reader> UnwindSectionExt<R> for DebugFrame<R> {
     fn set_address_size(&mut self, address_size: u8) {
         self.set_address_size(address_size)
+    }
+
+    fn set_vendor(&mut self, vendor: Vendor) {
+        self.set_vendor(vendor)
     }
 }
 
@@ -301,6 +311,14 @@ impl<U> UnwindInfo<U> {
         // Configure the section to read them appropriately.
         if let Some(pointer_size) = arch.cpu_family().pointer_size() {
             section.set_address_size(pointer_size as u8);
+        }
+
+        // On AArch64, the opcode of `DW_CFA_GNU_window_save` is reused for
+        // `DW_CFA_AARCH64_negate_ra_state`, which is emitted for pointer authentication
+        // (`-mbranch-protection=pac-ret`). Without the vendor, gimli rejects the instruction
+        // and the remaining rows of the FDE are lost.
+        if matches!(arch.cpu_family(), CpuFamily::Arm64 | CpuFamily::Arm64_32) {
+            section.set_vendor(Vendor::AArch64);
         }
 
         UnwindInfo {

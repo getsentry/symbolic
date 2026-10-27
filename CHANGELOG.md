@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- Keep ARM64 CFI rows after `DW_CFA_AARCH64_negate_ra_state` in binaries built with pointer authentication. ([#1106](https://github.com/getsentry/symbolic/pull/1106))
+
 ## 14.0.0-alpha.4
 
 **Breaking Changes**
