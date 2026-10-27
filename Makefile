@@ -18,11 +18,12 @@ build:
 .PHONY: build
 
 sdist: .venv/bin/python
+	.venv/bin/pip install -U setuptools
 	cd py && ../.venv/bin/python setup.py sdist
 .PHONY: sdist
 
 wheel: .venv/bin/python
-	cd py && ../.venv/bin/pip install -U wheel && ../.venv/bin/python setup.py bdist_wheel $(PLATFORM:%=-p %)
+	cd py && ../.venv/bin/pip install -U setuptools wheel && ../.venv/bin/python setup.py bdist_wheel $(PLATFORM:%=-p %)
 .PHONY: wheel
 
 wheel-manylinux:
@@ -48,7 +49,7 @@ test-rust:
 .PHONY: test-rust
 
 test-python: .venv/bin/python
-	.venv/bin/pip install -U "pytest>=5.0.0,<6.0.0"
+	.venv/bin/pip install -U "pytest>=8.0"
 	.venv/bin/pip install -v --editable py
 	.venv/bin/pytest -v py
 .PHONY: test-python
@@ -64,7 +65,7 @@ style-rust:
 .PHONY: style-rust
 
 style-python: .venv/bin/python
-	.venv/bin/pip install -U black==22.3.0
+	.venv/bin/pip install -U "black>=24.0"
 	.venv/bin/black --check py --exclude 'symbolic/_lowlevel*|dist|build|\.eggs'
 
 # Linting
@@ -78,7 +79,7 @@ lint-rust:
 .PHONY: lint-rust
 
 lint-python: .venv/bin/python
-	.venv/bin/pip install -U flake8==6.0.0 mypy==1.4.0 pytest types-setuptools
+	.venv/bin/pip install -U "flake8>=7.0" "mypy>=1.14" pytest types-setuptools types-cffi
 	cd py && ../.venv/bin/flake8 .
 	cd py && ../.venv/bin/mypy .
 .PHONY: lint-python
@@ -94,7 +95,7 @@ format-rust:
 .PHONY: format-rust
 
 format-python: .venv/bin/python
-	.venv/bin/pip install -U black==22.3.0
+	.venv/bin/pip install -U "black>=24.0"
 	.venv/bin/black py --exclude 'symbolic/_lowlevel*|dist|build|\.eggs'
 .PHONY: format-python
 
