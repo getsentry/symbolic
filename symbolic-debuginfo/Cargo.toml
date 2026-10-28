@@ -73,6 +73,7 @@ ppdb = ["symbolic-ppdb"]
 # Source bundle creation
 sourcebundle = [
     "parking_lot",
+    "percent-encoding",
     "regex",
     "serde_json",
     "zip",
@@ -97,6 +98,7 @@ nom = { workspace = true, optional = true }
 nom-supreme = { workspace = true, optional = true }
 parking_lot = { workspace = true, optional = true }
 pdb-addr2line = { workspace = true, optional = true }
+percent-encoding = { workspace = true, optional = true }
 regex = { workspace = true, optional = true }
 scroll = { workspace = true, optional = true }
 serde = { workspace = true }

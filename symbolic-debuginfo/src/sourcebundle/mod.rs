@@ -55,6 +55,7 @@ use std::sync::{Arc, LazyLock};
 use std::{fmt, io};
 
 use parking_lot::Mutex;
+use percent_encoding::percent_decode_str;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
@@ -82,6 +83,21 @@ static MANIFEST_PATH: &str = "manifest.json";
 static FILES_PATH: &str = "files";
 
 static SANE_PATH_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r":?[/\\]+").unwrap());
+
+fn open_source_file(path: &str) -> Option<BufReader<File>> {
+    if let Ok(file) = File::open(path) {
+        return Some(BufReader::new(file));
+    }
+
+    // Some producers, such as the Dart SDK, strip the `file://` prefix from source
+    // paths without percent-decoding the remaining path.
+    let decoded = percent_decode_str(path).decode_utf8().ok()?;
+    if decoded == path {
+        return None;
+    }
+
+    File::open(decoded.as_ref()).ok().map(BufReader::new)
+}
 
 /// The error type for [`SourceBundleError`].
 #[non_exhaustive]
@@ -1418,7 +1434,7 @@ where
     {
         // Read source files from the local filesystem.
         self.write_object_with_filter_and_provider(object, object_name, filter, |path| {
-            File::open(path).map(BufReader::new).ok()
+            open_source_file(path)
         })
         .map(|w| w.0)
     }
@@ -1936,6 +1952,49 @@ mod tests {
         );
 
         assert_eq!(actual_files, expected_files);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_percent_encoded_source_path() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = tempfile::tempdir()?;
+        let source_dir = temp_dir.path().join("folder with space");
+        std::fs::create_dir(&source_dir)?;
+        let source_path = source_dir.join("main.dart");
+        std::fs::write(&source_path, "void main() {}")?;
+
+        let encoded_path = source_path.to_string_lossy().replace(' ', "%20");
+        assert!(!Path::new(&encoded_path).exists());
+
+        let object_buf = {
+            let mut writer = Cursor::new(Vec::new());
+            let mut bundle = SourceBundleWriter::start(&mut writer)?;
+            let mut info = SourceFileInfo::new();
+            info.set_ty(SourceFileType::Source);
+            info.set_path(encoded_path.clone());
+            bundle.add_file(
+                sanitize_bundle_path(&encoded_path),
+                &b"embedded placeholder"[..],
+                info,
+            )?;
+            bundle.finish()?;
+            writer.into_inner()
+        };
+        let object = SourceBundle::parse(&object_buf)?;
+
+        let mut output_buf = Cursor::new(Vec::new());
+        let written = SourceBundleWriter::start(&mut output_buf)?
+            .write_object(&object, "app.symbols")?;
+        assert!(written);
+
+        let output_buf = output_buf.into_inner();
+        let source_bundle = SourceBundle::parse(&output_buf)?;
+        let source = source_bundle
+            .debug_session()?
+            .source_by_path(&encoded_path)?
+            .expect("percent-encoded source path should be bundled");
+        assert_eq!(source.contents(), Some("void main() {}"));
 
         Ok(())
     }
