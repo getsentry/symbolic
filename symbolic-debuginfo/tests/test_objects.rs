@@ -114,7 +114,7 @@ impl fmt::Debug for FunctionsDebug<'_, '_> {
                         "{:?}",
                         TypeDebug {
                             session: self.session,
-                            ty,
+                            ty: Some(ty),
                             depth: self.depth + 4,
                         }
                     )?;
@@ -159,13 +159,17 @@ impl fmt::Debug for FunctionsDebug<'_, '_> {
 
 struct TypeDebug<'data, 'session, 'type_ref> {
     session: &'session ObjectDebugSession<'data>,
-    ty: &'type_ref TypeRef,
+    ty: Option<&'type_ref TypeRef>,
     depth: usize,
 }
 
 impl fmt::Debug for TypeDebug<'_, '_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Some(ty) = self.session.lookup_type(self.ty).unwrap() else {
+        let Some(ty) = self.ty else {
+            return writeln!(f, "{:indent$}> Void", "", indent = self.depth * 2);
+        };
+
+        let Some(ty) = self.session.lookup_type(ty).unwrap() else {
             return writeln!(f, "{:indent$}> Unknown", "", indent = self.depth * 2);
         };
 
@@ -205,7 +209,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                     "{:?}",
                     TypeDebug {
                         session: self.session,
-                        ty: &ty.pointee,
+                        ty: ty.pointee.as_ref(),
                         depth: self.depth + 1,
                     }
                 )

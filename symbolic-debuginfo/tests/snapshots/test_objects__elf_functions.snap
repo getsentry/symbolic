@@ -1035,7 +1035,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x2d88..0x2dae: register 13
     uc (parameter)
       type:
-        > Unknown
+        > Pointer (8 bytes)
+          > Void
       0x2bd0..0x2c08: register 1
       0x2c08..0x2c33: register 14
       0x2c34..0x2dbf: register 14

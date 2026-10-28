@@ -79,12 +79,12 @@ pub enum PrimitiveTypeEncoding {
 }
 
 /// A pointer or reference type.
-///
-/// This type always links to another type via a memory address.
 #[derive(Debug, Clone)]
 pub struct PointerType {
     /// The type the pointer references.
-    pub pointee: TypeRef,
+    ///
+    /// A value of `None` indicates that the pointer has no referenced type, e.g. for `void*`.
+    pub pointee: Option<TypeRef>,
     /// The size of a pointer.
     pub size: TypeSize,
 }
