@@ -842,8 +842,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             .and_then(|av| av.string_value(&info.inner.debug_str));
 
         // Trust the symbol table more to contain accurate mangled names. However, since Dart's name
-        // mangling is lossy, we need to load the demangled name instead.
-        let prefer_dwarf_names = producer.as_deref() == Some(b"Dart VM");
+        // mangling is lossy, we need to load the demangled name instead. Older Dart SDKs write
+        // `Dart VM` as producer, newer ones `Dart <version>`.
+        let prefer_dwarf_names = producer
+            .as_deref()
+            .is_some_and(|producer| producer.starts_with(b"Dart "));
 
         Ok(Some(DwarfUnit {
             inner,
