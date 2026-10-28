@@ -555,7 +555,7 @@ impl<'a> SymCacheConverter<'a> {
 
             let type_idx = match &variable.ty {
                 Some(ty) => self.process_symbolic_type(tr, ty, 0),
-                None => u32::MAX,
+                None => v9::raw::Type::UNKNOWN,
             };
 
             let name_offset = self.string_table.insert(&variable.name) as u32;
@@ -582,11 +582,11 @@ impl<'a> SymCacheConverter<'a> {
         const MAX_DEPTH: usize = 5;
 
         if depth >= MAX_DEPTH {
-            return u32::MAX;
+            return v9::raw::Type::UNKNOWN;
         }
 
         let Some(ty) = tr.lookup_type(ty) else {
-            return u32::MAX;
+            return v9::raw::Type::UNKNOWN;
         };
 
         let ty = match ty {

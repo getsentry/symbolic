@@ -167,6 +167,8 @@ pub struct Variable {
     /// The variable name (reference to a [`String`]).
     pub name_offset: u32,
     /// The type (reference to a [`Type`]).
+    ///
+    /// [`Type::UNKNOWN`] indicates that the variable's type is unknown.
     pub type_idx: u32,
     /// The first location associated with the variable (reference to a [`VariableLocationInfo`]).
     pub location_idx: u32,
@@ -264,8 +266,8 @@ pub struct PrimitiveType {
 pub struct PointerType {
     /// The type this pointer points to (reference to a [`Type`]).
     ///
-    /// `u32::MAX` indicates that the referenced type is unknown, while [`Type::VOID`] indicates
-    /// that the pointer has no referenced type (e.g. `void*`).
+    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown, while [`Type::VOID`]
+    /// indicates that the pointer has no referenced type (e.g. `void*`).
     pub pointee_idx: u32,
     /// The size/width of the pointer.
     pub size: u32,
@@ -294,6 +296,9 @@ pub struct Type {
 }
 
 impl Type {
+    /// Sentinel value for a [`Type`] index indicating that the type is unknown.
+    pub const UNKNOWN: u32 = u32::MAX;
+
     /// Sentinel value for a [`Type`] index indicating the absence of a type (`void`).
     pub const VOID: u32 = u32::MAX - 1;
 
