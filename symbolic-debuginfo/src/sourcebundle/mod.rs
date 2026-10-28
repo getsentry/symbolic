@@ -89,6 +89,8 @@ fn open_source_file(path: &str) -> Option<BufReader<File>> {
         return Some(BufReader::new(file));
     }
 
+    // Some producers, such as the Dart SDK, strip the `file://` prefix from source
+    // paths without percent-decoding the remaining path.
     let decoded = percent_decode_str(path).decode_utf8().ok()?;
     if decoded == path {
         return None;
