@@ -263,6 +263,9 @@ pub struct PrimitiveType {
 #[repr(C)]
 pub struct PointerType {
     /// The type this pointer points to (reference to a [`Type`]).
+    ///
+    /// `u32::MAX` indicates that the referenced type is unknown, while [`Type::VOID`] indicates
+    /// that the pointer has no referenced type (e.g. `void*`).
     pub pointee_idx: u32,
     /// The size/width of the pointer.
     pub size: u32,
@@ -291,6 +294,9 @@ pub struct Type {
 }
 
 impl Type {
+    /// Sentinel value for a [`Type`] index indicating the absence of a type (`void`).
+    pub const VOID: u32 = u32::MAX - 1;
+
     pub fn as_enum(&self) -> Option<ty::Enum> {
         self.ty.into_enum(self.kind)
     }
