@@ -319,8 +319,13 @@ impl<'d> MachObject<'d> {
     /// [`has_debug_info`](struct.MachObject.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
         let symbols = self.symbol_map();
-        let mut session =
-            DwarfDebugSession::parse(self, symbols, self.load_address() as i64, self.kind())?;
+        let mut session = DwarfDebugSession::parse(
+            self,
+            symbols,
+            self.load_address() as i64,
+            self.kind(),
+            self.arch().cpu_family(),
+        )?;
         session.load_symbolmap(self.bcsymbolmap.clone());
         Ok(session)
     }

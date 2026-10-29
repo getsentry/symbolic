@@ -25,7 +25,7 @@ use gimli::{
 };
 use thiserror::Error;
 
-use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
+use symbolic_common::{AsSelf, CpuFamily, Language, Name, NameMangling, Register, SelfCell};
 
 use crate::base::*;
 use crate::function_builder::{
@@ -1471,7 +1471,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         }
 
         match op {
-            Operation::Register { register } => Some(VariableLocation::Register { id: register.0 }),
+            Operation::Register { register } => {
+                Register::from_dwarf(self.inner.info.cpu_family, register.0)
+                    .map(VariableLocation::Register)
+            }
             Operation::FrameOffset { offset } => Some(VariableLocation::FrameOffset { offset }),
             // Currently more operations are not supported.
             _ => None,
@@ -1765,6 +1768,7 @@ struct DwarfInfo<'data> {
     symbol_map: SymbolMap<'data>,
     address_offset: i64,
     kind: ObjectKind,
+    cpu_family: CpuFamily,
 }
 
 impl<'d> Deref for DwarfInfo<'d> {
@@ -1782,6 +1786,7 @@ impl<'d> DwarfInfo<'d> {
         symbol_map: SymbolMap<'d>,
         address_offset: i64,
         kind: ObjectKind,
+        cpu_family: CpuFamily,
     ) -> Result<Self, DwarfError> {
         let mut inner = gimli::read::Dwarf {
             abbreviations_cache: Default::default(),
@@ -1821,6 +1826,7 @@ impl<'d> DwarfInfo<'d> {
             symbol_map,
             address_offset,
             kind,
+            cpu_family,
         })
     }
 
@@ -1938,13 +1944,20 @@ impl<'data> DwarfDebugSession<'data> {
         symbol_map: SymbolMap<'data>,
         address_offset: i64,
         kind: ObjectKind,
+        cpu_family: CpuFamily,
     ) -> Result<Self, DwarfError>
     where
         D: Dwarf<'data>,
     {
         let sections = DwarfSections::from_dwarf(dwarf);
         let cell = SelfCell::try_new(Box::new(sections), |sections| {
-            DwarfInfo::parse(unsafe { &*sections }, symbol_map, address_offset, kind)
+            DwarfInfo::parse(
+                unsafe { &*sections },
+                symbol_map,
+                address_offset,
+                kind,
+                cpu_family,
+            )
         })?;
 
         Ok(DwarfDebugSession {

@@ -507,6 +507,8 @@ fn ensure_proper_nesting(
 
 #[cfg(test)]
 mod tests {
+    use symbolic_common::{Amd64Register, Register};
+
     use crate::{VariableKind, VariableLocation, VariableLocationInfo};
 
     use super::*;
@@ -568,7 +570,7 @@ mod tests {
             locations: vec![VariableLocationInfo {
                 address: 0x10,
                 size: 0x40,
-                location: VariableLocation::Register { id: 0 },
+                location: VariableLocation::Register(Register::Amd64(Amd64Register::Rax)),
             }],
         };
 
@@ -628,9 +630,11 @@ mod tests {
                                 VariableLocationInfo {
                                     address: 0x20,
                                     size: 0x10,
-                                    location: Register {
-                                        id: 0,
-                                    },
+                                    location: Register(
+                                        Amd64(
+                                            Rax,
+                                        ),
+                                    ),
                                 },
                             ],
                         },

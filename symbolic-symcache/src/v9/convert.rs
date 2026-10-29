@@ -1,3 +1,4 @@
+use symbolic_common::{CpuFamily, Register};
 use symbolic_debuginfo::{PrimitiveTypeEncoding, VariableKind};
 
 /// Converts a `u8` back into a [`PrimitiveTypeEncoding`].
@@ -58,4 +59,18 @@ pub fn variable_kind_to_u8(kind: VariableKind) -> u8 {
         VariableKind::Parameter => 0,
         VariableKind::Local => 1,
     }
+}
+
+/// Converts a [`Register`] into a `u16` to be stored in [`RegisterLocation::id`].
+///
+/// [`RegisterLocation::id`]: crate::v9::raw::RegisterLocation::id
+pub fn register_to_u16(register: Register) -> u16 {
+    register.to_dwarf()
+}
+
+/// Converts a `u16` back into a [`Register`] of the given CPU family.
+///
+/// The inverse of [`register_to_u16`]. Invalid inputs are returned as `None`.
+pub fn u16_to_register(cpu_family: CpuFamily, id: u16) -> Option<Register> {
+    Register::from_dwarf(cpu_family, id)
 }

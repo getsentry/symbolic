@@ -117,23 +117,23 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     hDllHandle (parameter)
       type:
         > Unknown
-      0x11e0..0x11f6: register 2
-      0x11f6..0x12b8: register 5
+      0x11e0..0x11f6: register rcx
+      0x11f6..0x12b8: register rdi
     dwReason (parameter)
       type:
         > Unknown
-      0x11e0..0x11f6: register 1
-      0x11f6..0x12c9: register 3
+      0x11e0..0x11f6: register rdx
+      0x11f6..0x12c9: register rbx
     lpreserved (parameter)
       type:
         > Unknown
-      0x11e0..0x11f6: register 8
-      0x11f6..0x12bf: register 4
+      0x11e0..0x11f6: register r8
+      0x11f6..0x12bf: register rsi
     retcode (local)
       type:
         > Unknown
-      0x121d..0x1223: register 0
-      0x1259..0x1288: register 14
+      0x121d..0x1223: register rax
+      0x1259..0x1288: register r14
 
   > 0x123c: _CRT_INIT (0x5)
     0x123c: mingw-w64/mingw-w64-crt/crt/crtdll.c:129 (D:/W/B/src)
@@ -183,8 +183,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     func (parameter)
       type:
         > Unknown
-      0x1350..0x135a: register 2
-      0x135a..0x135f: register 1
+      0x1350..0x135a: register rcx
+      0x135a..0x135f: register rdx
 
 > 0x1360: _Z13lcNetInfoGlibv (0x60)
   0x1360: qtbase-everywhere-src-6.10.1/src/plugins/networkinformation/glib/qglibnetworkinformationbackend.cpp:17 (D:/W/B/src)
@@ -339,8 +339,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x13e4..0x13f8: register 2
-      0x13f8..0x14cc: register 4
+      0x13e4..0x13f8: register rcx
+      0x13f8..0x14cc: register rsi
 
   > 0x13f0: _ZN26QNetworkInformationBackendC2Ev (0x15)
     0x13f0: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:47 (D:/W/B/src)
@@ -365,13 +365,13 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x14d4..0x14fd: register 2
-      0x14fd..0x15f2: register 4
-      0x15fb..0x1601: register 4
+      0x14d4..0x14fd: register rcx
+      0x14fd..0x15f2: register rsi
+      0x15fb..0x1601: register rsi
     connectivityState (local)
       type:
         > Unknown
-      0x1505..0x15ac: register 5
+      0x1505..0x15ac: register rdi
 
   > 0x1505: _ZN12_GLOBAL__N_136reachabilityFromGNetworkConnectivityE20GNetworkConnectivity (0x16)
     0x1505: qtbase-everywhere-src-6.10.1/src/plugins/networkinformation/glib/qglibnetworkinformationbackend.cpp:22 (D:/W/B/src)
@@ -464,9 +464,9 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x1614..0x1637: register 2
-      0x1637..0x167f: register 4
-      0x1687..0x16a7: register 4
+      0x1614..0x1637: register rcx
+      0x1637..0x167f: register rsi
+      0x1687..0x16a7: register rsi
 
   > 0x1645: _ZN26QNetworkInformationBackend10setMeteredEb (0x42)
     0x1645: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:116 (D:/W/B/src)

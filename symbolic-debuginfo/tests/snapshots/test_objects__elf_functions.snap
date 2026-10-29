@@ -105,13 +105,13 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     argc (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1c70..0x1d2b: register 5
+      0x1c70..0x1d2b: register rdi
     argv (parameter)
       type:
         > Pointer (8 bytes)
           > Pointer (8 bytes)
             > Primitive: char (SignedChar, 1 byte)
-      0x1c70..0x1cc3: register 4
+      0x1c70..0x1cc3: register rsi
     descriptor (local)
       type:
         > Unknown
@@ -744,33 +744,33 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     this (parameter)
       type:
         > Unknown
-      0x2520..0x2538: register 5
-      0x2538..0x255a: register 3
-      0x257f..0x2777: register 3
-      0x27c6..0x299d: register 3
-      0x29a2..0x29ab: register 3
+      0x2520..0x2538: register rdi
+      0x2538..0x255a: register rbx
+      0x257f..0x2777: register rbx
+      0x27c6..0x299d: register rbx
+      0x29a2..0x29ab: register rbx
     context (parameter)
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x2520..0x2557: register 4
-      0x2557..0x255a: register 6
-      0x257f..0x2595: register 4
-      0x2595..0x2655: register 6
+      0x2520..0x2557: register rsi
+      0x2557..0x255a: register rbp
+      0x257f..0x2595: register rsi
+      0x2595..0x2655: register rbp
       0x2655..0x2661: frame base -88
-      0x27c6..0x27dd: register 6
+      0x27c6..0x27dd: register rbp
       0x27e2..0x27f6: frame base -88
-      0x2996..0x2998: register 6
+      0x2996..0x2998: register rbp
     stack (local)
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x260d..0x272f: register 15
-      0x272f..0x2735: register 4
-      0x2735..0x2782: register 15
-      0x27e2..0x27f6: register 15
-      0x27f6..0x282b: register 4
-      0x282b..0x2877: register 15
+      0x260d..0x272f: register r15
+      0x272f..0x2735: register rsi
+      0x2735..0x2782: register r15
+      0x27e2..0x27f6: register r15
+      0x27f6..0x282b: register rsi
+      0x282b..0x2877: register r15
     thread_arg (local)
       type:
         > Unknown
@@ -782,14 +782,14 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     r (local)
       type:
         > Unknown
-      0x28cd..0x28f1: register 4
+      0x28cd..0x28f1: register rsi
       0x28f1..0x28f7: frame base -144
-      0x28f7..0x291d: register 4
-      0x293f..0x294b: register 4
+      0x28f7..0x291d: register rsi
+      0x293f..0x294b: register rsi
     success (local)
       type:
         > Primitive: bool (Boolean, 1 byte)
-      0x291d..0x293a: register 6
+      0x291d..0x293a: register rbp
 
   > 0x2534: _ZNK15google_breakpad16ExceptionHandler14IsOutOfProcessEv (0x4)
     0x2534: exception_handler.h:205 (../deps/breakpad/src/client/linux/handler)
@@ -1022,24 +1022,24 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     sig (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x2bd0..0x2c08: register 5
-      0x2c08..0x2c2f: register 12
-      0x2c34..0x2dbf: register 12
+      0x2bd0..0x2c08: register rdi
+      0x2c08..0x2c2f: register r12
+      0x2c34..0x2dbf: register r12
     info (parameter)
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x2bd0..0x2c08: register 4
-      0x2c08..0x2c0d: register 13
-      0x2c34..0x2d43: register 13
-      0x2d88..0x2dae: register 13
+      0x2bd0..0x2c08: register rsi
+      0x2c08..0x2c0d: register r13
+      0x2c34..0x2d43: register r13
+      0x2d88..0x2dae: register r13
     uc (parameter)
       type:
         > Pointer (8 bytes)
           > Void
-      0x2bd0..0x2c08: register 1
-      0x2c08..0x2c33: register 14
-      0x2c34..0x2dbf: register 14
+      0x2bd0..0x2c08: register rdx
+      0x2c08..0x2c33: register r14
+      0x2c34..0x2dbf: register r14
     cur_handler (local)
       type:
         > Unknown
@@ -1047,15 +1047,15 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     handled (local)
       type:
         > Primitive: bool (Boolean, 1 byte)
-      0x2c7f..0x2c8f: register 0
-      0x2ca8..0x2cb5: register 0
-      0x2d88..0x2d99: register 0
+      0x2c7f..0x2c8f: register rax
+      0x2ca8..0x2cb5: register rax
+      0x2d88..0x2d99: register rax
     i (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x2c74..0x2ca8: register 3
-      0x2cab..0x2ce7: register 3
-      0x2d88..0x2d9f: register 3
+      0x2c74..0x2ca8: register rbx
+      0x2cab..0x2ce7: register rbx
+      0x2d88..0x2d9f: register rbx
 
   > 0x2c63: _ZNKSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE4sizeEv (0x3)
     0x2c63: stl_vector.h:655 (/usr/include/c++/5/bits)
