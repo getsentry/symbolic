@@ -562,7 +562,13 @@ impl<'data> ElfObject<'data> {
     /// [`has_debug_info`](struct.ElfObject.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'data>, DwarfError> {
         let symbols = self.symbol_map();
-        DwarfDebugSession::parse(self, symbols, self.load_address() as i64, self.kind())
+        DwarfDebugSession::parse(
+            self,
+            symbols,
+            self.load_address() as i64,
+            self.kind(),
+            self.arch().cpu_family(),
+        )
     }
 
     /// Determines whether this object contains stack unwinding information.

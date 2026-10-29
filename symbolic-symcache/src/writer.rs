@@ -523,8 +523,8 @@ impl<'a> SymCacheConverter<'a> {
                 }
 
                 let raw_loc: v9::raw::location::Enum = match location.location {
-                    di::VariableLocation::Register { id } => v9::raw::RegisterLocation {
-                        id,
+                    di::VariableLocation::Register(register) => v9::raw::RegisterLocation {
+                        id: v9::convert::register_to_u16(register),
                         _reserved: [0; _],
                     }
                     .into(),

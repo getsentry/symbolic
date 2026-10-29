@@ -27,8 +27,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
     result (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1076..0x109c: register 3
-      0x109c..0x10a5: register 0
+      0x1076..0x109c: register rbx
+      0x109c..0x10a5: register rax
 
 > 0x1240: stack_home (0xc)
   0x1240: variables.c:202 (/fixture)
@@ -38,7 +38,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1240..0x124c: register 5
+      0x1240..0x124c: register rdi
     slot (local)
       type:
         > Unknown
@@ -51,7 +51,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1230..0x1234: register 5
+      0x1230..0x1234: register rdi
 
 > 0x1210: external_call (0x20)
   0x1210: variables.c:175 (/fixture)
@@ -68,16 +68,16 @@ expression: "FunctionsDebug::new(&session, &functions)"
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1210..0x1224: register 5
-      0x1224..0x122f: register 6
+      0x1210..0x1224: register rdi
+      0x1224..0x122f: register rbp
     kept (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1220..0x122c: register 3
+      0x1220..0x122c: register rbx
     r (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1225..0x122b: register 0
+      0x1225..0x122b: register rax
 
 > 0x1200: across_call (0xd)
   0x1200: variables.c:162 (/fixture)
@@ -88,15 +88,15 @@ expression: "FunctionsDebug::new(&session, &functions)"
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1200..0x120d: register 5
+      0x1200..0x120d: register rdi
     doubled (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1203..0x120d: register 1
+      0x1203..0x120d: register rdx
     other (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x120a..0x120c: register 0
+      0x120a..0x120c: register rax
 
 > 0x11f0: float_registers (0x10)
   0x11f0: variables.c:147 (/fixture)
@@ -108,19 +108,19 @@ expression: "FunctionsDebug::new(&session, &functions)"
     a (parameter)
       type:
         > Primitive: float (Float, 4 bytes)
-      0x11f0..0x11f4: register 17
+      0x11f0..0x11f4: register xmm0
     b (parameter)
       type:
         > Primitive: float (Float, 4 bytes)
-      0x11f0..0x11f8: register 18
+      0x11f0..0x11f8: register xmm1
     sum (local)
       type:
         > Primitive: float (Float, 4 bytes)
-      0x11f4..0x11ff: register 17
+      0x11f4..0x11ff: register xmm0
     scaled (local)
       type:
         > Primitive: float (Float, 4 bytes)
-      0x11f8..0x11fc: register 18
+      0x11f8..0x11fc: register xmm1
 
 > 0x11e0: registers (0x9)
   0x11e0: variables.c:134 (/fixture)
@@ -131,19 +131,19 @@ expression: "FunctionsDebug::new(&session, &functions)"
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x11e0..0x11e9: register 5
+      0x11e0..0x11e9: register rdi
     b (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x11e0..0x11e6: register 4
+      0x11e0..0x11e6: register rsi
     sum (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x11e3..0x11e8: register 0
+      0x11e3..0x11e8: register rax
     product (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x11e6..0x11e9: register 4
+      0x11e6..0x11e9: register rsi
 
 > 0x11d0: inlining (0x1)
   0x11d0: variables.c:121 (/fixture)
@@ -151,7 +151,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
     outer (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x11d0..0x11d1: register 5
+      0x11d0..0x11d1: register rdi
 
 > 0x11c0: aggregates (0x1)
   0x11c0: variables.c:106 (/fixture)
@@ -163,28 +163,28 @@ expression: "FunctionsDebug::new(&session, &functions)"
       type:
         > Pointer (8 bytes)
           > Primitive: int (SignedInt, 4 bytes)
-      0x11b0..0x11b1: register 5
+      0x11b0..0x11b1: register rdi
     num_ptr (parameter)
       type:
         > Pointer (8 bytes)
           > Pointer (8 bytes)
             > Primitive: int (SignedInt, 4 bytes)
-      0x11b0..0x11b1: register 4
+      0x11b0..0x11b1: register rsi
     str (parameter)
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x11b0..0x11b1: register 1
+      0x11b0..0x11b1: register rdx
     any (parameter)
       type:
         > Pointer (8 bytes)
           > Void
-      0x11b0..0x11b1: register 2
+      0x11b0..0x11b1: register rcx
     fn (parameter)
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x11b0..0x11b1: register 8
+      0x11b0..0x11b1: register r8
 
 > 0x11a0: primitives (0x1)
   0x11a0: variables.c:68 (/fixture)

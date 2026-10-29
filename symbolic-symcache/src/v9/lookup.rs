@@ -2,7 +2,7 @@ use std::cell::Cell;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 
-use symbolic_common::Language;
+use symbolic_common::{Arch, CpuFamily, Language};
 
 use crate::v9::{SymCache, convert, raw};
 use crate::{
@@ -368,6 +368,7 @@ impl<'data, 'cache> Variable<'data, 'cache> {
 
         VariableLocations {
             locations: locations.iter(),
+            cpu_family: Arch::from_u32(self.cache.header.arch).cpu_family(),
             addr: self.addr,
         }
     }
@@ -376,6 +377,7 @@ impl<'data, 'cache> Variable<'data, 'cache> {
 #[derive(Debug, Clone)]
 pub struct VariableLocations<'data> {
     locations: std::slice::Iter<'data, raw::VariableLocationInfo>,
+    cpu_family: CpuFamily,
     addr: u32,
 }
 
@@ -392,7 +394,13 @@ impl<'data> Iterator for VariableLocations<'data> {
             if self.addr < location.start + location.size {
                 let vl = match location.location() {
                     Some(raw::location::Enum::register(reg)) => {
-                        VariableLocation::Register { id: reg.id }
+                        match convert::u16_to_register(self.cpu_family, reg.id) {
+                            Some(register) => VariableLocation::Register(register),
+                            None => {
+                                debug_assert!(false, "invalid variable register");
+                                continue;
+                            }
+                        }
                     }
                     Some(raw::location::Enum::frame_offset(fo)) => VariableLocation::FrameOffset {
                         offset: fo.offset.into(),
