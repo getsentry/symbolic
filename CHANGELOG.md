@@ -5,7 +5,7 @@
 **Breaking Changes**
 
 - Change `symbolic_debuginfo::PointerType::pointee` from `TypeRef` to `Option<TypeRef>`. ([#1100](https://github.com/getsentry/symbolic/pull/1100))
-- Change `VariableLocation::Register` from `Register { id: u16 }` (raw DWARF register number) to `Register(symbolic_common::Register)`. Only x86-64 registers are supported for now; register locations of other architectures are omitted. `DwarfDebugSession::parse` takes the object's `CpuFamily` as an additional argument. ([#PR](https://github.com/getsentry/symbolic/pull/PR))
+- Change `VariableLocation::Register` from `Register { id: u16 }` (raw DWARF register number) to `Register(symbolic_common::Register)`. Only x86-64 registers are supported for now; register locations of other architectures are omitted. `DwarfDebugSession::parse` takes the object's `CpuFamily` as an additional argument. ([#1117](https://github.com/getsentry/symbolic/pull/1117))
 
 **Features**
 
