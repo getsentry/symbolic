@@ -13,6 +13,7 @@
 
 **Fixes**
 
+- Preserve outer functions and their call site locations when inlinee limit is reached. ([#1120](https://github.com/getsentry/symbolic/pull/1120))
 - Keep ARM64 CFI rows after `DW_CFA_AARCH64_negate_ra_state` in binaries built with pointer authentication. ([#1106](https://github.com/getsentry/symbolic/pull/1106))
 - Keep sourcemapcache tokens at the start of a minified line that map to the same location as the previous token, so lookups on such lines find a location. ([#1110](https://github.com/getsentry/symbolic/pull/1110))
 - Prefer DWARF function names for debug files produced by current Dart SDKs, which write a versioned `DW_AT_producer`. ([#1112](https://github.com/getsentry/symbolic/pull/1112))
