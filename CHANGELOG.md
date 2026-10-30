@@ -17,6 +17,10 @@
 - Keep sourcemapcache tokens at the start of a minified line that map to the same location as the previous token, so lookups on such lines find a location. ([#1110](https://github.com/getsentry/symbolic/pull/1110))
 - Prefer DWARF function names for debug files produced by current Dart SDKs, which write a versioned `DW_AT_producer`. ([#1112](https://github.com/getsentry/symbolic/pull/1112))
 
+**Internal**
+
+- Use `Sentry <hello@sentry.io>` as the author of all crates. ([#1122](https://github.com/getsentry/symbolic/pull/1122))
+
 ## 14.0.0-alpha.4
 
 **Breaking Changes**
