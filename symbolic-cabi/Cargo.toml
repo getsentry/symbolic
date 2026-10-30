@@ -1,10 +1,10 @@
 [package]
 name = "symbolic-cabi"
-version = "14.0.0-alpha.4"
-license = "MIT"
+version.workspace = true
+license.workspace = true
 authors.workspace = true
-homepage = "https://github.com/getsentry/symbolic"
-repository = "https://github.com/getsentry/symbolic"
+homepage.workspace = true
+repository.workspace = true
 description = """
 C interface wrapper for symbolic, a library to symbolicate and process stack
 traces from native applications, minidumps or minified JavaScript.

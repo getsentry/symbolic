@@ -20,6 +20,7 @@
 **Internal**
 
 - Use `Sentry <hello@sentry.io>` as the author of all crates. ([#1122](https://github.com/getsentry/symbolic/pull/1122))
+- Inherit `version`, `license`, `homepage`, and `repository` from the workspace in all crates. ([#1124](https://github.com/getsentry/symbolic/pull/1124))
 
 ## 14.0.0-alpha.4
 
