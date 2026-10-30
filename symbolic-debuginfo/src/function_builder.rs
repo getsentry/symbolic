@@ -138,7 +138,7 @@ impl<'s> FunctionBuilder<'s> {
             mut lines,
         } = self;
 
-        let inlinees = ensure_proper_nesting(inlinees)?;
+        let (inlinees, discard_inlinees) = ensure_proper_nesting(inlinees, MAX_NESTED_INLINEES);
 
         // Sort the lines by address.
         lines.sort_by_key(|line| line.address);
@@ -154,7 +154,7 @@ impl<'s> FunctionBuilder<'s> {
             inline: false,
         };
         let outer_function_end = address.saturating_add(size);
-        let mut stack = FunctionBuilderStack::new(outer_function);
+        let mut stack = FunctionBuilderStack::new(outer_function, discard_inlinees);
 
         let mut inlinee_iter = inlinees.into_iter();
         let mut line_iter = lines.into_iter();
@@ -295,14 +295,19 @@ struct FunctionBuilderStack<'s> {
     ///
     /// Always contains at least one element: `stack[0].1` is the outer function.
     stack: Vec<(u64, Function<'s>)>,
+    /// Whether to discard inlinees after extracting their call site lines.
+    discard_inlinees: bool,
 }
 
 impl<'s> FunctionBuilderStack<'s> {
     /// Creates a new stack, initialized with the outer function.
-    pub fn new(outer_function: Function<'s>) -> Self {
+    pub fn new(outer_function: Function<'s>, discard_inlinees: bool) -> Self {
         let end_address = outer_function.address.saturating_add(outer_function.size);
         let stack = vec![(end_address, outer_function)];
-        Self { stack }
+        Self {
+            stack,
+            discard_inlinees,
+        }
     }
 
     /// Returns an exclusive reference to the function at the top of the stack, i.e. the "deepest"
@@ -311,13 +316,14 @@ impl<'s> FunctionBuilderStack<'s> {
         &mut self.stack.last_mut().unwrap().1
     }
 
-    /// Pops the deepest function from the stack and adds it to the inlinees of its caller.
+    /// Pops the deepest function, attaching it to its caller unless inlinees are being discarded.
     fn pop(&mut self) {
         assert!(self.stack.len() > 1);
 
-        // Pop the function and add it to its parent function's list of inlinees.
         let fun = self.stack.pop().unwrap().1;
-        self.stack.last_mut().unwrap().1.inlinees.push(fun);
+        if !self.discard_inlinees {
+            self.stack.last_mut().unwrap().1.inlinees.push(fun);
+        }
     }
 
     /// Finish and pop all functions that end at or before this address.
@@ -354,6 +360,9 @@ const MAX_NESTED_INLINEES: usize = 400000;
 
 /// Converts the `BinaryHeap` of inlinees into a sorted `Vec` of inlinees, while ensuring proper
 /// inlinee nesting.
+///
+/// If `max_nested_inlinees` is exceeded, retains only depth 0 inlinees and returns a flag indicating
+/// that they must be discarded after extracting their call site lines.
 ///
 /// # Background
 ///
@@ -406,8 +415,10 @@ const MAX_NESTED_INLINEES: usize = 400000;
 ///    node at depth N.
 fn ensure_proper_nesting(
     mut inlinees: BinaryHeap<Reverse<FunctionBuilderInlinee>>,
-) -> Result<Vec<FunctionBuilderInlinee>, FunctionBuilderError> {
+    max_nested_inlinees: usize,
+) -> (Vec<FunctionBuilderInlinee>, bool) {
     let mut result = Vec::with_capacity(inlinees.len());
+    let mut discard_inlinees = false;
 
     // This stack contains, at index i, the end address of the most recent inlinee at depth i.
     // The length of this stack is the current depth. During the iteration we traverse the inlinee
@@ -495,14 +506,16 @@ fn ensure_proper_nesting(
 
         result.push(inlinee);
 
-        if result.len() > MAX_NESTED_INLINEES {
-            return Err(FunctionBuilderErrorKind::TooManyInlineeNestings.into());
+        if !discard_inlinees && result.len() > max_nested_inlinees {
+            discard_inlinees = true;
+            result.retain(|inlinee| inlinee.depth == 0);
+            inlinees.retain(|Reverse(inlinee)| inlinee.depth == 0);
         }
 
         end_address_stack.push(end_address); // this goes into end_address_stack[depth]
     }
 
-    Ok(result)
+    (result, discard_inlinees)
 }
 
 #[cfg(test)]
@@ -520,6 +533,105 @@ mod tests {
 
         assert_eq!(func.name.as_str(), "foo");
         assert_eq!(&func.lines, &[LineInfo::new(0x10, 0x30, b"foo.c", 1)]);
+    }
+
+    #[test]
+    fn test_inlinee_nesting_bounds_preserve_outer_function() {
+        let mut builder = FunctionBuilder::new(Name::from("outer"), b"/src", 0x10, 0x30);
+        builder.add_variable(Variable {
+            name: "value".into(),
+            ty: None,
+            kind: VariableKind::Local,
+            locations: vec![VariableLocationInfo {
+                address: 0x10,
+                size: 0x30,
+                location: VariableLocation::Register { id: 0 },
+            }],
+        });
+        builder.add_inlinee(FunctionBuilderInlinee {
+            depth: 0,
+            address: 0x20,
+            size: 0x10,
+            name: Name::from("inline"),
+            call_file: FileInfo::from_filename(b"outer.c"),
+            call_line: 7,
+            variables: Vec::new(),
+        });
+        for depth in 1..=MAX_NESTED_INLINEES {
+            builder.add_inlinee(FunctionBuilderInlinee {
+                depth: depth as u32,
+                address: 0x20,
+                size: 0x10,
+                name: Name::from("nested"),
+                call_file: FileInfo::from_filename(b"inline.c"),
+                call_line: 2,
+                variables: Vec::new(),
+            });
+        }
+        builder.add_leaf_line(0x10, Some(0x18), FileInfo::from_filename(b"outer.c"), 1);
+        builder.add_leaf_line(0x28, Some(0x4), FileInfo::from_filename(b"inline.c"), 42);
+        builder.add_leaf_line(0x2c, Some(0x14), FileInfo::from_filename(b"outer.c"), 3);
+
+        let function = builder.finish().unwrap();
+        insta::assert_debug_snapshot!(function, @r#"
+        Function {
+            address: 0x10,
+            size: 0x30,
+            name: Name {
+                string: "outer",
+                lang: Unknown,
+                mangling: Unknown,
+            },
+            compilation_dir: "/src",
+            lines: [
+                LineInfo {
+                    address: 0x10,
+                    size: 0x10,
+                    file: FileInfo {
+                        name: "outer.c",
+                        dir: "",
+                    },
+                    line: 1,
+                },
+                LineInfo {
+                    address: 0x20,
+                    size: 0x10,
+                    file: FileInfo {
+                        name: "outer.c",
+                        dir: "",
+                    },
+                    line: 7,
+                },
+                LineInfo {
+                    address: 0x30,
+                    size: 0x10,
+                    file: FileInfo {
+                        name: "outer.c",
+                        dir: "",
+                    },
+                    line: 3,
+                },
+            ],
+            inlinees: [],
+            inline: false,
+            variables: [
+                Variable {
+                    name: "value",
+                    ty: None,
+                    kind: Local,
+                    locations: [
+                        VariableLocationInfo {
+                            address: 0x10,
+                            size: 0x30,
+                            location: Register {
+                                id: 0,
+                            },
+                        },
+                    ],
+                },
+            ],
+        }
+        "#);
     }
 
     #[test]
