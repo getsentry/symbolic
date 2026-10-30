@@ -13,7 +13,6 @@ macro_rules! registers {
         }
     ) => {
         $(#[$enum_meta])*
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum $enum {
             $(
                 #[doc = concat!("The `", $name, "` register.")]
@@ -64,6 +63,7 @@ registers! {
     /// masks), and the AMX registers `tmm0` to `tmm7` and `tilecfg`.
     ///
     /// [psabi]: https://gitlab.com/x86-psabis/x86-64-ABI
+    #[derive(Debug, Clone, Copy)]
     pub enum Amd64Register {
         Rax = { name: "rax", dwarf: 0 },
         Rdx = { name: "rdx", dwarf: 1 },
@@ -181,7 +181,7 @@ registers! {
 }
 
 /// A register of any supported architecture.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub enum Register {
     /// An x86-64 register.
