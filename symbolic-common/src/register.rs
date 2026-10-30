@@ -1,7 +1,4 @@
 //! Architecture specific register definitions.
-//!
-//! Registers are identified by symbolic's own types rather than by the numbering of a particular
-//! debug format, so that the same register can be named independently of where it was read from.
 
 use std::fmt;
 
@@ -28,7 +25,7 @@ macro_rules! registers {
             /// Returns the register with the given DWARF register number.
             ///
             /// Returns `None` for numbers which are not a register, such as reserved numbers.
-            pub fn from_dwarf(number: u16) -> Option<Self> {
+            fn from_dwarf(number: u16) -> Option<Self> {
                 match number {
                     $($dwarf => Some(Self::$variant),)*
                     _ => None,
@@ -38,7 +35,7 @@ macro_rules! registers {
             /// Returns the DWARF register number of this register.
             ///
             /// The number of a register is fixed and will not change.
-            pub fn to_dwarf(self) -> u16 {
+            fn to_dwarf(self) -> u16 {
                 match self {
                     $(Self::$variant => $dwarf,)*
                 }
@@ -65,10 +62,6 @@ registers! {
     /// address), `xmm0` to `xmm31` (vectors), `st0` to `st7` (x87), `mm0` to `mm7` (MMX),
     /// `rflags`, the segment registers, a few system and control registers, `k0` to `k7` (vector
     /// masks), and the AMX registers `tmm0` to `tmm7` and `tilecfg`.
-    ///
-    /// The variants themselves are independent of the register numbering of any debug format,
-    /// use [`Amd64Register::from_dwarf`] and [`Amd64Register::to_dwarf`] to convert from and to
-    /// DWARF register numbers.
     ///
     /// [psabi]: https://gitlab.com/x86-psabis/x86-64-ABI
     pub enum Amd64Register {

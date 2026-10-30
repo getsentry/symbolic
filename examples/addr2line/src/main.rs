@@ -114,7 +114,7 @@ fn resolve(
             for location in locations {
                 print!("      location: ");
                 match location.location {
-                    VariableLocation::Register(register) => print!("reg:{register}"),
+                    VariableLocation::Register { register } => print!("reg:{register}"),
                     VariableLocation::FrameOffset { offset } => print!("fbreg:{offset}"),
                 }
                 print_range(location.address, Some(location.size), matches);

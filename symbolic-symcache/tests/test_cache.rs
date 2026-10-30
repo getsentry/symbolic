@@ -57,7 +57,7 @@ impl fmt::Debug for VariablesDebug<'_, '_> {
 
                 let end = location.address + location.size;
                 match location.location {
-                    VariableLocation::Register(register) => {
+                    VariableLocation::Register { register } => {
                         write!(f, "{:#x}..{end:#x} register {register}", location.address)?;
                     }
                     VariableLocation::FrameOffset { offset } => {

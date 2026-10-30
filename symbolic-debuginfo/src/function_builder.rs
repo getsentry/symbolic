@@ -570,7 +570,9 @@ mod tests {
             locations: vec![VariableLocationInfo {
                 address: 0x10,
                 size: 0x40,
-                location: VariableLocation::Register(Register::Amd64(Amd64Register::Rax)),
+                location: VariableLocation::Register {
+                    register: Register::Amd64(Amd64Register::Rax),
+                },
             }],
         };
 
@@ -630,11 +632,11 @@ mod tests {
                                 VariableLocationInfo {
                                     address: 0x20,
                                     size: 0x10,
-                                    location: Register(
-                                        Amd64(
+                                    location: Register {
+                                        register: Amd64(
                                             Rax,
                                         ),
-                                    ),
+                                    },
                                 },
                             ],
                         },

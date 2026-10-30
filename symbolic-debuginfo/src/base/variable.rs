@@ -161,7 +161,10 @@ impl fmt::Debug for VariableLocationInfo {
 #[derive(Debug, Clone)]
 pub enum VariableLocation {
     /// The variable can be found in a register.
-    Register(Register),
+    Register {
+        /// The register.
+        register: Register,
+    },
     /// The variable can be found at an offset relative to the function's frame base.
     FrameOffset {
         /// The signed offset from the frame base.
