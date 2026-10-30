@@ -122,9 +122,9 @@ impl fmt::Debug for FunctionsDebug<'_, '_> {
 
                 for location in &variable.locations {
                     match location.location {
-                        VariableLocation::Register { id } => writeln!(
+                        VariableLocation::Register { register } => writeln!(
                             f,
-                            "{:indent$}      {:#x}..{:#x}: register {id}",
+                            "{:indent$}      {:#x}..{:#x}: register {register}",
                             "",
                             location.address,
                             location.address.saturating_add(location.size),

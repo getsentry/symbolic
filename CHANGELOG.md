@@ -8,6 +8,7 @@
 
 **Features**
 
+- Represent variable register locations as named registers instead of raw DWARF register numbers. ([#1117](https://github.com/getsentry/symbolic/pull/1117))
 - Resolve `void` pointers in variable types as `PointerType` with `pointee` set to `None`. ([#1100](https://github.com/getsentry/symbolic/pull/1100))
 - Distinguish `void` pointers from pointers to unknown types in symcaches. ([#1101](https://github.com/getsentry/symbolic/pull/1101))
 

@@ -1,5 +1,7 @@
 use std::{borrow::Cow, fmt};
 
+use symbolic_common::Register;
+
 /// A type reference.
 ///
 /// Links a variable to a concrete type.
@@ -160,8 +162,8 @@ impl fmt::Debug for VariableLocationInfo {
 pub enum VariableLocation {
     /// The variable can be found in a register.
     Register {
-        /// An architecture dependent id of the register.
-        id: u16,
+        /// The register.
+        register: Register,
     },
     /// The variable can be found at an offset relative to the function's frame base.
     FrameOffset {

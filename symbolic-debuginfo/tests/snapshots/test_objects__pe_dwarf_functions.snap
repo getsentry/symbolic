@@ -11,7 +11,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     func (parameter)
       type:
         > Unknown
-      0x14f0..0x14f8: register 2
+      0x14f0..0x14f8: register rcx
 
 > 0x1180: __tmainCRTStartup (0x326)
   0x1180: crtexe.c:223 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
@@ -105,7 +105,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x1291..0x12fd: register 0
+      0x1291..0x12fd: register rax
     StartupInfo (local)
       type:
         > Unknown
@@ -113,28 +113,28 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     inDoubleQuote (local)
       type:
         > Unknown
-      0x1298..0x12a7: register 2
-      0x12ae..0x12c8: register 2
+      0x1298..0x12a7: register rcx
+      0x12ae..0x12c8: register rcx
     lock_free (local)
       type:
         > Pointer (8 bytes)
           > Void
-      0x11d3..0x11e8: register 0
-      0x11f1..0x1201: register 0
-      0x13f2..0x1406: register 0
+      0x11d3..0x11e8: register rax
+      0x11f1..0x1201: register rax
+      0x13f2..0x1406: register rax
     fiberid (local)
       type:
         > Pointer (8 bytes)
           > Void
-      0x11c8..0x11fd: register 4
-      0x13f2..0x13ff: register 4
+      0x11c8..0x11fd: register rsi
+      0x13f2..0x13ff: register rsi
     nested (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x11ff..0x1315: register 6
-      0x13e3..0x13f2: register 6
-      0x1404..0x144f: register 6
-      0x147b..0x149e: register 6
+      0x11ff..0x1315: register rbp
+      0x13e3..0x13f2: register rbp
+      0x1404..0x144f: register rbp
+      0x147b..0x149e: register rbp
 
   > 0x11b4: NtCurrentTeb (0x10)
     0x11b4: winnt.h:9094 (/mxe/usr/x86_64-w64-mingw32.static/include)
@@ -182,7 +182,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     ret (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x14e6..0x14ed: register 0
+      0x14e6..0x14ed: register rax
 
 > 0x14b0: WinMainCRTStartup (0x1d)
   0x14b0: crtexe.c:170 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
@@ -194,7 +194,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     ret (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x14c6..0x14cd: register 0
+      0x14c6..0x14cd: register rax
 
 > 0x1130: pre_cpp_init (0x49)
   0x1130: crtexe.c:155 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
@@ -254,21 +254,21 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x1000..0x1001: register 2
+      0x1000..0x1001: register rcx
     function (parameter)
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x1000..0x1001: register 1
+      0x1000..0x1001: register rdx
     file (parameter)
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x1000..0x1001: register 8
+      0x1000..0x1001: register r8
     line (parameter)
       type:
         > Primitive: unsigned int (UnsignedInt, 4 bytes)
-      0x1000..0x1001: register 9
+      0x1000..0x1001: register r9
     pReserved (parameter)
       type:
         > Unknown
@@ -283,13 +283,13 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     argc (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1572..0x157a: register 2
+      0x1572..0x157a: register rcx
     argv (parameter)
       type:
         > Pointer (8 bytes)
           > Pointer (8 bytes)
             > Primitive: char (SignedChar, 1 byte)
-      0x1572..0x157a: register 1
+      0x1572..0x157a: register rdx
 
 > 0x1530: printf (0x42)
   0x1530: stdio.h:369 (/mxe/usr/x86_64-w64-mingw32.static/include)
@@ -303,12 +303,12 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x1530..0x1557: register 2
-      0x1557..0x1570: register 3
+      0x1530..0x1557: register rcx
+      0x1557..0x1570: register rbx
     __retval (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x156b..0x1572: register 0
+      0x156b..0x1572: register rax
     __local_argv (local)
       type:
         > Pointer (8 bytes)
