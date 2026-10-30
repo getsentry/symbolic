@@ -3,6 +3,7 @@ resolver = "2"
 members = ["symbolic*", "examples/*"]
 
 [workspace.package]
+authors = ["Sentry <hello@sentry.io>"]
 edition = "2024"
 rust-version = "1.85"
 
