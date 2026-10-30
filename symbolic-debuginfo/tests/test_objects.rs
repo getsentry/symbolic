@@ -122,7 +122,7 @@ impl fmt::Debug for FunctionsDebug<'_, '_> {
 
                 for location in &variable.locations {
                     match location.location {
-                        VariableLocation::Register(register) => writeln!(
+                        VariableLocation::Register { register } => writeln!(
                             f,
                             "{:indent$}      {:#x}..{:#x}: register {register}",
                             "",

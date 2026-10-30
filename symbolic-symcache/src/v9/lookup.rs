@@ -394,13 +394,11 @@ impl<'data> Iterator for VariableLocations<'data> {
             if self.addr < location.start + location.size {
                 let vl = match location.location() {
                     Some(raw::location::Enum::register(reg)) => {
-                        match convert::u16_to_register(self.cpu_family, reg.id) {
-                            Some(register) => VariableLocation::Register(register),
-                            None => {
-                                debug_assert!(false, "invalid variable register");
-                                continue;
-                            }
-                        }
+                        let Some(register) = convert::u16_to_register(self.cpu_family, reg.id)
+                        else {
+                            continue;
+                        };
+                        VariableLocation::Register { register }
                     }
                     Some(raw::location::Enum::frame_offset(fo)) => VariableLocation::FrameOffset {
                         offset: fo.offset.into(),

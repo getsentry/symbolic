@@ -1473,7 +1473,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         match op {
             Operation::Register { register } => {
                 Register::from_dwarf(self.inner.info.cpu_family, register.0)
-                    .map(VariableLocation::Register)
+                    .map(|register| VariableLocation::Register { register })
             }
             Operation::FrameOffset { offset } => Some(VariableLocation::FrameOffset { offset }),
             // Currently more operations are not supported.
