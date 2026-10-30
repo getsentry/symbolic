@@ -202,7 +202,9 @@ impl Register {
 
     /// Returns the DWARF register number of this register.
     ///
-    /// The number of a register is fixed and will not change.
+    /// DWARF register numbers are architecture dependent, so interpreting the number requires
+    /// knowing the register's CPU family, as in [`Register::from_dwarf`]. The number of a
+    /// register is fixed and will not change.
     pub fn to_dwarf(self) -> u16 {
         match self {
             Self::Amd64(register) => register.to_dwarf(),
