@@ -1493,7 +1493,7 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
             );
         }
 
-        Some(builder.finish().map_err(Into::into))
+        Some(Ok(builder.finish()))
     }
 }
 

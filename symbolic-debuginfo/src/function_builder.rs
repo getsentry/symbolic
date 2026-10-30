@@ -120,7 +120,7 @@ impl<'s> FunctionBuilder<'s> {
     }
 
     /// Create the `Function`, consuming the builder.
-    pub fn finish(self) -> Result<Function<'s>, FunctionBuilderError> {
+    pub fn finish(self) -> Function<'s> {
         // Convert our data into the right shape.
         // There are two big differences between what we have and what we want:
         //  - We have all inlinees in a flat list, but we want to create nested functions for them,
@@ -244,7 +244,7 @@ impl<'s> FunctionBuilder<'s> {
             break;
         }
 
-        Ok(stack.finish())
+        stack.finish()
     }
 }
 
@@ -529,7 +529,7 @@ mod tests {
         // 0x10 - 0x40: foo in foo.c on line 1
         let mut builder = FunctionBuilder::new(Name::from("foo"), &[], 0x10, 0x30);
         builder.add_leaf_line(0x10, Some(0x30), FileInfo::from_filename(b"foo.c"), 1);
-        let func = builder.finish().unwrap();
+        let func = builder.finish();
 
         assert_eq!(func.name.as_str(), "foo");
         assert_eq!(&func.lines, &[LineInfo::new(0x10, 0x30, b"foo.c", 1)]);
@@ -572,7 +572,7 @@ mod tests {
         builder.add_leaf_line(0x28, Some(0x4), FileInfo::from_filename(b"inline.c"), 42);
         builder.add_leaf_line(0x2c, Some(0x14), FileInfo::from_filename(b"outer.c"), 3);
 
-        let function = builder.finish().unwrap();
+        let function = builder.finish();
         insta::assert_debug_snapshot!(function, @r#"
         Function {
             address: 0x10,
@@ -651,7 +651,7 @@ mod tests {
         });
         builder.add_leaf_line(0x10, Some(0x10), FileInfo::from_filename(b"foo.c"), 1);
         builder.add_leaf_line(0x20, Some(0x20), FileInfo::from_filename(b"bar.c"), 1);
-        let func = builder.finish().unwrap();
+        let func = builder.finish();
 
         // the outer function has two line records, one for itself, the other for the inlined call
         assert_eq!(func.name.as_str(), "foo");
@@ -695,7 +695,7 @@ mod tests {
             variables: vec![variable],
         });
 
-        let function = builder.finish().unwrap();
+        let function = builder.finish();
 
         insta::assert_debug_snapshot!(function, @r#"
         Function {
@@ -814,7 +814,7 @@ mod tests {
         builder.add_leaf_line(0x10, Some(0x10), FileInfo::from_filename(b"parent.c"), 1);
         builder.add_leaf_line(0x20, Some(0x20), FileInfo::from_filename(b"child2.c"), 1);
         builder.add_leaf_line(0x40, Some(0x10), FileInfo::from_filename(b"parent.c"), 1);
-        let func = builder.finish().unwrap();
+        let func = builder.finish();
 
         assert_eq!(func.name.as_str(), "parent");
         assert_eq!(
