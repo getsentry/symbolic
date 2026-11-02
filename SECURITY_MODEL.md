@@ -51,6 +51,62 @@ The trust boundary is the byte buffer passed to any parse or demangle entry
 point. Nothing inside that buffer is trusted, including declared sizes, counts,
 offsets, and nesting depths.
 
+## Component Map
+
+Where the security-critical code lives, grouped by the trust level of its
+input. Paths are relative to the repository root.
+
+Untrusted input parsers (attacker-controlled bytes):
+
+| Path | Purpose | Invariants |
+| --- | --- | --- |
+| `symbolic-debuginfo/src/object.rs` | Detects the file format and dispatches to a parser; defines `ParseObjectOptions`. | INV-3 |
+| `symbolic-debuginfo/src/elf.rs` | ELF parsing, including zlib and zstd compressed debug sections. | INV-1, INV-3 |
+| `symbolic-debuginfo/src/macho/` | Mach-O and fat archives, compact unwind info, BCSymbolMaps. | INV-1, INV-2 |
+| `symbolic-debuginfo/src/pe.rs` | PE parsing, including deflate-compressed embedded Portable PDBs. | INV-1, INV-3 |
+| `symbolic-debuginfo/src/pdb/` | Microsoft PDB parsing and the srcsrv stream. | INV-1, INV-2 |
+| `symbolic-debuginfo/src/ppdb.rs` | Portable PDB object wrapper and embedded source extraction. | INV-3 |
+| `symbolic-debuginfo/src/dwarf/` | DWARF debug info, inline function trees, and name resolution through abstract origins. | INV-2 |
+| `symbolic-debuginfo/src/function_builder.rs` | Builds nested function and inlinee trees from parsed debug info. | INV-2, INV-3 |
+| `symbolic-debuginfo/src/breakpad.rs` | Text parser for Breakpad symbol files. | INV-2 |
+| `symbolic-debuginfo/src/wasm.rs` | WebAssembly object parsing, with `symbolic-debuginfo/src/wasm/parser.rs`. | INV-1, INV-2 |
+| `symbolic-debuginfo/src/sourcebundle/` | Source bundle ZIP reader, and the writer covered by an exclusion below. | INV-3, INV-6 |
+| `symbolic-debuginfo/src/js.rs` | Extracts source map references and debug IDs from JavaScript. | INV-2 |
+| `symbolic-ppdb/src/format/` | Low-level Portable PDB metadata, streams, sequence points, and Source Link. | INV-1, INV-2 |
+| `symbolic-il2cpp/src/line_mapping/` | IL2CPP line mapping parsing. The crate is experimental. | INV-2 |
+| `symbolic-unreal/src/` | Unreal Engine crash report container, context XML, and logs. Relay parses these from the internet. | INV-2, INV-3 |
+| `symbolic-cfi/src/lib.rs` | Converts unwind info from parsed objects into Breakpad CFI records. | INV-2 |
+
+Symbol name and source processing (attacker-controlled strings):
+
+| Path | Purpose | Invariants |
+| --- | --- | --- |
+| `symbolic-demangle/src/lib.rs` | Demangler front end for C++, MSVC, Rust, Swift, and Objective-C, with recursion and output limits. | INV-1, INV-2 |
+| `symbolic-demangle/src/swiftdemangle.cpp` | C shim between Rust and the vendored Swift demangler. | INV-1 |
+| `symbolic-demangle/vendor/swift/` | Vendored, locally patched Swift demangler in C++. No Rust memory safety. | INV-1, INV-2 |
+| `symbolic-demangle/vendor/msvc-demangler/` | Vendored MSVC demangler in Rust. | INV-2 |
+| `symbolic-common/src/sourcelinks.rs` | Matches source paths against Source Link URL patterns. | INV-2 |
+| `symbolic-common/src/path.rs` | Path joining and cleaning for paths taken from debug info. | INV-6 |
+
+Cache writers and readers (input semi-trusted, trust Unresolved):
+
+| Path | Purpose | Invariants |
+| --- | --- | --- |
+| `symbolic-symcache/src/v9/` | SymCache binary format: raw layout, parsing, validation, and lookups. | INV-1, INV-4 |
+| `symbolic-symcache/src/writer.rs` | Builds a SymCache from untrusted parsed debug info, with `symbolic-symcache/src/transform/`. | INV-2, INV-3 |
+| `symbolic-sourcemapcache/src/` | SourceMapCache writer from untrusted source maps and minified JavaScript, plus the reader. | INV-1, INV-2, INV-4 |
+| `symbolic-ppdb/src/cache/` | PortablePdbCache writer and reader. | INV-1, INV-4 |
+
+Shared unsafe code and language bindings:
+
+| Path | Purpose | Invariants |
+| --- | --- | --- |
+| `symbolic-common/src/cell.rs` | `SelfCell`, which ties a parsed view to the buffer it borrows from. | INV-1 |
+| `symbolic-common/src/byteview.rs` | Memory-mapped and owned input buffers. | INV-1 |
+| `symbolic-cabi/src/` | C ABI over the Rust crates; panic containment in `symbolic-cabi/src/utils.rs`. | INV-1, INV-5 |
+| `py/symbolic/` | Python wrapper over the C ABI, used by Sentry. | INV-5 |
+| `symbolic-wasm/src/` | WebAssembly bindings published to npm. | INV-1, INV-3 |
+
 ## Security Invariants
 
 - **INV-1** Parsing or reading any input, including a malformed cache file,
