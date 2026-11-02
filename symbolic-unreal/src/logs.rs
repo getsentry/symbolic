@@ -55,6 +55,7 @@ fn serialize_timestamp<S: serde::Serializer>(
 }
 
 /// A log entry from an Unreal Engine 4 crash.
+#[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Unreal4LogEntry {
     /// The timestamp of the message, when available.
@@ -246,32 +247,55 @@ Writing Aftermath dump to: D3D12.nv-gpudmp
 [2026.10.30-11.03.11:704][561]LogD3D12RHI: Error: DRED: No PageFault data."#;
 
     let logs = Unreal4LogEntry::parse(log_bytes, 1000).expect("logs");
-
-    assert_eq!(logs.len(), 5);
-
-    assert_eq!(logs[0].component.as_deref(), Some("LogInit"));
-    assert_eq!(
-        logs[0].message,
-        "Session CrashGUID >=====\n         Session CrashGUID >   UECC-Windows-0000\n         Session CrashGUID >====="
-    );
-
-    assert_eq!(logs[1].component.as_deref(), Some("LogConfig"));
-    assert_eq!(logs[1].message, "No local boot hotfix file found");
-
-    assert_eq!(logs[2].component.as_deref(), Some("LogD3D12RHI"));
-    assert_eq!(
-        logs[2].message,
-        "Error: hr failed\n at D:\\build\\WindowsD3D12PipelineState.cpp:856\n with error DXGI_ERROR_DEVICE_REMOVED"
-    );
-
-    assert_eq!(logs[3].component.as_deref(), Some("LogNvidiaAftermath"));
-    assert_eq!(
-        logs[3].message,
-        "Error:\n\nWriting Aftermath dump to: D3D12.nv-gpudmp\n[\n  {\n    \"ApplicationName\": \"UE-SentryTower\"\n  }\n]"
-    );
-
-    assert_eq!(logs[4].component.as_deref(), Some("LogD3D12RHI"));
-    assert_eq!(logs[4].message, "Error: DRED: No PageFault data.");
+    insta::assert_debug_snapshot!(logs, @r#"
+    [
+        Unreal4LogEntry {
+            timestamp: Some(
+                2026-10-30 11:03:11.0 +00:00:00,
+            ),
+            component: Some(
+                "LogInit",
+            ),
+            message: "Session CrashGUID >=====\n         Session CrashGUID >   UECC-Windows-0000\n         Session CrashGUID >=====",
+        },
+        Unreal4LogEntry {
+            timestamp: Some(
+                2026-10-30 11:03:11.0 +00:00:00,
+            ),
+            component: Some(
+                "LogConfig",
+            ),
+            message: "No local boot hotfix file found",
+        },
+        Unreal4LogEntry {
+            timestamp: Some(
+                2026-10-30 11:03:11.0 +00:00:00,
+            ),
+            component: Some(
+                "LogD3D12RHI",
+            ),
+            message: "Error: hr failed\n at D:\\build\\WindowsD3D12PipelineState.cpp:856\n with error DXGI_ERROR_DEVICE_REMOVED",
+        },
+        Unreal4LogEntry {
+            timestamp: Some(
+                2026-10-30 11:03:11.0 +00:00:00,
+            ),
+            component: Some(
+                "LogNvidiaAftermath",
+            ),
+            message: "Error:\n\nWriting Aftermath dump to: D3D12.nv-gpudmp\n[\n  {\n    \"ApplicationName\": \"UE-SentryTower\"\n  }\n]",
+        },
+        Unreal4LogEntry {
+            timestamp: Some(
+                2026-10-30 11:03:11.0 +00:00:00,
+            ),
+            component: Some(
+                "LogD3D12RHI",
+            ),
+            message: "Error: DRED: No PageFault data.",
+        },
+    ]
+    "#);
 }
 
 #[test]
@@ -283,14 +307,28 @@ fn test_parse_logs_other_timestamp_formats() {
 [0130.30][421]LogD3D12RHI: Error: DRED: No PageFault data.";
 
     let logs = Unreal4LogEntry::parse(log_bytes, 1000).expect("logs");
-
-    assert_eq!(logs.len(), 2);
-    assert!(
-        logs[0]
-            .message
-            .ends_with("hr failed\n at D:\\build\\WindowsD3D12PipelineState.cpp:856")
-    );
-    assert!(logs[1].message.ends_with("DRED: No PageFault data."));
+    insta::assert_debug_snapshot!(logs, @r#"
+    [
+        Unreal4LogEntry {
+            timestamp: Some(
+                2026-10-30 13:02:53.0 +00:00:00,
+            ),
+            component: Some(
+                "[0130.29][420]LogD3D12RHI",
+            ),
+            message: "Error: hr failed\n at D:\\build\\WindowsD3D12PipelineState.cpp:856",
+        },
+        Unreal4LogEntry {
+            timestamp: Some(
+                2026-10-30 13:02:53.0 +00:00:00,
+            ),
+            component: Some(
+                "[0130.30][421]LogD3D12RHI",
+            ),
+            message: "Error: DRED: No PageFault data.",
+        },
+    ]
+    "#);
 }
 
 #[test]
@@ -301,13 +339,22 @@ Failed to load 'aqProf.dll' (GetLastError=126)
   File 'aqProf.dll' does not exist";
 
     let logs = Unreal4LogEntry::parse(log_bytes, 1000).expect("logs");
-
-    assert_eq!(logs.len(), 2);
-    assert_eq!(logs[0].component, None);
-    assert_eq!(
-        logs[0].message,
-        "Failed to load 'aqProf.dll' (GetLastError=126)"
-    );
-    assert_eq!(logs[1].component, None);
-    assert_eq!(logs[1].message, "  File 'aqProf.dll' does not exist");
+    insta::assert_debug_snapshot!(logs, @r#"
+    [
+        Unreal4LogEntry {
+            timestamp: Some(
+                2026-10-30 13:02:53.0 +00:00:00,
+            ),
+            component: None,
+            message: "Failed to load 'aqProf.dll' (GetLastError=126)",
+        },
+        Unreal4LogEntry {
+            timestamp: Some(
+                2026-10-30 13:02:53.0 +00:00:00,
+            ),
+            component: None,
+            message: "  File 'aqProf.dll' does not exist",
+        },
+    ]
+    "#);
 }
