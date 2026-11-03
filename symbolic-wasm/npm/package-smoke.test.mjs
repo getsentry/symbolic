@@ -41,6 +41,14 @@ test("the shipped package parses a debug file via the Archive API", () => {
   assert.equal(object.hasDebugInfo, true);
 });
 
+test("ObjectFile.data() returns the object's own bytes", () => {
+  // The fixture holds one object, so its bytes are the whole file.
+  const [object] = new symbolic.Archive(data).objects();
+  const bytes = object.data();
+  assert.ok(bytes instanceof Uint8Array, "expected data() to return bytes");
+  assert.deepEqual(bytes, data);
+});
+
 test("Archive.peek detects the format without a full parse", () => {
   assert.equal(symbolic.Archive.peek(data), "elf");
 });
