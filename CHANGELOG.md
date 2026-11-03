@@ -1,9 +1,7 @@
 <!--
-Only add a changelog entry when a change is relevant to users of Symbolic. In
-general, that means a user-facing change, such as a new feature, a bug fix, or a
-breaking API change. Internal changes, such as refactors, CI, build, and test
-changes, do not need an entry. If the Danger check asks for an entry on such a
-PR, add `#skip-changelog` to the PR description.
+Only add entries for user-facing changes, such as public API changes (including
+additions), user-facing bug fixes, and performance improvements. Internal changes,
+like documentation or refactoring, typically don't need an entry.
 -->
 
 # Changelog
