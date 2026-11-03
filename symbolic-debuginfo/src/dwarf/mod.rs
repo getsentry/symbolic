@@ -724,7 +724,7 @@ impl<'a> InProgressSubProgram<'a> {
                 }
 
                 for (_range, builder) in p.builders {
-                    output.functions.push(builder.finish()?);
+                    output.functions.push(builder.finish());
                 }
 
                 Ok(())

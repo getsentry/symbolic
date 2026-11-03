@@ -1493,7 +1493,7 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
             );
         }
 
-        Some(builder.finish().map_err(Into::into))
+        Some(Ok(builder.finish()))
     }
 }
 
@@ -2134,8 +2134,6 @@ mod parsing {
 }
 #[cfg(test)]
 mod tests {
-    use std::assert_matches;
-
     use super::*;
 
     #[test]
@@ -2622,14 +2620,54 @@ mod tests {
 
     #[test]
     fn test_inlinee_nesting_bounds() {
-        use symbolic_common::ByteView;
-
-        let buffer = ByteView::open("tests/fixtures/quadratic_inlinee.sym").unwrap();
+        let buffer = std::fs::read("tests/fixtures/quadratic_inlinee.sym").unwrap();
         let obj = BreakpadObject::parse(&buffer).expect("parse breakpad");
 
         let session = obj.debug_session().expect("session");
-        let e = session.functions().next().unwrap().err().unwrap();
-
-        assert_matches!(e.kind(), BreakpadErrorKind::ExhaustedResourceLimit);
+        let functions = session.functions().collect::<Result<Vec<_>, _>>().unwrap();
+        assert_eq!(functions.len(), 1);
+        let function = &functions[0];
+        insta::assert_debug_snapshot!(
+            (
+                function.name.as_str(),
+                function.address,
+                function.size,
+                &function.inlinees,
+                function.lines.len(),
+                function.lines.first(),
+                function.lines.last(),
+            ),
+            @r#"
+        (
+            "outer",
+            0,
+            9001,
+            [],
+            9000,
+            Some(
+                LineInfo {
+                    address: 0x0,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "",
+                        dir: "",
+                    },
+                    line: 1,
+                },
+            ),
+            Some(
+                LineInfo {
+                    address: 0x2327,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "",
+                        dir: "",
+                    },
+                    line: 1,
+                },
+            ),
+        )
+        "#
+        );
     }
 }
