@@ -15,7 +15,7 @@ edition = "2021"
 itertools = { workspace = true }
 js-source-scopes = { workspace = true }
 sourcemap = { workspace = true }
-symbolic-common = { version = "14.0.0-alpha.4", path = "../symbolic-common" }
+symbolic-common = { version = "14.0.0-alpha.5", path = "../symbolic-common" }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 watto = { workspace = true }

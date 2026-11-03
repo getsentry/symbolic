@@ -100,8 +100,8 @@ serde = { workspace = true }
 serde_json = { workspace = true, optional = true }
 smallvec = { workspace = true, optional = true }
 srcsrv = { version = "0.2", optional = true }
-symbolic-common = { version = "14.0.0-alpha.4", path = "../symbolic-common" }
-symbolic-ppdb = { version = "14.0.0-alpha.4", path = "../symbolic-ppdb", optional = true }
+symbolic-common = { version = "14.0.0-alpha.5", path = "../symbolic-common" }
+symbolic-ppdb = { version = "14.0.0-alpha.5", path = "../symbolic-ppdb", optional = true }
 thiserror = { workspace = true }
 wasmparser = { workspace = true, optional = true }
 zip = { workspace = true, optional = true }
