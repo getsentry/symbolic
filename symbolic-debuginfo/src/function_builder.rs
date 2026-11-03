@@ -520,7 +520,7 @@ fn ensure_proper_nesting(
 
 #[cfg(test)]
 mod tests {
-    use symbolic_common::{Amd64Register, Register};
+    use symbolic_common::register::{Amd64Register, Register};
 
     use crate::{VariableKind, VariableLocation, VariableLocationInfo};
 

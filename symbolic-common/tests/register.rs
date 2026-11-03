@@ -2,7 +2,7 @@
 
 use minidump::CpuContext as _;
 use minidump::format::CONTEXT_AMD64;
-use symbolic_common::Amd64Register;
+use symbolic_common::register::Amd64Register;
 
 #[test]
 fn parses_minidump_amd_64_registers() {

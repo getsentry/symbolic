@@ -1,4 +1,5 @@
-use symbolic_common::{CpuFamily, Register};
+use symbolic_common::CpuFamily;
+use symbolic_common::register::Register;
 use symbolic_debuginfo::{PrimitiveTypeEncoding, VariableKind};
 
 /// Converts a `u8` back into a [`PrimitiveTypeEncoding`].

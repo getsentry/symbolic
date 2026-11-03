@@ -7,12 +7,6 @@ use thiserror::Error;
 
 use crate::CpuFamily;
 
-/// An error returned when parsing a register name fails.
-#[derive(Debug, Error)]
-#[error("invalid register")]
-#[non_exhaustive]
-pub struct InvalidRegisterError;
-
 /// Defines a register enum for an architecture, along with its DWARF register numbers and names.
 macro_rules! registers {
     (
@@ -254,3 +248,9 @@ impl From<Amd64Register> for Register {
         Self::Amd64(register)
     }
 }
+
+/// An error returned when parsing a register name fails.
+#[derive(Debug, Error)]
+#[error("invalid register")]
+#[non_exhaustive]
+pub struct InvalidRegisterError;

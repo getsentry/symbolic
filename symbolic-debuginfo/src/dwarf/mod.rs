@@ -25,7 +25,8 @@ use gimli::{
 };
 use thiserror::Error;
 
-use symbolic_common::{AsSelf, CpuFamily, Language, Name, NameMangling, Register, SelfCell};
+use symbolic_common::register::Register;
+use symbolic_common::{AsSelf, CpuFamily, Language, Name, NameMangling, SelfCell};
 
 use crate::base::*;
 use crate::function_builder::{

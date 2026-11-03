@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt};
 
-use symbolic_common::Register;
+use symbolic_common::register::Register;
 
 /// A type reference.
 ///
