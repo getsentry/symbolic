@@ -17,8 +17,8 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-symbolic-common = { version = "14.0.0-alpha.5", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "14.0.0-alpha.5", path = "../symbolic-debuginfo", default-features = false, features = [
+symbolic-common = { version = "14.0.0", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "14.0.0", path = "../symbolic-debuginfo", default-features = false, features = [
     "breakpad",
     "elf",
     "macho",
@@ -28,7 +28,7 @@ symbolic-debuginfo = { version = "14.0.0-alpha.5", path = "../symbolic-debuginfo
     "js",
     "wasm",
 ] }
-symbolic-il2cpp = { version = "14.0.0-alpha.5", path = "../symbolic-il2cpp" }
+symbolic-il2cpp = { version = "14.0.0", path = "../symbolic-il2cpp" }
 
 serde = { workspace = true }
 serde-wasm-bindgen = { workspace = true }

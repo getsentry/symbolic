@@ -3,7 +3,7 @@ resolver = "2"
 members = ["symbolic*", "examples/*"]
 
 [workspace.package]
-version = "14.0.0-alpha.5"
+version = "14.0.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "MIT"
 homepage = "https://github.com/getsentry/symbolic"

@@ -20,9 +20,9 @@ all-features = true
 
 [dependencies]
 indexmap = { workspace = true }
-symbolic-common = { version = "14.0.0-alpha.5", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "14.0.0-alpha.5", path = "../symbolic-debuginfo" }
-symbolic-il2cpp = { version = "14.0.0-alpha.5", path = "../symbolic-il2cpp", optional = true }
+symbolic-common = { version = "14.0.0", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "14.0.0", path = "../symbolic-debuginfo" }
+symbolic-il2cpp = { version = "14.0.0", path = "../symbolic-il2cpp", optional = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 watto = { workspace = true }
