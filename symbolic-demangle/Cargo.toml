@@ -1,11 +1,11 @@
 [package]
 name = "symbolic-demangle"
-version = "14.0.0-alpha.4"
-license = "MIT"
+version.workspace = true
+license.workspace = true
 authors.workspace = true
 documentation = "https://docs.rs/symbolic-demangle"
-homepage = "https://github.com/getsentry/symbolic"
-repository = "https://github.com/getsentry/symbolic"
+homepage.workspace = true
+repository.workspace = true
 readme = "README.md"
 description = """
 A library to demangle symbols from various languages and compilers.

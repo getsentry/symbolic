@@ -1,11 +1,11 @@
 [package]
 name = "symbolic-ppdb"
-version = "14.0.0-alpha.4"
-license = "MIT"
+version.workspace = true
+license.workspace = true
 authors.workspace = true
 documentation = "https://docs.rs/symbolic-ppdb"
-homepage = "https://github.com/getsentry/symbolic"
-repository = "https://github.com/getsentry/symbolic"
+homepage.workspace = true
+repository.workspace = true
 description = """
 A library for parsing and performing lookups on Portable PDB files.
 """
