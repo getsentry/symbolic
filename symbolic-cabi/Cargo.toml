@@ -17,7 +17,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 sourcemap = { workspace = true }
-symbolic = { version = "14.0.0-alpha.4", path = "../symbolic", features = [
+symbolic = { version = "14.0.0-alpha.5", path = "../symbolic", features = [
     "cfi",
     "debuginfo",
     "sourcemapcache",
