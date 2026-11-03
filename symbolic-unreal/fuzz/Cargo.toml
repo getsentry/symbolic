@@ -1,0 +1,25 @@
+[package]
+name = "symbolic-unreal-fuzz"
+version = "14.0.0-alpha.5"
+authors = ["Automatically generated"]
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.symbolic-unreal]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "fuzz_unreal"
+path = "fuzz_targets/fuzz_unreal.rs"
+test = false
+doc = false

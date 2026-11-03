@@ -1,0 +1,32 @@
+[package]
+name = "symbolic-symcache-fuzz"
+version = "14.0.0-alpha.5"
+authors = ["Automatically generated"]
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+symbolic-debuginfo = { path = "../../symbolic-debuginfo" }
+
+[dependencies.symbolic-symcache]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "fuzz_symcache"
+path = "fuzz_targets/fuzz_symcache.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_symcache_writer"
+path = "fuzz_targets/fuzz_symcache_writer.rs"
+test = false
+doc = false
