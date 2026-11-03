@@ -10,7 +10,7 @@
 
 - Resolve `void` pointers in variable types as `PointerType` with `pointee` set to `None`. ([#1100](https://github.com/getsentry/symbolic/pull/1100))
 - Distinguish `void` pointers from pointers to unknown types in symcaches. ([#1101](https://github.com/getsentry/symbolic/pull/1101))
-- WASM: expose `ObjectFile.data()`, which returns a copy of the object's own bytes. For an archive with more than one object, such as a fat Mach-O, each object's bytes form a standalone debug information file that can be parsed or uploaded on its own. ([#PR_NUMBER](https://github.com/getsentry/symbolic/pull/PR_NUMBER))
+- WASM: expose `ObjectFile.data()`, which returns a copy of the object's own bytes. For an archive with more than one object, such as a fat Mach-O, each object's bytes form a standalone debug information file that can be parsed or uploaded on its own. ([#1132](https://github.com/getsentry/symbolic/pull/1132))
 
 **Fixes**
 
