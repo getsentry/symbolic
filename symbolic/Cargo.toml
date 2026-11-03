@@ -2,10 +2,7 @@
 name = "symbolic"
 version = "14.0.0-alpha.4"
 license = "MIT"
-authors = [
-    "Armin Ronacher <armin.ronacher@active-4.com>",
-    "Jan Michael Auer <mail@jauer.org>",
-]
+authors.workspace = true
 documentation = "https://docs.rs/symbolic"
 homepage = "https://github.com/getsentry/symbolic"
 repository = "https://github.com/getsentry/symbolic"

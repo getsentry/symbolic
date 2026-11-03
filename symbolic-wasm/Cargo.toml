@@ -2,9 +2,7 @@
 name = "symbolic-wasm"
 version = "14.0.0-alpha.4"
 license = "MIT"
-authors = [
-    "Sentry <hello@sentry.io>",
-]
+authors.workspace = true
 homepage = "https://github.com/getsentry/symbolic"
 repository = "https://github.com/getsentry/symbolic"
 description = """
