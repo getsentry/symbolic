@@ -1,8 +1,17 @@
 //! Architecture specific register definitions.
 
-use std::fmt;
+use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::str::FromStr;
+
+use thiserror::Error;
 
 use crate::CpuFamily;
+
+/// An error returned when parsing a register name fails.
+#[derive(Debug, Error)]
+#[error("invalid register")]
+#[non_exhaustive]
+pub struct InvalidRegisterError;
 
 /// Defines a register enum for an architecture, along with its DWARF register numbers and names.
 macro_rules! registers {
@@ -41,11 +50,22 @@ macro_rules! registers {
             }
         }
 
-        impl fmt::Display for $enum {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        impl Display for $enum {
+            fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
                 f.write_str(match self {
                     $(Self::$variant => $name,)*
                 })
+            }
+        }
+
+        impl FromStr for $enum {
+            type Err = InvalidRegisterError;
+
+            fn from_str(name: &str) -> Result<Self, Self::Err> {
+                match name {
+                    $($name => Ok(Self::$variant),)*
+                    _ => Err(InvalidRegisterError),
+                }
             }
         }
     };
@@ -61,6 +81,15 @@ registers! {
     /// address), `xmm0` to `xmm31` (vectors), `st0` to `st7` (x87), `mm0` to `mm7` (MMX),
     /// `rflags`, the segment registers, a few system and control registers, `k0` to `k7` (vector
     /// masks), and the AMX registers `tmm0` to `tmm7` and `tilecfg`.
+    ///
+    /// We can parse the registers from their canonical names via the [`FromStr`] implementation,
+    /// like so:
+    ///
+    /// ```rust
+    /// # use symbolic_common::Amd64Register;
+    /// let rax = "rax".parse::<Amd64Register>().expect("\"rax\" is a valid Amd64 register");
+    /// assert!(matches!(rax, Amd64Register::Rax));
+    /// ```
     ///
     /// [psabi]: https://gitlab.com/x86-psabis/x86-64-ABI
     #[derive(Debug, Clone, Copy)]
@@ -212,8 +241,8 @@ impl Register {
     }
 }
 
-impl fmt::Display for Register {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for Register {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Self::Amd64(register) => register.fmt(f),
         }
