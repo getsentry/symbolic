@@ -20,12 +20,6 @@ path = ".."
 members = ["."]
 
 [[bin]]
-name = "fuzz_symcache"
-path = "fuzz_targets/fuzz_symcache.rs"
-test = false
-doc = false
-
-[[bin]]
 name = "fuzz_symcache_writer"
 path = "fuzz_targets/fuzz_symcache_writer.rs"
 test = false

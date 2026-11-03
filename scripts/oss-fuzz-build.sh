@@ -25,8 +25,8 @@ for fuzz_dir in "$ROOT"/symbolic-*/fuzz; do
 done
 
 # Seed corpora from the test fixtures. Files are renamed to their hash because
-# fixture names repeat across directories. Seeds are capped at max_len (below),
-# since libFuzzer truncates longer inputs.
+# fixture names repeat across directories. libFuzzer derives max_len from the
+# largest seed, so the 1MB cap also bounds input size for the binary formats.
 zip_seeds() {
   local name=$1; shift
   local dir=$WORK/seeds/$name
@@ -47,11 +47,5 @@ done
 zip_seeds fuzz_sourcemapcache "$WORK/sourcemap_seeds"
 zip_seeds fuzz_objects "$FIXTURES/linux" "$FIXTURES/macos" "$FIXTURES/windows" "$FIXTURES/wasm" "$FIXTURES/android"
 zip_seeds fuzz_ppdb "$FIXTURES/windows" "$FIXTURES/ppdb-sourcelink-sample"
-zip_seeds fuzz_symcache "$FIXTURES/symcache"
 zip_seeds fuzz_symcache_writer "$FIXTURES/linux" "$FIXTURES/macos" "$FIXTURES/windows"
 zip_seeds fuzz_unreal "$FIXTURES/unreal"
-
-# Large binary formats need bigger inputs than libFuzzer picks by default.
-for name in fuzz_objects fuzz_ppdb fuzz_symcache fuzz_symcache_writer fuzz_unreal; do
-  printf '[libfuzzer]\nmax_len = 1048576\n' > "$OUT/$name.options"
-done
