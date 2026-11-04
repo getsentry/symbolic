@@ -547,7 +547,9 @@ mod tests {
             locations: vec![VariableLocationInfo {
                 address: 0x10,
                 size: 0x30,
-                location: VariableLocation::Register { id: 0 },
+                location: VariableLocation::Register {
+                    register: Register::Amd64(Amd64Register::Rax),
+                },
             }],
         });
         builder.add_inlinee(FunctionBuilderInlinee {
@@ -626,7 +628,9 @@ mod tests {
                             address: 0x10,
                             size: 0x30,
                             location: Register {
-                                id: 0,
+                                register: Amd64(
+                                    Rax,
+                                ),
                             },
                         },
                     ],

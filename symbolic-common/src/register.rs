@@ -81,13 +81,12 @@ registers! {
     /// as shown below.
     ///
     /// ```rust
-    /// # use symbolic_common::Amd64Register;
+    /// # use symbolic_common::register::Amd64Register;
     /// let rax = "rax".parse::<Amd64Register>().expect("\"rax\" is a valid Amd64 register");
     /// assert_eq!(rax, Amd64Register::Rax);
     /// ```
     ///
     /// [psabi]: https://gitlab.com/x86-psabis/x86-64-ABI
-    #[derive(Debug, Clone, Copy)]
     pub enum Amd64Register {
         Rax = { name: "rax", dwarf: 0 },
         Rdx = { name: "rdx", dwarf: 1 },
