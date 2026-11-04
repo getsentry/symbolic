@@ -8,7 +8,7 @@ use thiserror::Error;
 use crate::CpuFamily;
 
 /// Defines a register enum for an architecture, along with its DWARF register numbers and names.
-macro_rules! registers {
+macro_rules! define_arch_registers {
     (
         $(#[$enum_meta:meta])*
         pub enum $enum:ident {
@@ -66,7 +66,7 @@ macro_rules! registers {
     };
 }
 
-registers! {
+define_arch_registers! {
     /// An x86-64 register.
     ///
     /// The set of registers follows the DWARF register number mapping of the
@@ -203,58 +203,86 @@ registers! {
     }
 }
 
-/// A register of any supported architecture.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[non_exhaustive]
-pub enum Register {
+/// Defines the architecture-independent register type and conversions from a shared CPU-family mapping.
+macro_rules! define_register_wrapper {
+    (
+        $(
+            $(#[$meta:meta])*
+            $variant:ident($register:ident) => [$($family:path),+ $(,)?]
+        ),+ $(,)?
+    ) => {
+        /// A register of any supported architecture.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+        #[non_exhaustive]
+        pub enum Register {
+            $(
+                $(#[$meta])*
+                $variant($register),
+            )+
+        }
+
+        impl Register {
+            /// Returns the register with the given DWARF register number for the given CPU family.
+            ///
+            /// Returns `None` if the CPU family has no register mapping, or if the number is not a
+            /// register of the CPU family.
+            pub fn from_dwarf(cpu_family: CpuFamily, number: u16) -> Option<Self> {
+                match cpu_family {
+                    $(
+                        $($family)|+ => {
+                            $register::from_dwarf(number).map(Self::$variant)
+                        }
+                    )+
+                    _ => None,
+                }
+            }
+
+            /// Returns the DWARF register number of this register.
+            ///
+            /// DWARF register numbers are architecture dependent, so interpreting the number requires
+            /// knowing the register's CPU family, as in [`Register::from_dwarf`]. The number of a
+            /// register is fixed and will not change.
+            pub fn to_dwarf(self) -> u16 {
+                match self {
+                    $(Self::$variant(register) => register.to_dwarf(),)+
+                }
+            }
+
+            /// Return a typed register for the given register name and CPU family, if known and available.
+            pub fn try_from_name(
+                cpu_family: CpuFamily,
+                name: &str,
+            ) -> Result<Self, RegisterFromNameError> {
+                match cpu_family {
+                    $(
+                        $($family)|+ => Ok(Self::$variant(name.parse()?)),
+                    )+
+                    _ => Err(RegisterFromNameError::UnsupportedArchitecture),
+                }
+            }
+        }
+
+        impl Display for Register {
+            fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+                match self {
+                    $(Self::$variant(register) => register.fmt(f),)+
+                }
+            }
+        }
+
+        $(
+            impl From<$register> for Register {
+                fn from(register: $register) -> Self {
+                    Self::$variant(register)
+                }
+            }
+        )+
+    };
+}
+
+define_register_wrapper! {
     /// An x86-64 register.
-    Amd64(Amd64Register),
-}
-
-impl Register {
-    /// Returns the register with the given DWARF register number for the given CPU family.
-    ///
-    /// Returns `None` if the CPU family has no register mapping, or if the number is not a
-    /// register of the CPU family.
-    pub fn from_dwarf(cpu_family: CpuFamily, number: u16) -> Option<Self> {
-        match cpu_family {
-            CpuFamily::Amd64 => Amd64Register::from_dwarf(number).map(Self::Amd64),
-            _ => None,
-        }
-    }
-
-    /// Returns the DWARF register number of this register.
-    ///
-    /// DWARF register numbers are architecture dependent, so interpreting the number requires
-    /// knowing the register's CPU family, as in [`Register::from_dwarf`]. The number of a
-    /// register is fixed and will not change.
-    pub fn to_dwarf(self) -> u16 {
-        match self {
-            Self::Amd64(register) => register.to_dwarf(),
-        }
-    }
-
-    /// Return a typed register for the given register name and CPU family, if known and available.
-    pub fn try_from_name(cpu_family: CpuFamily, name: &str) -> Result<Self, RegisterFromNameError> {
-        match cpu_family {
-            CpuFamily::Amd64 => Ok(Self::Amd64(name.parse()?)),
-            _ => Err(RegisterFromNameError::UnsupportedArchitecture),
-        }
-    }
-}
-
-impl Display for Register {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            Self::Amd64(register) => register.fmt(f),
-        }
-    }
-}
-
-impl From<Amd64Register> for Register {
-    fn from(register: Amd64Register) -> Self {
-        Self::Amd64(register)
-    }
+    Amd64(Amd64Register) => [CpuFamily::Amd64],
 }
 
 /// An error returned when parsing a register name fails.
