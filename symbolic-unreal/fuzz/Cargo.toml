@@ -1,0 +1,26 @@
+[package]
+name = "symbolic-unreal-fuzz"
+version = "14.0.0-alpha.5"
+authors = ["Sentry <hello@sentry.io>"]
+license = "MIT"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.symbolic-unreal]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "fuzz_unreal"
+path = "fuzz_targets/fuzz_unreal.rs"
+test = false
+doc = false
