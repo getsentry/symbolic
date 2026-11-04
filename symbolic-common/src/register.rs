@@ -252,12 +252,12 @@ macro_rules! define_register_wrapper {
             pub fn try_from_name(
                 cpu_family: CpuFamily,
                 name: &str,
-            ) -> Result<Self, RegisterFromNameError> {
+            ) -> Option<Self> {
                 match cpu_family {
                     $(
-                        $($family)|+ => Ok(Self::$variant(name.parse()?)),
+                        $($family)|+ => Some(Self::$variant(name.parse().ok()?)),
                     )+
-                    _ => Err(RegisterFromNameError::UnsupportedArchitecture),
+                    _ => None,
                 }
             }
         }
@@ -290,15 +290,3 @@ define_register_wrapper! {
 #[error("invalid register")]
 #[non_exhaustive]
 pub struct InvalidRegisterError;
-
-/// An error returned by [`Register::try_from_name`].
-#[derive(Debug, Error)]
-pub enum RegisterFromNameError {
-    /// The register name could not be parsed for the given architecture.
-    #[error("could not parse register for architecture: {0}")]
-    InvalidRegister(#[from] InvalidRegisterError),
-
-    /// We do not support parsing register names for the given CPU family.
-    #[error("architecture not supported for parsing registers")]
-    UnsupportedArchitecture,
-}
