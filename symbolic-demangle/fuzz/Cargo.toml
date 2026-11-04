@@ -1,9 +1,10 @@
 [package]
 name = "symbolic-demangle-fuzz"
 version = "14.0.0-alpha.5"
-authors = ["Automatically generated"]
+authors = ["Sentry <hello@sentry.io>"]
+license = "MIT"
 publish = false
-edition = "2021"
+edition = "2024"
 
 [package.metadata]
 cargo-fuzz = true
