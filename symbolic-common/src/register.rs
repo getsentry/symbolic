@@ -12,7 +12,7 @@ macro_rules! define_arch_registers {
     (
         $(#[$enum_meta:meta])*
         pub enum $enum:ident {
-            $($variant:ident = { name: $name:literal, dwarf: $dwarf:literal },)*
+            $($variant:ident = { name: $name:literal, dwarf: $dwarf:literal $(, alias: $alias:literal)? },)*
         }
     ) => {
         $(#[$enum_meta])*
@@ -20,6 +20,7 @@ macro_rules! define_arch_registers {
         pub enum $enum {
             $(
                 #[doc = concat!("The `", $name, "` register.")]
+                $(#[doc = concat!("\nThis register is also known as `", $alias, "`.")])?
                 $variant,
             )*
         }
@@ -58,7 +59,12 @@ macro_rules! define_arch_registers {
 
             fn from_str(name: &str) -> Result<Self, Self::Err> {
                 match name {
-                    $($name => Ok(Self::$variant),)*
+                    $(
+                        $name => Ok(Self::$variant),
+                        $(
+                            $alias => Ok(Self::$variant),
+                        )?
+                    )*
                     _ => Err(InvalidRegisterError),
                 }
             }
@@ -245,8 +251,10 @@ define_arch_registers! {
         X26 = { name: "x26", dwarf: 26 },
         X27 = { name: "x27", dwarf: 27 },
         X28 = { name: "x28", dwarf: 28 },
-        X29 = { name: "x29", dwarf: 29 },
-        X30 = { name: "x30", dwarf: 30 },
+        // The minidump crate uses "fp" for register "x29".
+        X29 = { name: "x29", dwarf: 29, alias: "fp" },
+        // The minidump crate uses "lr" for register "x30".
+        X30 = { name: "x30", dwarf: 30, alias: "lr" },
         Sp = { name: "sp", dwarf: 31 },
         Pc = { name: "pc", dwarf: 32 },
         ElrMode = { name: "elr_mode", dwarf: 33 },
