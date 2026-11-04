@@ -220,6 +220,26 @@ define_arch_registers! {
     /// `v0` to `v31` (SIMD and floating point), and the SVE registers `z0` to `z31` (vectors),
     /// `p0` to `p15` (predicates), `vg` and `ffr`.
     ///
+    /// Registers can be parsed from their canonical names via the [`FromStr`] implementation:
+    ///
+    /// ```rust
+    /// # use symbolic_common::register::Arm64Register;
+    /// let x0 = "x0".parse::<Arm64Register>().expect("\"x0\" is a valid Arm64 register");
+    /// assert_eq!(x0, Arm64Register::X0);
+    /// ```
+    ///
+    /// The registers `x29` and `x30` are also known as `fp` (frame pointer) and `lr` (link register),
+    /// respectively. Each can be parsed using either name:
+    ///
+    /// ```rust
+    /// # use symbolic_common::register::Arm64Register;
+    /// assert_eq!("x29".parse::<Arm64Register>().unwrap(), Arm64Register::X29);
+    /// assert_eq!("fp".parse::<Arm64Register>().unwrap(), Arm64Register::X29);
+    ///
+    /// assert_eq!("x30".parse::<Arm64Register>().unwrap(), Arm64Register::X30);
+    /// assert_eq!("lr".parse::<Arm64Register>().unwrap(), Arm64Register::X30);
+    /// ```
+    ///
     /// [aadwarf64]: https://github.com/ARM-software/abi-aa/blob/main/aadwarf64/aadwarf64.rst#dwarf-register-names
     pub enum Arm64Register {
         X0 = { name: "x0", dwarf: 0 },
