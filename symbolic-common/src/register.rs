@@ -16,6 +16,7 @@ macro_rules! registers {
         }
     ) => {
         $(#[$enum_meta])*
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
         pub enum $enum {
             $(
                 #[doc = concat!("The `", $name, "` register.")]
@@ -77,12 +78,12 @@ registers! {
     /// masks), and the AMX registers `tmm0` to `tmm7` and `tilecfg`.
     ///
     /// We can parse the registers from their canonical names via the [`FromStr`] implementation,
-    /// like so:
+    /// as shown below.
     ///
     /// ```rust
     /// # use symbolic_common::Amd64Register;
     /// let rax = "rax".parse::<Amd64Register>().expect("\"rax\" is a valid Amd64 register");
-    /// assert!(matches!(rax, Amd64Register::Rax));
+    /// assert_eq!(rax, Amd64Register::Rax);
     /// ```
     ///
     /// [psabi]: https://gitlab.com/x86-psabis/x86-64-ABI
@@ -204,7 +205,7 @@ registers! {
 }
 
 /// A register of any supported architecture.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[non_exhaustive]
 pub enum Register {
     /// An x86-64 register.
@@ -233,6 +234,14 @@ impl Register {
             Self::Amd64(register) => register.to_dwarf(),
         }
     }
+
+    /// Return a typed register for the given register name and CPU family, if known and available.
+    pub fn try_from_name(cpu_family: CpuFamily, name: &str) -> Result<Self, RegisterFromNameError> {
+        match cpu_family {
+            CpuFamily::Amd64 => Ok(Self::Amd64(name.parse()?)),
+            _ => Err(RegisterFromNameError::UnsupportedArchitecture),
+        }
+    }
 }
 
 impl Display for Register {
@@ -254,3 +263,15 @@ impl From<Amd64Register> for Register {
 #[error("invalid register")]
 #[non_exhaustive]
 pub struct InvalidRegisterError;
+
+/// An error returned by [`Register::try_from_name`].
+#[derive(Debug, Error)]
+pub enum RegisterFromNameError {
+    /// The register name could not be parsed for the given architecture.
+    #[error("could not parse register for architecture: {0}")]
+    InvalidRegister(#[from] InvalidRegisterError),
+
+    /// We do not support parsing register names for the given CPU family.
+    #[error("architecture not supported for parsing registers")]
+    UnsupportedArchitecture,
+}
