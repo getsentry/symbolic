@@ -1,9 +1,3 @@
-<!--
-Only add entries for user-facing changes, such as public API changes (including
-additions), user-facing bug fixes, and performance improvements. Internal changes,
-like documentation or refactoring, typically don't need an entry.
--->
-
 # Changelog
 
 ## Unreleased
