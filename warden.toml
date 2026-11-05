@@ -46,6 +46,7 @@ type = "local"
 # Applied per-repo (opt-in) rather than as a warden default. Runs in CI on PRs.
 [[skills]]
 name = "wrdn-dos-review"
+incremental = true
 remote = "getsentry/warden-skills"
 paths = ["**/*.rs"]
 
