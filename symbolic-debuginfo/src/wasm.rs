@@ -120,7 +120,13 @@ impl<'data> WasmObject<'data> {
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'data>, DwarfError> {
         let symbols = self.symbol_map();
         // WASM is offset by the negative offset to the code section instead of the load address
-        DwarfDebugSession::parse(self, symbols, -(self.code_offset() as i64), self.kind())
+        DwarfDebugSession::parse(
+            self,
+            symbols,
+            -(self.code_offset() as i64),
+            self.kind(),
+            self.arch().cpu_family(),
+        )
     }
 
     /// Determines whether this object contains stack unwinding information.

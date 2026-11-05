@@ -57,8 +57,8 @@ impl fmt::Debug for VariablesDebug<'_, '_> {
 
                 let end = location.address + location.size;
                 match location.location {
-                    VariableLocation::Register { id } => {
-                        write!(f, "{:#x}..{end:#x} register {id}", location.address)?;
+                    VariableLocation::Register { register } => {
+                        write!(f, "{:#x}..{end:#x} register {register}", location.address)?;
                     }
                     VariableLocation::FrameOffset { offset } => {
                         write!(f, "{:#x}..{end:#x} frame {offset}", location.address)?;
@@ -185,40 +185,40 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
     let symcache = SymCache::parse(&buffer)?;
 
     let source_location = symcache.lookup(0xfe50).last().unwrap();
-    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r#"
-    this (parameter, <unknown>): 0xfe50..0xfe86 register 5
-    str (parameter, <unknown>*): 0xfe50..0xfe86 register 4
-    length (parameter, unsigned int): 0xfe50..0xfe86 register 1
-    mdstring (parameter, <unknown>*): 0xfe50..0xfe86 register 2
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
+    this (parameter, <unknown>): 0xfe50..0xfe86 register rdi
+    str (parameter, <unknown>*): 0xfe50..0xfe86 register rsi
+    length (parameter, unsigned int): 0xfe50..0xfe86 register rdx
+    mdstring (parameter, <unknown>*): 0xfe50..0xfe86 register rcx
     result (local, bool): <unavailable>
     out (local, <unknown>): 0xfe50..0xff4c frame -80
     out_idx (local, int): <unavailable>
     out_count (local, int): <unavailable>
-    "#);
+    ");
 
     let source_location = symcache.lookup(0xfe90).last().unwrap();
-    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r#"
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>): <unavailable>
-    str (parameter, <unknown>*): 0xfe86..0xff02 register 6
-    length (parameter, unsigned int): 0xfe86..0xff02 register 3
-    mdstring (parameter, <unknown>*): 0xfe86..0xff02 register 13
+    str (parameter, <unknown>*): 0xfe86..0xff02 register rbp
+    length (parameter, unsigned int): 0xfe86..0xff02 register rbx
+    mdstring (parameter, <unknown>*): 0xfe86..0xff02 register r13
     result (local, bool): <unavailable>
     out (local, <unknown>): 0xfe50..0xff4c frame -80
-    out_idx (local, int): 0xfe86..0xfed9 register 12
+    out_idx (local, int): 0xfe86..0xfed9 register r12
     out_count (local, int): <unavailable>
-    "#);
+    ");
 
     let source_location = symcache.lookup(0xfecb).last().unwrap();
-    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r#"
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>): <unavailable>
-    str (parameter, <unknown>*): 0xfe86..0xff02 register 6
-    length (parameter, unsigned int): 0xfe86..0xff02 register 3
-    mdstring (parameter, <unknown>*): 0xfe86..0xff02 register 13
+    str (parameter, <unknown>*): 0xfe86..0xff02 register rbp
+    length (parameter, unsigned int): 0xfe86..0xff02 register rbx
+    mdstring (parameter, <unknown>*): 0xfe86..0xff02 register r13
     result (local, bool): <unavailable>
     out (local, <unknown>): 0xfe50..0xff4c frame -80
-    out_idx (local, int): 0xfe86..0xfed9 register 12
-    out_count (local, int): 0xfecb..0xfeee register 15
-    "#);
+    out_idx (local, int): 0xfe86..0xfed9 register r12
+    out_count (local, int): 0xfecb..0xfeee register r15
+    ");
 
     Ok(())
 }
@@ -254,31 +254,31 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     let symcache = SymCache::parse(&buffer)?;
 
     let source_location = symcache.lookup(0xea0).last().unwrap();
-    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r#"
-    this (parameter, <unknown>*): 0xea0..0xed2 register 5
-    str (parameter, <unknown>*): 0xea0..0xeb6 register 4
-    mdstring (parameter, <unknown>*): 0xea0..0xeb1 register 2
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
+    this (parameter, <unknown>*): 0xea0..0xed2 register rdi
+    str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
+    mdstring (parameter, <unknown>*): 0xea0..0xeb1 register rcx
     out (local, <unknown>): 0xea0..0xfe7 frame 16
     out_size (local, <unknown>): <unavailable>
-    "#);
+    ");
 
     let source_location = symcache.lookup(0xeb2).last().unwrap();
-    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r#"
-    this (parameter, <unknown>*): 0xea0..0xed2 register 5
-    str (parameter, <unknown>*): 0xea0..0xeb6 register 4
-    mdstring (parameter, <unknown>*): 0xeb1..0xf41 register 12
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
+    this (parameter, <unknown>*): 0xea0..0xed2 register rdi
+    str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
+    mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
     out (local, <unknown>): 0xea0..0xfe7 frame 16
     out_size (local, <unknown>): <unavailable>
-    "#);
+    ");
 
     let source_location = symcache.lookup(0xed2).last().unwrap();
-    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r#"
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>*): <unavailable>
-    str (parameter, <unknown>*): 0xeb6..0xf23 register 3
-    mdstring (parameter, <unknown>*): 0xeb1..0xf41 register 12
+    str (parameter, <unknown>*): 0xeb6..0xf23 register rbx
+    mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
     out (local, <unknown>): 0xea0..0xfe7 frame 16
     out_size (local, <unknown>): <unavailable>
-    "#);
+    ");
 
     Ok(())
 }

@@ -520,6 +520,8 @@ fn ensure_proper_nesting(
 
 #[cfg(test)]
 mod tests {
+    use symbolic_common::register::{Amd64Register, Register};
+
     use crate::{VariableKind, VariableLocation, VariableLocationInfo};
 
     use super::*;
@@ -545,7 +547,9 @@ mod tests {
             locations: vec![VariableLocationInfo {
                 address: 0x10,
                 size: 0x30,
-                location: VariableLocation::Register { id: 0 },
+                location: VariableLocation::Register {
+                    register: Register::Amd64(Amd64Register::Rax),
+                },
             }],
         });
         builder.add_inlinee(FunctionBuilderInlinee {
@@ -624,7 +628,9 @@ mod tests {
                             address: 0x10,
                             size: 0x30,
                             location: Register {
-                                id: 0,
+                                register: Amd64(
+                                    Rax,
+                                ),
                             },
                         },
                     ],
@@ -680,7 +686,9 @@ mod tests {
             locations: vec![VariableLocationInfo {
                 address: 0x10,
                 size: 0x40,
-                location: VariableLocation::Register { id: 0 },
+                location: VariableLocation::Register {
+                    register: Register::Amd64(Amd64Register::Rax),
+                },
             }],
         };
 
@@ -741,7 +749,9 @@ mod tests {
                                     address: 0x20,
                                     size: 0x10,
                                     location: Register {
-                                        id: 0,
+                                        register: Amd64(
+                                            Rax,
+                                        ),
                                     },
                                 },
                             ],

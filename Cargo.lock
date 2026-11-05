@@ -2520,11 +2520,13 @@ version = "14.0.0-alpha.5"
 dependencies = [
  "debugid",
  "memmap2",
+ "minidump",
  "serde",
  "similar-asserts",
  "stable_deref_trait",
  "symbolic-testutils",
  "tempfile",
+ "thiserror",
  "uuid",
 ]
 
