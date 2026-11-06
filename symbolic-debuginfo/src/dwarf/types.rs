@@ -1,4 +1,6 @@
-use gimli::{AttributeValue, DebuggingInformationEntry, UnitOffset, constants};
+use gimli::{
+    AttributeValue, DebuggingInformationEntry, Encoding, Operation, UnitOffset, constants,
+};
 
 use crate::dwarf::{DwarfError, Slice, UnitRef};
 use crate::{
@@ -162,7 +164,10 @@ fn parse_structure_type<'d>(
                     ty = unit.to_type_ref(attr).map(Into::into);
                 }
                 constants::DW_AT_data_member_location => {
-                    offset = Some(attr.udata_value().map(MemberOffset::Bytes));
+                    offset = Some(parse_data_member_location(
+                        attr.value(),
+                        unit.unit.encoding(),
+                    ));
                 }
                 constants::DW_AT_data_bit_offset => {
                     offset = Some(attr.udata_value().map(MemberOffset::Bits));
@@ -192,4 +197,27 @@ fn parse_structure_type<'d>(
         size: size.map(TypeSize::Bytes),
         members,
     }))
+}
+
+/// Resolves a [`constants::DW_AT_data_member_location`].
+///
+/// This currently only supports integer locations as well as `DW_OP_plus_uconst` expressions.
+fn parse_data_member_location(
+    value: AttributeValue<Slice<'_>>,
+    encoding: Encoding,
+) -> Option<MemberOffset> {
+    if let Some(offset) = value.udata_value() {
+        return Some(MemberOffset::Bytes(offset));
+    }
+
+    let mut operations = value.exprloc_value()?.operations(encoding);
+    let Operation::PlusConstant { value } = operations.next().ok()?? else {
+        return None;
+    };
+
+    operations
+        .next()
+        .ok()?
+        .is_none()
+        .then_some(MemberOffset::Bytes(value))
 }
