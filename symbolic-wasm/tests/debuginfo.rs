@@ -61,6 +61,44 @@ fn test_archive_objects() {
 
 #[test]
 #[wasm_bindgen_test::wasm_bindgen_test]
+fn test_object_data_single_object() {
+    // A single-object archive's object spans the whole file.
+    let data = common::fixture("symbolic-testutils/fixtures/linux/crash.debug");
+
+    let archive = Archive::new(&data).unwrap();
+    let object = archive.objects().unwrap().remove(0);
+
+    assert_eq!(object.data(), data);
+}
+
+#[test]
+#[wasm_bindgen_test::wasm_bindgen_test]
+fn test_object_data_fat_macho() {
+    // Each slice of a fat Mach-O is a standalone, single-object file.
+    let data = common::fixture(
+        "symbolic-testutils/fixtures/macos/Example.framework.dSYM/Contents/Resources/DWARF/Example",
+    );
+
+    let archive = Archive::new(&data).unwrap();
+    let objects = archive.objects().unwrap();
+    assert!(objects.len() > 1);
+
+    for object in objects {
+        let slice = object.data();
+        assert!(slice.len() < data.len());
+
+        let slice_archive = Archive::new(&slice).unwrap();
+        assert_eq!(slice_archive.file_format(), "macho");
+        let mut slice_objects = slice_archive.objects().unwrap();
+        assert_eq!(slice_objects.len(), 1);
+        let slice_object = slice_objects.remove(0);
+        assert_eq!(slice_object.debug_id(), object.debug_id());
+        assert_eq!(slice_object.arch(), object.arch());
+    }
+}
+
+#[test]
+#[wasm_bindgen_test::wasm_bindgen_test]
 fn test_embedded_ppdb_none() {
     // A managed PE that does NOT embed a Portable PDB.
     let data =

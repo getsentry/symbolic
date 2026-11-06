@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-debuginfo-fuzz"
-version = "14.0.0-alpha.4"
+version = "14.0.0-alpha.5"
 authors = ["Automatically generated"]
 publish = false
 edition = "2021"

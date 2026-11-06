@@ -1,11 +1,11 @@
 [package]
 name = "symbolic-il2cpp"
-version = "14.0.0-alpha.4"
-license = "MIT"
-authors = ["Sentry <hello@sentry.io>"]
+version.workspace = true
+license.workspace = true
+authors.workspace = true
 documentation = "https://docs.rs/symbolic-il2cpp"
-homepage = "https://github.com/getsentry/symbolic"
-repository = "https://github.com/getsentry/symbolic"
+homepage.workspace = true
+repository.workspace = true
 description = """
 A library for parsing il2cpp line mappings.
 """
@@ -15,8 +15,8 @@ rust-version.workspace = true
 [dependencies]
 indexmap = { workspace = true }
 serde_json = { workspace = true }
-symbolic-common = { version = "14.0.0-alpha.4", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "14.0.0-alpha.4", path = "../symbolic-debuginfo" }
+symbolic-common = { version = "14.0.0-alpha.5", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "14.0.0-alpha.5", path = "../symbolic-debuginfo" }
 
 [dev-dependencies]
 symbolic-testutils = { path = "../symbolic-testutils" }

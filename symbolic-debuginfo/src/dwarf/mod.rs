@@ -25,7 +25,8 @@ use gimli::{
 };
 use thiserror::Error;
 
-use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
+use symbolic_common::register::Register;
+use symbolic_common::{AsSelf, CpuFamily, Language, Name, NameMangling, SelfCell};
 
 use crate::base::*;
 use crate::function_builder::{
@@ -724,7 +725,7 @@ impl<'a> InProgressSubProgram<'a> {
                 }
 
                 for (_range, builder) in p.builders {
-                    output.functions.push(builder.finish()?);
+                    output.functions.push(builder.finish());
                 }
 
                 Ok(())
@@ -842,8 +843,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             .and_then(|av| av.string_value(&info.inner.debug_str));
 
         // Trust the symbol table more to contain accurate mangled names. However, since Dart's name
-        // mangling is lossy, we need to load the demangled name instead.
-        let prefer_dwarf_names = producer.as_deref() == Some(b"Dart VM");
+        // mangling is lossy, we need to load the demangled name instead. Older Dart SDKs write
+        // `Dart VM` as producer, newer ones `Dart <version>`.
+        let prefer_dwarf_names = producer
+            .as_deref()
+            .is_some_and(|producer| producer.starts_with(b"Dart "));
 
         Ok(Some(DwarfUnit {
             inner,
@@ -1468,7 +1472,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         }
 
         match op {
-            Operation::Register { register } => Some(VariableLocation::Register { id: register.0 }),
+            Operation::Register { register } => {
+                Register::from_dwarf(self.inner.info.cpu_family, register.0)
+                    .map(|register| VariableLocation::Register { register })
+            }
             Operation::FrameOffset { offset } => Some(VariableLocation::FrameOffset { offset }),
             // Currently more operations are not supported.
             _ => None,
@@ -1762,6 +1769,7 @@ struct DwarfInfo<'data> {
     symbol_map: SymbolMap<'data>,
     address_offset: i64,
     kind: ObjectKind,
+    cpu_family: CpuFamily,
 }
 
 impl<'d> Deref for DwarfInfo<'d> {
@@ -1779,6 +1787,7 @@ impl<'d> DwarfInfo<'d> {
         symbol_map: SymbolMap<'d>,
         address_offset: i64,
         kind: ObjectKind,
+        cpu_family: CpuFamily,
     ) -> Result<Self, DwarfError> {
         let mut inner = gimli::read::Dwarf {
             abbreviations_cache: Default::default(),
@@ -1818,6 +1827,7 @@ impl<'d> DwarfInfo<'d> {
             symbol_map,
             address_offset,
             kind,
+            cpu_family,
         })
     }
 
@@ -1935,13 +1945,20 @@ impl<'data> DwarfDebugSession<'data> {
         symbol_map: SymbolMap<'data>,
         address_offset: i64,
         kind: ObjectKind,
+        cpu_family: CpuFamily,
     ) -> Result<Self, DwarfError>
     where
         D: Dwarf<'data>,
     {
         let sections = DwarfSections::from_dwarf(dwarf);
         let cell = SelfCell::try_new(Box::new(sections), |sections| {
-            DwarfInfo::parse(unsafe { &*sections }, symbol_map, address_offset, kind)
+            DwarfInfo::parse(
+                unsafe { &*sections },
+                symbol_map,
+                address_offset,
+                kind,
+                cpu_family,
+            )
         })?;
 
         Ok(DwarfDebugSession {
@@ -2001,7 +2018,7 @@ impl<'data> DwarfDebugSession<'data> {
                 offset,
             } => Some(info.find_types_unit_offset(*offset)?),
             DwarfTypeRefInner::Signature(signature) => info.find_type_signature(*signature)?,
-            _ => None,
+            DwarfTypeRefInner::Offset { .. } => None,
         };
         let Some((unit, offset)) = unit else {
             return Ok(None);

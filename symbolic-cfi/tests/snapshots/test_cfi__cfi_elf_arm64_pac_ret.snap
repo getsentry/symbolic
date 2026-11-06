@@ -1,0 +1,18 @@
+---
+source: symbolic-cfi/tests/test_cfi.rs
+expression: cfi
+---
+STACK CFI INIT 5c0 3c .cfa: sp 0 + .ra: x30
+STACK CFI INIT 600 4 .cfa: sp 0 + .ra: x30
+STACK CFI INIT 620 30 .cfa: sp 0 + .ra: x30
+STACK CFI INIT 650 3c .cfa: sp 0 + .ra: x30
+STACK CFI INIT 690 30 .cfa: sp 0 + .ra: x30
+STACK CFI 694 .cfa: sp 32 + x29: .cfa -32 + ^ .ra: .cfa -24 + ^
+STACK CFI 69c x19: .cfa -16 + ^
+STACK CFI 6bc .cfa: sp 0 +
+STACK CFI INIT 6c0 4 .cfa: sp 0 + .ra: x30
+STACK CFI INIT 6d0 38 .cfa: sp 0 + .ra: x30
+STACK CFI 6d8 .cfa: sp 32 + x29: .cfa -32 + ^ .ra: .cfa -24 + ^
+STACK CFI 6e4 x19: .cfa -16 + ^
+STACK CFI 700 .cfa: sp 0 +
+STACK CFI INIT 580 8 .cfa: sp 0 + .ra: x30

@@ -523,8 +523,8 @@ impl<'a> SymCacheConverter<'a> {
                 }
 
                 let raw_loc: v9::raw::location::Enum = match location.location {
-                    di::VariableLocation::Register { id } => v9::raw::RegisterLocation {
-                        id,
+                    di::VariableLocation::Register { register } => v9::raw::RegisterLocation {
+                        id: v9::convert::register_to_u16(register),
                         _reserved: [0; _],
                     }
                     .into(),
@@ -555,7 +555,7 @@ impl<'a> SymCacheConverter<'a> {
 
             let type_idx = match &variable.ty {
                 Some(ty) => self.process_symbolic_type(tr, ty, 0),
-                None => u32::MAX,
+                None => v9::raw::Type::UNKNOWN,
             };
 
             let name_offset = self.string_table.insert(&variable.name) as u32;
@@ -582,11 +582,11 @@ impl<'a> SymCacheConverter<'a> {
         const MAX_DEPTH: usize = 5;
 
         if depth >= MAX_DEPTH {
-            return u32::MAX;
+            return v9::raw::Type::UNKNOWN;
         }
 
         let Some(ty) = tr.lookup_type(ty) else {
-            return u32::MAX;
+            return v9::raw::Type::UNKNOWN;
         };
 
         let ty = match ty {
@@ -600,8 +600,18 @@ impl<'a> SymCacheConverter<'a> {
             }
             .into(),
             di::Type::Pointer(ty) => v9::raw::PointerType {
-                pointee_idx: self.process_symbolic_type(tr, &ty.pointee, depth + 1),
+                pointee_idx: ty.pointee.map_or(v9::raw::Type::VOID, |pointee| {
+                    self.process_symbolic_type(tr, &pointee, depth + 1)
+                }),
                 size: size(ty.size),
+                _reserved: [0; _],
+            }
+            .into(),
+            di::Type::TypeDef(ty) => v9::raw::TypeDefType {
+                name_offset: self.string_table.insert(&ty.name) as u32,
+                ty_idx: ty.ty.map_or(v9::raw::Type::VOID, |ty| {
+                    self.process_symbolic_type(tr, &ty, depth + 1)
+                }),
                 _reserved: [0; _],
             }
             .into(),

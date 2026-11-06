@@ -1,15 +1,11 @@
 [package]
 name = "symbolic-unreal"
-version = "14.0.0-alpha.4"
-license = "MIT"
-authors = [
-    "Armin Ronacher <armin.ronacher@active-4.com>",
-    "Jan Michael Auer <mail@jauer.org>",
-    "Bruno Garcia <bruno@brunogarcia.com>",
-]
+version.workspace = true
+license.workspace = true
+authors.workspace = true
 documentation = "https://docs.rs/symbolic-unreal"
-homepage = "https://github.com/getsentry/symbolic"
-repository = "https://github.com/getsentry/symbolic"
+homepage.workspace = true
+repository.workspace = true
 description = """
 Parsing and processing utilities for Unreal Engine 4 crash files.
 """

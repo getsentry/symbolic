@@ -427,4 +427,32 @@ mod tests {
         assert_eq!(bar.line, 1);
         assert_eq!(bar.column, 0);
     }
+
+    #[test]
+    fn line_starting_with_previous_location() {
+        // `foo(1);` wrapped after the `(`, with the second line starting
+        // with a token that maps to the same location as the `(`.
+        let minified = "foo(\n1);";
+        let sourcemap = r#"{"version":3,"file":"test.min.js","sources":["test.js"],"sourcesContent":["foo(1);"],"names":[],"mappings":"AAAA,GAAG;AAAA,CAAE"}"#;
+
+        let mut buf = vec![];
+        SourceMapCacheWriter::new(minified, sourcemap)
+            .unwrap()
+            .serialize(&mut buf)
+            .unwrap();
+
+        let cache = SourceMapCache::parse(&buf).unwrap();
+
+        // `1`
+        let one = cache.lookup(SourcePosition { line: 1, column: 0 }).unwrap();
+        assert_eq!(one.file_name().unwrap(), "test.js");
+        assert_eq!(one.line, 0);
+        assert_eq!(one.column, 3);
+
+        // `)`
+        let paren = cache.lookup(SourcePosition { line: 1, column: 1 }).unwrap();
+        assert_eq!(paren.file_name().unwrap(), "test.js");
+        assert_eq!(paren.line, 0);
+        assert_eq!(paren.column, 5);
+    }
 }

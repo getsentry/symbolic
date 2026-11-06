@@ -1,0 +1,27 @@
+[package]
+name = "symbolic-symcache-fuzz"
+version = "14.0.0-alpha.5"
+authors = ["Sentry <hello@sentry.io>"]
+license = "MIT"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+symbolic-debuginfo = { path = "../../symbolic-debuginfo" }
+
+[dependencies.symbolic-symcache]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "fuzz_symcache_writer"
+path = "fuzz_targets/fuzz_symcache_writer.rs"
+test = false
+doc = false

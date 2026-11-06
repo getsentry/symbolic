@@ -1,14 +1,11 @@
 [package]
 name = "symbolic-debuginfo"
-version = "14.0.0-alpha.4"
-license = "MIT"
-authors = [
-    "Armin Ronacher <armin.ronacher@active-4.com>",
-    "Jan Michael Auer <mail@jauer.org>",
-]
+version.workspace = true
+license.workspace = true
+authors.workspace = true
 documentation = "https://docs.rs/symbolic-debuginfo"
-homepage = "https://github.com/getsentry/symbolic"
-repository = "https://github.com/getsentry/symbolic"
+homepage.workspace = true
+repository.workspace = true
 description = """
 A library to inspect and load DWARF debugging information from binaries, such
 as Mach-O or ELF.
@@ -105,8 +102,8 @@ serde = { workspace = true }
 serde_json = { workspace = true, optional = true }
 smallvec = { workspace = true, optional = true }
 srcsrv = { version = "0.2", optional = true }
-symbolic-common = { version = "14.0.0-alpha.4", path = "../symbolic-common" }
-symbolic-ppdb = { version = "14.0.0-alpha.4", path = "../symbolic-ppdb", optional = true }
+symbolic-common = { version = "14.0.0-alpha.5", path = "../symbolic-common" }
+symbolic-ppdb = { version = "14.0.0-alpha.5", path = "../symbolic-ppdb", optional = true }
 thiserror = { workspace = true }
 wasmparser = { workspace = true, optional = true }
 zip = { workspace = true, optional = true }

@@ -201,7 +201,9 @@ impl SourceMapCacheWriter {
                     scope_idx,
                 };
 
-                if last == Some(sl) {
+                // Tokens only extend to the end of their line, so the first token on a line
+                // is kept even if it maps to the same location as the previous one.
+                if last == Some((sp.line, sl)) {
                     continue;
                 }
                 mappings.push((
@@ -211,7 +213,7 @@ impl SourceMapCacheWriter {
                     },
                     sl,
                 ));
-                last = Some(sl);
+                last = Some((sp.line, sl));
             }
         });
 

@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::Read;
 
 use symbolic_testutils::fixture;
-use symbolic_unreal::{Unreal4Crash, Unreal4Error, Unreal4FileType};
+use symbolic_unreal::{Unreal4Crash, Unreal4Error, Unreal4FileType, Unreal4LogEntry};
 use time::format_description::well_known::Rfc3339;
 
 #[cfg(test)]
@@ -188,6 +188,39 @@ fn test_get_logs() {
         logs[99].message,
         "Windows GetLastError: The operation completed successfully. (0)"
     );
+}
+
+/// A log written by Unreal when an Aftermath GPU crash dump is triggered. The dump is logged as a
+/// single multi-line message.
+fn get_gpu_crash_log() -> Vec<u8> {
+    let mut file = File::open(fixture("unreal/gpu_crash_aftermath.log")).expect("log file opens");
+    let mut file_content = Vec::new();
+    file.read_to_end(&mut file_content).expect("fixture file");
+    file_content
+}
+
+fn summarize_logs(logs: &[Unreal4LogEntry]) -> String {
+    logs.iter()
+        .map(|log| {
+            let timestamp = log
+                .timestamp
+                .map(|ts| ts.format(&Rfc3339).unwrap())
+                .unwrap_or_default();
+            let component = log.component.as_deref().unwrap_or_default();
+            let mut lines = log.message.lines();
+            let first_line = lines.next().unwrap_or_default();
+            format!(
+                "{timestamp} {component}: {first_line} (+{} lines)\n",
+                lines.count()
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn test_get_logs_gpu_crash_aftermath() {
+    let logs = Unreal4LogEntry::parse(&get_gpu_crash_log(), 40).expect("logs");
+    insta::assert_snapshot!(summarize_logs(&logs));
 }
 
 // See https://github.com/getsentry/symbolic/issues/476

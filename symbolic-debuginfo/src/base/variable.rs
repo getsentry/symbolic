@@ -1,5 +1,7 @@
 use std::{borrow::Cow, fmt};
 
+use symbolic_common::register::Register;
+
 /// A type reference.
 ///
 /// Links a variable to a concrete type.
@@ -35,6 +37,8 @@ pub enum Type<'data> {
     Primitive(PrimitiveType<'data>),
     /// A pointer type.
     Pointer(PointerType),
+    /// A type that is defined in the terms of another type.
+    TypeDef(TypeDefType<'data>),
 }
 
 /// A primitive type.
@@ -79,14 +83,26 @@ pub enum PrimitiveTypeEncoding {
 }
 
 /// A pointer or reference type.
-///
-/// This type always links to another type via a memory address.
 #[derive(Debug, Clone)]
 pub struct PointerType {
     /// The type the pointer references.
-    pub pointee: TypeRef,
+    ///
+    /// A value of `None` indicates that the pointer has no referenced type, e.g. for `void*`.
+    pub pointee: Option<TypeRef>,
     /// The size of a pointer.
     pub size: TypeSize,
+}
+
+/// A type that is defined in the terms of another type.
+#[derive(Debug, Clone)]
+pub struct TypeDefType<'data> {
+    /// The name of the type.
+    pub name: Cow<'data, str>,
+    /// The linked type.
+    ///
+    /// This may be `None` if the debug information provides no underlying type reference,
+    /// for example an alias to `void` or a type declaration without a definition.
+    pub ty: Option<TypeRef>,
 }
 
 /// The size of a type in memory.
@@ -160,8 +176,8 @@ impl fmt::Debug for VariableLocationInfo {
 pub enum VariableLocation {
     /// The variable can be found in a register.
     Register {
-        /// An architecture dependent id of the register.
-        id: u16,
+        /// The register.
+        register: Register,
     },
     /// The variable can be found at an offset relative to the function's frame base.
     FrameOffset {

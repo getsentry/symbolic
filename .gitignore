@@ -5,6 +5,10 @@
 target/
 **/*.rs.bk
 
+# cargo-fuzz
+**/fuzz/corpus/
+**/fuzz/artifacts/
+
 # Python
 *.pyc
 __pycache__/

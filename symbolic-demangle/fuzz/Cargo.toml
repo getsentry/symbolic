@@ -1,0 +1,27 @@
+[package]
+name = "symbolic-demangle-fuzz"
+version = "14.0.0-alpha.5"
+authors = ["Sentry <hello@sentry.io>"]
+license = "MIT"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+symbolic-common = { path = "../../symbolic-common" }
+
+[dependencies.symbolic-demangle]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "fuzz_demangle"
+path = "fuzz_targets/fuzz_demangle.rs"
+test = false
+doc = false

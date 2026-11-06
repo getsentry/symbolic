@@ -136,6 +136,16 @@ impl Object {
         self.inner.get().has_sources()
     }
 
+    /// Returns a copy of this object's raw bytes.
+    ///
+    /// For an archive that holds more than one object, such as a fat (universal)
+    /// Mach-O, these are the bytes of this object alone. They form a standalone
+    /// debug information file that can be parsed (e.g. via [`Archive`]) or
+    /// uploaded on its own. For a single-object archive, they are the whole file.
+    pub fn data(&self) -> Vec<u8> {
+        self.inner.get().data().to_vec()
+    }
+
     /// Returns a debug session that provides access to debugging information
     /// stored in this object, in particular the source files it references.
     #[wasm_bindgen(js_name = debugSession)]

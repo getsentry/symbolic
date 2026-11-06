@@ -116,6 +116,8 @@ pub enum Type<'data> {
     Primitive(PrimitiveType<'data>),
     /// A pointer type.
     Pointer(PointerType),
+    /// A type that is defined in the terms of another type.
+    TypeDef(TypeDefType<'data>),
 }
 
 /// A primitive type contained in the SymCache.
@@ -161,8 +163,33 @@ impl PointerType {
     /// The referenced type.
     ///
     /// This returns `None` for pointers without a referenced type, like `void*`.
+    /// If the pointer references a type that could not be resolved, this returns `Some` with a
+    /// [`TypeId`] for which [`SymCache::lookup_type`] returns `None`.
     pub fn pointee(&self) -> Option<TypeId> {
         self.pointee
+    }
+}
+
+/// A `typedef` contained in the SymCache.
+#[derive(Clone, Debug)]
+pub struct TypeDefType<'data> {
+    pub(crate) name: &'data str,
+    pub(crate) ty: Option<TypeId>,
+}
+
+impl<'data> TypeDefType<'data> {
+    /// The name of this `typedef`.
+    pub fn name(&self) -> &'data str {
+        self.name
+    }
+
+    /// The linked type.
+    ///
+    /// This may be `None` if the debug information provides no underlying type reference,
+    /// for example an alias to `void` or a type declaration without a definition.
+    /// The referenced type.
+    pub fn ty(&self) -> Option<TypeId> {
+        self.ty
     }
 }
 

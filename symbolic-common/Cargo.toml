@@ -1,14 +1,11 @@
 [package]
 name = "symbolic-common"
-version = "14.0.0-alpha.4"
-license = "MIT"
-authors = [
-    "Armin Ronacher <armin.ronacher@active-4.com>",
-    "Jan Michael Auer <mail@jauer.org>",
-]
+version.workspace = true
+license.workspace = true
+authors.workspace = true
 documentation = "https://docs.rs/symbolic-common"
-homepage = "https://github.com/getsentry/symbolic"
-repository = "https://github.com/getsentry/symbolic"
+homepage.workspace = true
+repository.workspace = true
 readme = "README.md"
 description = """
 Common types and utilities for symbolic, a library to symbolicate and process
@@ -28,11 +25,13 @@ debugid = { workspace = true }
 stable_deref_trait = { workspace = true }
 serde = { workspace = true, optional = true }
 uuid = { workspace = true }
+thiserror = { workspace =  true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 memmap2 = { workspace = true }
 
 [dev-dependencies]
+minidump = { workspace = true }
 symbolic-testutils = { path = "../symbolic-testutils" }
 tempfile = { workspace = true }
 similar-asserts = { workspace = true }

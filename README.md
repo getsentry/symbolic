@@ -125,6 +125,12 @@ pytest ./py/tests
 make pytest
 ```
 
+### Changelog
+
+Only add changelog entries for user-facing changes, such as public API changes (including additions),
+user-facing bug fixes, and performance improvements. Internal changes, like documentation or
+refactoring, typically don't need an entry.
+
 ## Examples
 
 The repository contains a few examples that show how to use `symbolic` to work with debug files and

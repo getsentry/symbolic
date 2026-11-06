@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+**Features**
+
+- Represent variable register locations as named registers instead of raw DWARF register numbers. ([#1117](https://github.com/getsentry/symbolic/pull/1117), [#1115](https://github.com/getsentry/symbolic/pull/1115))
+- Add support for `typedef` types. ([#1137](https://github.com/getsentry/symbolic/pull/1137))
+
+## 14.0.0-alpha.5
+
+**Breaking Changes**
+
+- Change `symbolic_debuginfo::PointerType::pointee` from `TypeRef` to `Option<TypeRef>`. ([#1100](https://github.com/getsentry/symbolic/pull/1100))
+
+**Features**
+
+- Resolve `void` pointers in variable types as `PointerType` with `pointee` set to `None`. ([#1100](https://github.com/getsentry/symbolic/pull/1100))
+- Distinguish `void` pointers from pointers to unknown types in symcaches. ([#1101](https://github.com/getsentry/symbolic/pull/1101))
+- WASM: expose `ObjectFile.data()`, which returns a copy of the object's own bytes. For an archive with more than one object, such as a fat Mach-O, each object's bytes form a standalone debug information file that can be parsed or uploaded on its own. ([#1132](https://github.com/getsentry/symbolic/pull/1132))
+
+**Fixes**
+
+- Preserve outer functions and their call site locations when inlinee limit is reached. ([#1120](https://github.com/getsentry/symbolic/pull/1120))
+- Keep ARM64 CFI rows after `DW_CFA_AARCH64_negate_ra_state` in binaries built with pointer authentication. ([#1106](https://github.com/getsentry/symbolic/pull/1106))
+- Keep sourcemapcache tokens at the start of a minified line that map to the same location as the previous token, so lookups on such lines find a location. ([#1110](https://github.com/getsentry/symbolic/pull/1110))
+- Prefer DWARF function names for debug files produced by current Dart SDKs, which write a versioned `DW_AT_producer`. ([#1112](https://github.com/getsentry/symbolic/pull/1112))
+- Join the lines of multi-line Unreal log messages, such as Aftermath GPU crash dumps, into a single `Unreal4LogEntry`. ([#1119](https://github.com/getsentry/symbolic/pull/1119))
+
 ## 14.0.0-alpha.4
 
 **Breaking Changes**

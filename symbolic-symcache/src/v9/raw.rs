@@ -167,6 +167,8 @@ pub struct Variable {
     /// The variable name (reference to a [`String`]).
     pub name_offset: u32,
     /// The type (reference to a [`Type`]).
+    ///
+    /// [`Type::UNKNOWN`] indicates that the variable's type is unknown.
     pub type_idx: u32,
     /// The first location associated with the variable (reference to a [`VariableLocationInfo`]).
     pub location_idx: u32,
@@ -263,9 +265,27 @@ pub struct PrimitiveType {
 #[repr(C)]
 pub struct PointerType {
     /// The type this pointer points to (reference to a [`Type`]).
+    ///
+    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown, while [`Type::VOID`]
+    /// indicates that the pointer has no referenced type (e.g. `void*`).
     pub pointee_idx: u32,
     /// The size/width of the pointer.
     pub size: u32,
+    /// Padding.
+    pub _reserved: [u8; 4],
+}
+
+/// A representation of a `typedef`.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct TypeDefType {
+    /// The `typedef` name (reference to a [`String`]).
+    pub name_offset: u32,
+    /// The type this pointer points to (reference to a [`Type`]).
+    ///
+    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown, while [`Type::VOID`]
+    /// indicates that the `typedef` has no associated type.
+    pub ty_idx: u32,
     /// Padding.
     pub _reserved: [u8; 4],
 }
@@ -276,6 +296,7 @@ pub mod ty {
     crate::utils::tagged_union! {
         primitive: PrimitiveType,
         pointer: PointerType,
+        typedef: TypeDefType,
     }
 }
 
@@ -291,6 +312,12 @@ pub struct Type {
 }
 
 impl Type {
+    /// Sentinel value for a [`Type`] index indicating that the type is unknown.
+    pub const UNKNOWN: u32 = u32::MAX;
+
+    /// Sentinel value for a [`Type`] index indicating the absence of a type (`void`).
+    pub const VOID: u32 = u32::MAX - 1;
+
     pub fn as_enum(&self) -> Option<ty::Enum> {
         self.ty.into_enum(self.kind)
     }
@@ -347,6 +374,7 @@ unsafe impl Pod for VariableLocationInfo {}
 unsafe impl Pod for Type {}
 unsafe impl Pod for PrimitiveType {}
 unsafe impl Pod for PointerType {}
+unsafe impl Pod for TypeDefType {}
 
 #[cfg(test)]
 mod tests {

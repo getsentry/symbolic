@@ -1,4 +1,4 @@
-minVersion: "2.26.10"
+minVersion: "3.9.0"
 github:
   owner: getsentry
   repo: symbolic

@@ -1,0 +1,420 @@
+﻿Log file open, 10/30/26 13:02:53
+LogWindows: Failed to load 'aqProf.dll' (GetLastError=126)
+LogWindows: File 'aqProf.dll' does not exist
+LogProfilingDebugging: Loading WinPixEventRuntime.dll for PIX profiling (from ../../../Engine/Binaries/ThirdParty/Windows/WinPixEventRuntime/x64).
+LogWindows: Failed to load 'VtuneApi.dll' (GetLastError=126)
+LogWindows: File 'VtuneApi.dll' does not exist
+LogWindows: Failed to load 'VtuneApi32e.dll' (GetLastError=126)
+LogWindows: File 'VtuneApi32e.dll' does not exist
+LogWindows: Enabling Tpause support
+LogWindows: Custom abort handler registered for crash reporting.
+LogInit: Running DelayedAutoRegister Phase StartOfEnginePreInit
+LogCore: Display: UTS: The Unreal Trace Server binary is not available ('../../../Engine/Binaries/Win64/UnrealTraceServer.exe')
+LogTrace: Initializing trace...
+LogTrace: Finished trace initialization.
+LogCsvProfiler: Display: Metadata set : platform="Windows"
+LogCsvProfiler: Display: Metadata set : config="Development"
+LogCsvProfiler: Display: Metadata set : buildversion="++UE5+Release-5.8-CL-58210709"
+LogCsvProfiler: Display: Metadata set : engineversion="5.8.3-58210709+++UE5+Release-5.8"
+LogCsvProfiler: Display: Metadata set : enginereleaseversion="5.8.3"
+LogCsvProfiler: Display: Metadata set : os="Windows 11 (26H2) [10.0.26300.9818] "
+LogCsvProfiler: Display: Metadata set : cpu="GenuineIntel|12th Gen Intel(R) Core(TM) i9-12900K"
+LogCsvProfiler: Display: Metadata set : pgoenabled="0"
+LogCsvProfiler: Display: Metadata set : pgoprofilingenabled="0"
+LogCsvProfiler: Display: Metadata set : ltoenabled="0"
+LogCsvProfiler: Display: Metadata set : asan="0"
+LogCsvProfiler: Display: Metadata set : mergedmodules="0"
+LogCsvProfiler: Display: Metadata set : compacttset="0"
+LogCsvProfiler: Display: Metadata set : commandline="" SentryTower""
+LogCsvProfiler: Display: Metadata set : loginid="00000000000000000000000000000000"
+LogCsvProfiler: Display: Metadata set : llm="0"
+LogPakFile: Initializing PakPlatformFile
+LogIoDispatcher: Display: Mounted container '../../../SentryTower/Content/Paks/global.utoc', Id='ffffffffffffffff', Order=0, Slot=0, Options=(None), Flags=(), HasSoftRefs=False
+LogPakFile: Display: Initialized I/O dispatcher file backend. Mounted the global container: ../../../SentryTower/Content/Paks/global.utoc
+LogPakFile: Display: Found Pak file ../../../SentryTower/Content/Paks/SentryTower-Windows.pak attempting to mount.
+LogPakFile: Display: Mounting pak file ../../../SentryTower/Content/Paks/SentryTower-Windows.pak.
+LogIoDispatcher: Display: Mounted container '../../../SentryTower/Content/Paks/SentryTower-Windows.utoc', Id='e59bd5d48bc46b3e', Order=4, Slot=0, Options=(None), Flags=(Compressed|Indexed), HasSoftRefs=False
+LogFilePackageStore: Mounting container: Id=e59bd5d48bc46b3e, Order=4, NumPackages=586
+LogPakFile: Display: Mounted IoStore container "../../../SentryTower/Content/Paks/SentryTower-Windows.utoc"
+LogPakFile: Display: Mounted Pak file '../../../SentryTower/Content/Paks/SentryTower-Windows.pak', mount point: '../../../'
+LogCsvProfiler: Display: Metadata set : zenstreaming="0"
+LogInit: Running DelayedAutoRegister Phase FileSystemReady
+LogInit: Running DelayedAutoRegister Phase TaskGraphSystemReady
+LogStats: Stats thread started at 0.142800
+LogInit: Running DelayedAutoRegister Phase StatSystemReady
+LogCsvProfiler: Display: Metadata set : systemresolution.resx="1280"
+LogCsvProfiler: Display: Metadata set : systemresolution.resy="720"
+LogICUInternationalization: OS requested locale 'en-US' is not supported. Using the OS requested language of 'en-US' as the locale.
+LogICUInternationalization: ICU TimeZone Detection - Raw Offset: +2:00, Platform Override: ''
+LogInit: Session CrashGUID >====================================================
+         Session CrashGUID >   UECC-Windows-00000000000000000000000000000000
+         Session CrashGUID >====================================================
+LogConfig: No local boot hotfix file found at: [../../../SentryTower/Saved/PersistentDownloadDir/HotfixForNextBoot.txt]
+LogInit: Running DelayedAutoRegister Phase IniSystemReady
+LogAudio: Display: Pre-Initializing Audio Device Manager...
+LogAudio: Display: AudioInfo: 'OPUS' Registered
+LogAssetRegistry: Premade AssetRegistry loaded from '../../../SentryTower/AssetRegistry.bin'.
+LogAudioDebug: Display: Lib vorbis DLL was dynamically loaded.
+LogAudio: Display: AudioInfo: 'OGG' Registered
+LogAudio: Display: AudioInfo: 'ADPCM' Registered
+LogAudio: Display: AudioInfo: 'PCM' Registered
+[2026.10.30-11.02.57:780][109]LogUObjectHash: Compacting FUObjectHashTables data took   0.65ms
+[2026.10.30-11.02.57:783][109]LogStreaming: Display: FlushAsyncLoading(80): 1 QueuedPackages, 0 AsyncPackages
+[2026.10.30-11.02.57:798][109]LogAudio: Display: Audio Device (ID: 1) registered with world 'Main'.
+[2026.10.30-11.02.57:798][109]LogChaosDD: Creating Chaos Debug Draw Scene for world Main
+[2026.10.30-11.02.57:801][109]LogLoad: Game class is 'BP_SentryTowerGameMode_C'
+[2026.10.30-11.02.57:801][109]LogWorld: Bringing World /Game/Maps/Main.Main up for play (max tick rate 0) at 2026.10.30-13.02.57
+[2026.10.30-11.02.57:801][109]LogWorld: Bringing up level for play took: 0.000428
+[2026.10.30-11.02.57:803][109]LogViewport: Display: Player bShowMouseCursor Changed, False -> True
+[2026.10.30-11.02.57:804][109]LogLoad: Took 0.051231 seconds to LoadMap(/Game/Maps/Main)
+[2026.10.30-11.02.57:804][109]LogGlobalStatus: UEngine::LoadMap Load map complete /Game/Maps/Main
+[2026.10.30-11.02.57:805][109]LogAudio: Warning: Detected orphaned sound which is not a one-shot 'A_Ambient'. Sounds which are not one-shots need to have audio components or they risk being orphaned.
+[2026.10.30-11.02.57:806][109]LogSlate: Display: Synchronously lazy loading font file '../../../SentryTower/Content/Fonts/kenvector_future_thin.ufont' with subface index 0 in Game thread.
+[2026.10.30-11.02.57:806][109]LogSlate: Display: Took 0.000062 seconds to synchronously load lazily loaded font '../../../SentryTower/Content/Fonts/kenvector_future_thin.ufont' (34K) on Game thread.
+[2026.10.30-11.02.57:806][109]LogSlate: Display: Freetype font face in memory successfully created with synchronously loaded cooked font file '../../../SentryTower/Content/Fonts/kenvector_future_thin.ufont' subface 0 in Game thread.
+[2026.10.30-11.02.57:806][109]LogSlate: Display: Font face '../../../SentryTower/Content/Fonts/kenvector_future_thin.ufont' subface index 0 successfully added to font face map in Game thread.
+[2026.10.30-11.02.57:806][110]LogRenderer: Recreating Persistent SBTs due to initializer changes: 
+		NumShaderSlotsPerGeometrySegment changed: current: 1 - new: 2
+		NumGeometrySegments changed: current: 0 - new: 512
+[2026.10.30-11.02.57:814][110]LogRHI: Display: Encountered a new graphics PSO: 2983643578 (PSOPrecacheState: Missed)
+[2026.10.30-11.02.57:816][110]LogRenderer: Forcing update for all mesh draw commands: SkyLight change
+[2026.10.30-11.02.57:820][110]LogRHI: Display: Encountered a new graphics PSO: 102355748 (PSOPrecacheState: Missed)
+[2026.10.30-11.03.00:655][559]LogTemp: ASentryTowerPlayerController: Trigger GPU crash!
+[2026.10.30-11.03.11:598][561]LogD3D12RHI: Error: GPU crash detected:
+	- Device 0 Removed: DXGI_ERROR_DEVICE_HUNG
+
+[2026.10.30-11.03.11:599][561]LogD3D12RHI: Error: Shader diagnostic messages and asserts:
+
+	Device: 0, Queue 3D:
+		No shader diagnostics found for this queue.
+
+	Device: 0, Queue Copy:
+		No shader diagnostics found for this queue.
+
+	Device: 0, Queue Compute:
+		No shader diagnostics found for this queue.
+
+[2026.10.30-11.03.11:600][561]LogRHI: Error: Active GPU breadcrumbs:
+
+	Device 0, Pipeline Graphics: (In: 0x8001c671, Out: 0x8001c673)
+		(ID: 0x8001c582) [   Finished]	Frame 558
+		(ID: 0x8001c66e) [   Finished]		EndDrawingViewport
+		(ID: 0x8001c731) [   Finished]	BufferPoolCopyOps
+		(ID: 0x8001c732) [   Finished]	TexturePoolCopyOps
+		(ID: 0x8001c66f) [     Active]	Frame 559
+		(ID: 0x8001c670) [     Active]		WorldTick
+		(ID: 0x8001c672) [     Active]			RenderGraphExecute - 
+		(ID: 0x8001c673) [     Active]				FRDGBuilder::SubmitBufferUploads
+		(ID: 0x8001c671) [     Active]				HeavyComputeLoop
+		(ID: 0x8001c675) [Not Started]			RenderGraphExecute - SlateWidgetRender
+		(ID: 0x8001c676) [Not Started]				FRDGBuilder::SubmitBufferUploads
+		(ID: 0x8001c674) [Not Started]				SlateRenderToTarget
+		(ID: 0x8001c677) [Not Started]		SendAllEndOfFrameUpdates
+		(ID: 0x8001c678) [Not Started]		SceneRender - ViewFamilies
+		(ID: 0x8001c679) [Not Started]			RayTracingGeometry
+		(ID: 0x8001c67b) [Not Started]			GPUSkinCache_UpdateSkinningBatches
+		(ID: 0x8001c687) [Not Started]			"DistanceFields"
+		(ID: 0x8001c68c) [Not Started]			"AllocateRendertargets"
+		(ID: 0x8001c698) [Not Started]			"VisibilityCommands"
+		(ID: 0x8001c69d) [Not Started]			ScaleVariableRateShadingTexture
+		(ID: 0x8001c6ac) [Not Started]			UpdateLumenSceneBuffers
+		(ID: 0x8001c72f) [Not Started]			RenderGraphExecute - /ViewFamilies
+		(ID: 0x8001c730) [Not Started]				FRDGBuilder::SubmitBufferUploads
+		(ID: 0x8001c67a) [Not Started]				UpdateAllPrimitiveSceneInfos
+		(ID: 0x8001c67f) [Not Started]					GPUSceneUpdate
+		(ID: 0x8001c680) [Not Started]						GPUScene.Update
+		(ID: 0x8001c681) [Not Started]							UpdateGPUScene NumPrimitiveDataUploads 2
+		(ID: 0x8001c686) [Not Started]				"DistanceFields"
+		(ID: 0x8001c688) [Not Started]					UpdateDistanceFieldObjectBuffers
+		(ID: 0x8001c689) [Not Started]					UpdateDistanceFieldAtlas
+		(ID: 0x8001c68a) [Not Started]				Scene
+		(ID: 0x8001c68e) [Not Started]					FXSystemPreRender
+		(ID: 0x8001c733) [Not Started]						GPUParticles_PreRender
+		(ID: 0x8001c68f) [Not Started]					GPUSceneUpdate
+		(ID: 0x8001c690) [Not Started]						GPUScene.UploadDynamicPrimitiveShaderDataForView
+		(ID: 0x8001c691) [Not Started]							UpdateGPUScene NumPrimitiveDataUploads 1
+		(ID: 0x8001c692) [Not Started]					SceneCulling_ComputeExplicitChunkBounds
+		(ID: 0x8001c693) [Not Started]					BuildRenderingCommandsDeferred(Culling=On)
+		(ID: 0x8001c695) [Not Started]					Shadow.Virtual.ProcessInvalidationsGPU
+		(ID: 0x8001c699) [Not Started]					PrePass DDM_AllOpaqueNoVelocity (Forced by Nanite)
+		(ID: 0x8001c734) [Not Started]						ParallelDraw (Index: 0, Num: 1)
+		(ID: 0x8001c69a) [Not Started]					RenderVelocities(Opaque)
+		(ID: 0x8001c735) [Not Started]						ParallelDraw (Index: 0, Num: 1)
+		(ID: 0x8001c69e) [Not Started]					HZB
+		(ID: 0x8001c69f) [Not Started]						BeginOcclusionTests
+		(ID: 0x8001c738) [Not Started]							BeginOcclusionTests
+		(ID: 0x8001c739) [Not Started]								ViewOcclusionTests 0
+		(ID: 0x8001c73a) [Not Started]									BeginOcclusionTests
+		(ID: 0x8001c73b) [Not Started]										ShadowFrustumQueries
+		(ID: 0x8001c73c) [Not Started]										GroupedQueries
+		(ID: 0x8001c73d) [Not Started]										IndividualQueries
+		(ID: 0x8001c6a0) [Not Started]					HZB
+		(ID: 0x8001c6a1) [Not Started]						BuildHZB(ViewId=0)
+		(ID: 0x8001c6a2) [Not Started]							BuildHZB
+		(ID: 0x8001c6a3) [Not Started]					ComputeLightGrid
+		(ID: 0x8001c6a4) [Not Started]						CullLights 23x13x32 NumLights 0 NumCaptures 0
+		(ID: 0x8001c6a5) [Not Started]					LightFunctionAtlasGeneration
+		(ID: 0x8001c6a8) [Not Started]					SkyAtmosphereLUTs
+		(ID: 0x8001c6a9) [Not Started]						SkyAtmosphere::DistantSkyLightLut
+		(ID: 0x8001c6aa) [Not Started]						SkyAtmosphere::SkyViewLut
+		(ID: 0x8001c6ab) [Not Started]						SkyAtmosphere::CameraVolumeLut
+		(ID: 0x8001c6ad) [Not Started]					LumenSceneUpdate: 10 card captures 0.016M texels
+		(ID: 0x8001c6b0) [Not Started]						BuildRenderingCommands(Culling=Off)
+		(ID: 0x8001c6b1) [Not Started]						MeshCardCapture Pages:10 Draws:34 Instances:34 Tris:2424
+		(ID: 0x8001c6b2) [Not Started]						MeshCardCapture Pages:10 Draws:34 Instances:34 Tris:2424
+		(ID: 0x8001c6b3) [Not Started]						MeshCardCapture Pages:10 Draws:34 Instances:34 Tris:2424
+		(ID: 0x8001c6b4) [Not Started]						MeshCardCapture Pages:10 Draws:34 Instances:34 Tris:2424
+		(ID: 0x8001c6b5) [Not Started]						MeshCardCapture Pages:10 Draws:34 Instances:34 Tris:2424
+		(ID: 0x8001c6b6) [Not Started]						MeshCardCapture Pages:10 Draws:34 Instances:34 Tris:2424
+		(ID: 0x8001c6b7) [Not Started]						MeshCardCapture Pages:10 Draws:34 Instances:34 Tris:2424
+		(ID: 0x8001c6b8) [Not Started]						MeshCardCapture Pages:10 Draws:34 Instances:34 Tris:2424
+		(ID: 0x8001c6b9) [Not Started]						MeshCardCapture Pages:10 Draws:34 Instances:34 Tris:2424
+		(ID: 0x8001c6ba) [Not Started]						MeshCardCapture Pages:10 Draws:34 Instances:34 Tris:2424
+		(ID: 0x8001c6bb) [Not Started]						CopyCardsToSurfaceCache
+		(ID: 0x8001c6bf) [Not Started]					RayTracingScene
+		(ID: 0x8001c6c8) [Not Started]					LumenScreenProbeGather
+		(ID: 0x8001c6c9) [Not Started]					BasePass
+		(ID: 0x8001c736) [Not Started]						ParallelDraw (Index: 0, Num: 1)
+		(ID: 0x8001c6cb) [Not Started]						EditorPrimitives
+		(ID: 0x8001c6cf) [Not Started]					StochasticLighting
+		(ID: 0x8001c6d0) [Not Started]					GPUScene.UploadDynamicPrimitiveShaderDataForView
+		(ID: 0x8001c6d1) [Not Started]						UpdateGPUScene NumPrimitiveDataUploads 1
+		(ID: 0x8001c6d7) [Not Started]					VirtualShadowMapMarkPages
+		(ID: 0x8001c6d8) [Not Started]						FVirtualShadowMapArray::BeginMarkPages
+		(ID: 0x8001c6d9) [Not Started]					ShadowDepths
+		(ID: 0x8001c6db) [Not Started]						FVirtualShadowMapArray::BuildPageAllocation
+		(ID: 0x8001c6dc) [Not Started]							InitializePhysicalPages
+		(ID: 0x8001c6dd) [Not Started]						RenderVirtualShadowMaps(Non-Nanite)
+		(ID: 0x8001c6de) [Not Started]							Batched
+		(ID: 0x8001c6df) [Not Started]								CullingPasses
+		(ID: 0x8001c6e0) [Not Started]						FVirtualShadowMapArray::PostProcessPages
+		(ID: 0x8001c6e2) [Not Started]					RenderDeferredLighting
+		(ID: 0x8001c6e4) [Not Started]						DiffuseIndirectAndAO
+		(ID: 0x8001c6e5) [Not Started]							LumenReflections
+		(ID: 0x8001c6e6) [Not Started]						InitTranslucencyLightingVolumeTextures
+		(ID: 0x8001c6e7) [Not Started]						Lights
+		(ID: 0x8001c6e8) [Not Started]							DirectLighting
+		(ID: 0x8001c6ea) [Not Started]								UnbatchedLights
+		(ID: 0x8001c6eb) [Not Started]									Main.DirectionalLight
+		(ID: 0x8001c6ec) [Not Started]										ShadowProjectionOnOpaque
+		(ID: 0x8001c6ed) [Not Started]											DistanceFieldShadows
+		(ID: 0x8001c6ee) [Not Started]												BeginRayTracedDistanceFieldShadow
+		(ID: 0x8001c6ef) [Not Started]													CullDistanceFieldObjectsForLight MeshSDF
+		(ID: 0x8001c6f0) [Not Started]						TranslucencyLightingVolume
+		(ID: 0x8001c6f1) [Not Started]							InjectTranslucencyLightingVolume(View=0)
+		(ID: 0x8001c6f3) [Not Started]							FilterTranslucentVolume 64x64x64 Cascades:2
+		(ID: 0x8001c6f5) [Not Started]					RenderDeferredLighting
+		(ID: 0x8001c6f6) [Not Started]						DiffuseIndirectAndAO
+		(ID: 0x8001c6fa) [Not Started]					VolumetricCloud
+		(ID: 0x8001c6fb) [Not Started]					VolCloudReconstruction
+		(ID: 0x8001c6fd) [Not Started]					SkyAtmosphere
+		(ID: 0x8001c6fe) [Not Started]					ExponentialHeightFog
+		(ID: 0x8001c700) [Not Started]					VolCloudComposeOverScene
+		(ID: 0x8001c701) [Not Started]					PostRenderOpsFX
+		(ID: 0x8001c702) [Not Started]						FXSystemPostRenderOpaque
+		(ID: 0x8001c737) [Not Started]							GPUParticles_PostRenderOpaque
+		(ID: 0x8001c703) [Not Started]					Translucency
+		(ID: 0x8001c705) [Not Started]						RenderTranslucency
+		(ID: 0x8001c70e) [Not Started]					PostProcessing
+		(ID: 0x8001c70f) [Not Started]						ComposeTranslucencyToNewSceneColor
+		(ID: 0x8001c710) [Not Started]						LocalExposure
+		(ID: 0x8001c711) [Not Started]						Histogram
+		(ID: 0x8001c712) [Not Started]						TextureDownsampleChain
+		(ID: 0x8001c713) [Not Started]						LocalExposure - Blurred Luminance
+		(ID: 0x8001c714) [Not Started]						TextureDownsampleChain
+		(ID: 0x8001c715) [Not Started]						Bloom
+		(ID: 0x8001c717) [Not Started]					VirtualTextureUpdate
+		(ID: 0x8001c718) [Not Started]					Submit Lumen surface cache feedback
+		(ID: 0x8001c741) [Not Started]		RenderGraphExecute - Slate
+		(ID: 0x8001c742) [Not Started]			FRDGBuilder::SubmitBufferUploads
+		(ID: 0x8001c73e) [Not Started]			SlateUI Title = Sentry Tower SentryTower 
+		(ID: 0x8001c743) [Not Started]		EndDrawingViewport
+		(ID: 0x8001c760) [Not Started]	BufferPoolCopyOps
+		(ID: 0x8001c761) [Not Started]	TexturePoolCopyOps
+		(ID: 0x8001c744) [Not Started]	Frame 560
+		(ID: 0x8001c745) [Not Started]		WorldTick
+		(ID: 0x8001c747) [Not Started]			RenderGraphExecute - SlateWidgetRender
+		(ID: 0x8001c748) [Not Started]				FRDGBuilder::SubmitBufferUploads
+		(ID: 0x8001c746) [Not Started]				SlateRenderToTarget
+		(ID: 0x8001c749) [Not Started]		SendAllEndOfFrameUpdates
+		(ID: 0x8001c74a) [Not Started]		SceneRender - ViewFamilies
+		(ID: 0x8001c74b) [Not Started]			RayTracingGeometry
+		(ID: 0x8001c74d) [Not Started]			GPUSkinCache_UpdateSkinningBatches
+
+	Device 0, Pipeline AsyncCompute: (In: 0x8001c671, Out: 0x8001c732)
+		(ID: 0x8001c582) [   Finished]	Frame 558
+		(ID: 0x8001c66c) [   Finished]		RenderGraphExecute - Slate
+		(ID: 0x8001c66d) [   Finished]			FRDGBuilder::SubmitBufferUploads
+		(ID: 0x8001c731) [   Finished]	BufferPoolCopyOps
+		(ID: 0x8001c732) [     Active]	TexturePoolCopyOps
+		(ID: 0x8001c66f) [     Active]	Frame 559
+		(ID: 0x8001c670) [     Active]		WorldTick
+		(ID: 0x8001c672) [     Active]			RenderGraphExecute - 
+		(ID: 0x8001c671) [     Active]				HeavyComputeLoop
+		(ID: 0x8001c675) [Not Started]			RenderGraphExecute - SlateWidgetRender
+		(ID: 0x8001c676) [Not Started]				FRDGBuilder::SubmitBufferUploads
+		(ID: 0x8001c678) [Not Started]		SceneRender - ViewFamilies
+		(ID: 0x8001c72f) [Not Started]			RenderGraphExecute - /ViewFamilies
+		(ID: 0x8001c68a) [Not Started]				Scene
+		(ID: 0x8001c68e) [Not Started]					FXSystemPreRender
+		(ID: 0x8001c69b) [Not Started]					PrepareImageBasedVRS
+		(ID: 0x8001c69c) [Not Started]						ContrastAdaptiveShading
+		(ID: 0x8001c6ad) [Not Started]					LumenSceneUpdate: 10 card captures 0.016M texels
+		(ID: 0x8001c6c0) [Not Started]					LumenSceneLighting
+		(ID: 0x8001c6c1) [Not Started]						BuildCardUpdateContext
+		(ID: 0x8001c6c2) [Not Started]						DirectLighting
+		(ID: 0x8001c6c3) [Not Started]							CullTiles 1 lights
+		(ID: 0x8001c6c4) [Not Started]							Light Attenuation ShadowMask
+		(ID: 0x8001c6c5) [Not Started]							Offscreen shadows
+		(ID: 0x8001c6c6) [Not Started]							Lights
+		(ID: 0x8001c6c7) [Not Started]						Radiosity
+		(ID: 0x8001c6d2) [Not Started]					DiffuseIndirectAndAO
+		(ID: 0x8001c6d3) [Not Started]						LumenScreenProbeGather
+		(ID: 0x8001c6d4) [Not Started]							UpdateWorldRadianceCaches
+		(ID: 0x8001c6d5) [Not Started]							Integrate
+		(ID: 0x8001c6d6) [Not Started]						TranslucencyVolumeLighting
+		(ID: 0x8001c741) [Not Started]		RenderGraphExecute - Slate
+		(ID: 0x8001c742) [Not Started]			FRDGBuilder::SubmitBufferUploads
+		(ID: 0x8001c760) [Not Started]	BufferPoolCopyOps
+		(ID: 0x8001c761) [Not Started]	TexturePoolCopyOps
+		(ID: 0x8001c744) [Not Started]	Frame 560
+		(ID: 0x8001c745) [Not Started]		WorldTick
+		(ID: 0x8001c747) [Not Started]			RenderGraphExecute - SlateWidgetRender
+		(ID: 0x8001c748) [Not Started]				FRDGBuilder::SubmitBufferUploads
+		(ID: 0x8001c74a) [Not Started]		SceneRender - ViewFamilies
+
+[2026.10.30-11.03.11:625][561]LogD3D12RHI: Starting late shader associations...
+[2026.10.30-11.03.11:626][561]LogD3D12RHI: Late shader associations ignored 51 pipelines based on frame fences
+[2026.10.30-11.03.11:626][561]LogD3D12RHI: Error: Failed to create pipeline state with combined hash AA3AE63E20F3784E, error 887a0005.
+[2026.10.30-11.03.11:626][561]LogD3D12RHI: Error: hr failed 
+ at D:\build\++UE5\Sync\Engine\Source\Runtime\D3D12RHI\Private\Windows\WindowsD3D12PipelineState.cpp:856 
+ with error DXGI_ERROR_DEVICE_REMOVED with Reason: DXGI_ERROR_DEVICE_HUNG
+
+[2026.10.30-11.03.11:635][561]LogD3D12RHI: Created late shader associations, took 10ms
+[2026.10.30-11.03.11:635][561]LogD3D12RHI: Error: Failed to create pipeline state with combined hash AA31A637FB468883, error 887a0005.
+[2026.10.30-11.03.11:635][561]LogD3D12RHI: Error: Failed to create pipeline state with combined hash 5423F8325052A002, error 887a0005.
+[2026.10.30-11.03.11:636][561]LogD3D12RHI: Error: Failed to create pipeline state with combined hash DBD0F121796BC35E, error 887a0005.
+[2026.10.30-11.03.11:637][561]LogD3D12RHI: Error: Failed to create pipeline state with combined hash C6D653F375986571, error 887a0005.
+[2026.10.30-11.03.11:638][561]LogD3D12RHI: Error: Failed to create pipeline state with combined hash 1CA6BBDF13D14939, error 887a0005.
+[2026.10.30-11.03.11:638][561]LogD3D12RHI: Error: Failed to create pipeline state with combined hash 459EFD602CF01158, error 887a0005.
+[2026.10.30-11.03.11:640][561]LogD3D12RHI: Error: Failed to create pipeline state with combined hash 3EAA7B2189364C0F, error 887a0005.
+[2026.10.30-11.03.11:641][561]LogD3D12RHI: Error: Failed to create pipeline state with combined hash 6E4C2452339FA90D, error 887a0005.
+[2026.10.30-11.03.11:643][561]LogD3D12RHI: Error: Failed to create pipeline state with combined hash 7409F3B396D4DEC0, error 887a0005.
+[2026.10.30-11.03.11:645][561]LogNvidiaAftermath: Error: 
+
+Writing Aftermath dump to: ../../../SentryTower/Saved/Logs/D3D12.0.2026.10.30-13.03.11.nv-gpudmp
+	Succeeded in writing Aftermath dump file.
+
+Decoding Aftermath GPU Crash:
+
+	Device Info:
+		Status       : Timeout
+		Adapter Reset: False
+		Engine Reset : True
+
+	 Page Fault Info:
+		No information on faulting address.
+
+	Marker Data:
+		No marker info.
+
+	Active Shaders:
+		1 total.
+		[0]:
+			Type = Compute
+			Aftermath Hash = 391127758297409729
+			Aftermath Binary Hash = 391127758297409729
+			Function = HeavyComputeLoop
+			Shader Hash = 731322BF682BDC554EEFDD89098B7383
+
+	JSON Data:
+
+[
+  {
+    "Base info": {
+      "Application name": "sentrytower.exe",
+      "Dump date": "Fri Oct 30 13:03:11 2026",
+      "Dump tick count": 13620312,
+      "Graphics API": "Direct3D 12",
+      "PID": 14920
+    }
+  },
+  {
+    "OS info": {
+      "Build number": 26300,
+      "Service pack major version": 0,
+      "Service pack minor version": 0,
+      "Windows major version": 10,
+      "Windows minor version": 0,
+      "Windows product type": 1
+    }
+  },
+  {
+    "Display driver info": {
+      "Version": "621.01"
+    }
+  },
+  {
+    "Device info": {
+      "Adapter reset occurred": false,
+      "Device state": "Hung",
+      "Engine reset occurred": true
+    }
+  },
+  {
+    "GPU info": {
+      "Adapter LUID": 79468,
+      "Adapter name": "GA102-A"
+    }
+  },
+  {
+    "Shader infos": {
+      "Info": {
+        "Shader hash": 391127758297409729,
+        "Shader name": "compute_02",
+        "Shader size": 768,
+        "Shader type": "Compute"
+      }
+    }
+  },
+  {
+    "ApplicationName": "UE-SentryTower"
+  },
+  {
+    "ApplicationVersion": "++UE5+Release-5.8-CL-58210709"
+  },
+  {
+    "UserDefined+0": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<FGenericCrashContext>\r\n<RuntimeProperties>\r\n<CrashType>GPUCrash</CrashType>\r\n</RuntimeProperties>\r\n</FGenericCrashContext>\r\n"
+  },
+  {
+    "Active Warps": [
+      {
+        "GPU PC Address": "compute_02 @ 0x00000120",
+        "Shader mapping": "dxil:35",
+        "Warp count": 1
+      }
+    ]
+  },
+  {
+    "Fingerprint": {
+      "Hash": 12883055715713153368,
+      "Quality": 0
+    }
+  }
+]
+
+
+[2026.10.30-11.03.11:645][561]LogD3D12RHI: Error: Failed to create pipeline state with combined hash FB01745BEDD0F23A, error 887a0005.
+[2026.10.30-11.03.11:645][561]LogD3D12RHI: Error: Failed to create pipeline state with combined hash 74F0B421EB4603A7, error 887a0005.
+[2026.10.30-11.03.11:645][561]LogD3D12RHI: Error: DRED: Last tracked GPU operations:
+[2026.10.30-11.03.11:645][561]LogD3D12RHI: Error: DRED: Commandlist "FD3D12CommandList 2 (GPU 0)" on CommandQueue "Compute Queue (GPU 0)", 1 completed of 2
+[2026.10.30-11.03.11:645][561]LogD3D12RHI: Error: 	Op: 0, BeginCommandList - LAST COMPLETED
+[2026.10.30-11.03.11:645][561]LogD3D12RHI: Error: 	Op: 1, Dispatch
+[2026.10.30-11.03.11:645][561]LogD3D12RHI: Error: Failed to create pipeline state with combined hash 277D150274D2DC7E, error 887a0005.
+[2026.10.30-11.03.11:645][561]LogD3D12RHI: Error: DRED: No PageFault data.
+[2026.10.30-11.03.11:645][561]LogD3D12RHI: Error: Video Memory Stats from frame ID 561:
+[2026.10.30-11.03.11:645][561]LogD3D12RHI: Error: 	Local Budget:	9285.00 MB
+[2026.10.30-11.03.11:645][561]LogD3D12RHI: Error: 	Local Used:	2236.25 MB
+[2026.10.30-11.03.11:646][561]LogD3D12RHI: Error: 	System Budget:	48092.29 MB
+[2026.10.30-11.03.11:646][561]LogD3D12RHI: Error: 	System Used:	 263.38 MB
+[2026.10.30-11.03.11:649][561]LogWindows: Error: Failed to create dialog. The specified resource type cannot be found in the image file. Error: 0x715 (1813)

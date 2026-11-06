@@ -42,9 +42,19 @@ fn print_type(session: &ObjectDebugSession<'_>, ty: &TypeRef, max_depth: usize) 
 
     match ty {
         Type::Primitive(t) => print!("{}", t.name.as_deref().unwrap_or("?")),
-        Type::Pointer(t) => {
-            print_type(session, &t.pointee, max_depth - 1)?;
-            print!("*")
+        Type::Pointer(t) => match t.pointee {
+            Some(pointee) => {
+                print_type(session, &pointee, max_depth - 1)?;
+                print!("*")
+            }
+            None => print!("void*"),
+        },
+        Type::TypeDef(t) => {
+            print!("typedef ");
+            if let Some(ty) = &t.ty {
+                print_type(session, ty, max_depth - 1)?;
+            }
+            print!(" {};", t.name);
         }
     }
 
@@ -111,7 +121,7 @@ fn resolve(
             for location in locations {
                 print!("      location: ");
                 match location.location {
-                    VariableLocation::Register { id } => print!("reg:{id}"),
+                    VariableLocation::Register { register } => print!("reg:{register}"),
                     VariableLocation::FrameOffset { offset } => print!("fbreg:{offset}"),
                 }
                 print_range(location.address, Some(location.size), matches);

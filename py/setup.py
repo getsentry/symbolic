@@ -19,7 +19,8 @@ with open("README") as f:
 
 
 if os.path.isfile("../symbolic-cabi/Cargo.toml"):
-    with open("../symbolic-cabi/Cargo.toml") as f:
+    # The crate version is inherited from `[workspace.package]` in the root manifest.
+    with open("../Cargo.toml") as f:
         match = _version_re.search(f.read())
         assert match is not None
         version = match[1]

@@ -2,11 +2,11 @@ use std::cell::Cell;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 
-use symbolic_common::Language;
+use symbolic_common::{Arch, CpuFamily, Language};
 
 use crate::v9::{SymCache, convert, raw};
 use crate::{
-    File, Function, PointerType, PrimitiveType, Type, TypeId, TypeSize, VariableKind,
+    File, Function, PointerType, PrimitiveType, Type, TypeDefType, TypeId, TypeSize, VariableKind,
     VariableLocation, VariableLocationInfo,
 };
 
@@ -81,7 +81,12 @@ impl<'data> SymCache<'data> {
             }),
             raw::ty::Enum::pointer(pointer) => Type::Pointer(PointerType {
                 size: TypeSize::Bytes(pointer.size.into()),
-                pointee: (pointer.pointee_idx != u32::MAX).then_some(TypeId(pointer.pointee_idx)),
+                pointee: (pointer.pointee_idx != raw::Type::VOID)
+                    .then_some(TypeId(pointer.pointee_idx)),
+            }),
+            raw::ty::Enum::typedef(td) => Type::TypeDef(TypeDefType {
+                name: self.get_string(td.name_offset).unwrap_or("?"),
+                ty: (td.ty_idx != raw::Type::VOID).then_some(TypeId(td.ty_idx)),
             }),
         })
     }
@@ -367,6 +372,7 @@ impl<'data, 'cache> Variable<'data, 'cache> {
 
         VariableLocations {
             locations: locations.iter(),
+            cpu_family: Arch::from_u32(self.cache.header.arch).cpu_family(),
             addr: self.addr,
         }
     }
@@ -375,6 +381,7 @@ impl<'data, 'cache> Variable<'data, 'cache> {
 #[derive(Debug, Clone)]
 pub struct VariableLocations<'data> {
     locations: std::slice::Iter<'data, raw::VariableLocationInfo>,
+    cpu_family: CpuFamily,
     addr: u32,
 }
 
@@ -391,7 +398,11 @@ impl<'data> Iterator for VariableLocations<'data> {
             if self.addr < location.start + location.size {
                 let vl = match location.location() {
                     Some(raw::location::Enum::register(reg)) => {
-                        VariableLocation::Register { id: reg.id }
+                        let Some(register) = convert::u16_to_register(self.cpu_family, reg.id)
+                        else {
+                            continue;
+                        };
+                        VariableLocation::Register { register }
                     }
                     Some(raw::location::Enum::frame_offset(fo)) => VariableLocation::FrameOffset {
                         offset: fo.offset.into(),

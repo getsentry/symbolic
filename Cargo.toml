@@ -3,6 +3,11 @@ resolver = "2"
 members = ["symbolic*", "examples/*"]
 
 [workspace.package]
+version = "14.0.0-alpha.5"
+authors = ["Sentry <hello@sentry.io>"]
+license = "MIT"
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
 edition = "2024"
 rust-version = "1.85"
 
@@ -70,7 +75,7 @@ wasm-bindgen-test = "0.3.75"
 wasmparser = "0.262.0"
 watto = { version = "0.2.0", features = ["writer", "strings"] }
 zip = { version = "9.0.0", default-features = false, features = ["deflate"] }
-zstd = { version = "0.13.1" }
+zstd = { version = "0.14.3" }
 
 [workspace.lints.clippy]
 # fix(SYMBOL-37): This is a false positive triggered in derive macros.

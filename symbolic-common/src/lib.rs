@@ -29,6 +29,8 @@ mod path;
 mod sourcelinks;
 mod types;
 
+pub mod register;
+
 pub use crate::byteview::*;
 pub use crate::cell::*;
 pub use crate::heuristics::*;

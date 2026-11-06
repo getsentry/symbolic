@@ -1,14 +1,11 @@
 [package]
 name = "symbolic-cfi"
-version = "14.0.0-alpha.4"
-license = "MIT"
-authors = [
-    "Armin Ronacher <armin.ronacher@active-4.com>",
-    "Jan Michael Auer <mail@jauer.org>",
-]
+version.workspace = true
+license.workspace = true
+authors.workspace = true
 documentation = "https://docs.rs/symbolic-cfi"
-homepage = "https://github.com/getsentry/symbolic"
-repository = "https://github.com/getsentry/symbolic"
+homepage.workspace = true
+repository.workspace = true
 description = """
 A library to process call frame information
 """
@@ -16,8 +13,8 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-symbolic-common = { version = "14.0.0-alpha.4", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "14.0.0-alpha.4", path = "../symbolic-debuginfo" }
+symbolic-common = { version = "14.0.0-alpha.5", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "14.0.0-alpha.5", path = "../symbolic-debuginfo" }
 thiserror = { workspace = true }
 
 [dev-dependencies]

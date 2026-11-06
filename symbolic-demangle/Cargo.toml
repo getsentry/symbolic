@@ -1,14 +1,11 @@
 [package]
 name = "symbolic-demangle"
-version = "14.0.0-alpha.4"
-license = "MIT"
-authors = [
-    "Armin Ronacher <armin.ronacher@active-4.com>",
-    "Jan Michael Auer <mail@jauer.org>",
-]
+version.workspace = true
+license.workspace = true
+authors.workspace = true
 documentation = "https://docs.rs/symbolic-demangle"
-homepage = "https://github.com/getsentry/symbolic"
-repository = "https://github.com/getsentry/symbolic"
+homepage.workspace = true
+repository.workspace = true
 readme = "README.md"
 description = """
 A library to demangle symbols from various languages and compilers.
@@ -32,7 +29,7 @@ swift = ["cc"]
 [dependencies]
 cpp_demangle = { workspace = true, optional = true }
 rustc-demangle = { workspace = true, optional = true }
-symbolic-common = { version = "14.0.0-alpha.4", path = "../symbolic-common" }
+symbolic-common = { version = "14.0.0-alpha.5", path = "../symbolic-common" }
 bitflags = { version = "2", optional = true, default-features = false }
 itoa = { version = "1.0", optional = true }
 thiserror = { workspace = true }

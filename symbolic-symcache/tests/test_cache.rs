@@ -15,12 +15,13 @@ impl fmt::Debug for TypeDebug<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.1 {
             Type::Primitive(primitive) => f.write_str(primitive.name().unwrap_or("<unknown>")),
-            Type::Pointer(pointer) => {
-                match pointer.pointee().and_then(|ty| self.0.lookup_type(ty)) {
+            Type::Pointer(pointer) => match pointer.pointee() {
+                Some(ty) => match self.0.lookup_type(ty) {
                     Some(pointee) => write!(f, "{:?}*", TypeDebug(self.0, pointee)),
-                    None => f.write_str("void*"),
-                }
-            }
+                    None => f.write_str("<unknown>*"),
+                },
+                None => f.write_str("void*"),
+            },
             _ => f.write_str("<unknown>"),
         }
     }
@@ -56,8 +57,8 @@ impl fmt::Debug for VariablesDebug<'_, '_> {
 
                 let end = location.address + location.size;
                 match location.location {
-                    VariableLocation::Register { id } => {
-                        write!(f, "{:#x}..{end:#x} register {id}", location.address)?;
+                    VariableLocation::Register { register } => {
+                        write!(f, "{:#x}..{end:#x} register {register}", location.address)?;
                     }
                     VariableLocation::FrameOffset { offset } => {
                         write!(f, "{:#x}..{end:#x} frame {offset}", location.address)?;
@@ -184,40 +185,65 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
     let symcache = SymCache::parse(&buffer)?;
 
     let source_location = symcache.lookup(0xfe50).last().unwrap();
-    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r#"
-    this (parameter, <unknown>): 0xfe50..0xfe86 register 5
-    str (parameter, void*): 0xfe50..0xfe86 register 4
-    length (parameter, unsigned int): 0xfe50..0xfe86 register 1
-    mdstring (parameter, void*): 0xfe50..0xfe86 register 2
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
+    this (parameter, <unknown>): 0xfe50..0xfe86 register rdi
+    str (parameter, <unknown>*): 0xfe50..0xfe86 register rsi
+    length (parameter, unsigned int): 0xfe50..0xfe86 register rdx
+    mdstring (parameter, <unknown>*): 0xfe50..0xfe86 register rcx
     result (local, bool): <unavailable>
     out (local, <unknown>): 0xfe50..0xff4c frame -80
     out_idx (local, int): <unavailable>
     out_count (local, int): <unavailable>
-    "#);
+    ");
 
     let source_location = symcache.lookup(0xfe90).last().unwrap();
-    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r#"
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>): <unavailable>
-    str (parameter, void*): 0xfe86..0xff02 register 6
-    length (parameter, unsigned int): 0xfe86..0xff02 register 3
-    mdstring (parameter, void*): 0xfe86..0xff02 register 13
+    str (parameter, <unknown>*): 0xfe86..0xff02 register rbp
+    length (parameter, unsigned int): 0xfe86..0xff02 register rbx
+    mdstring (parameter, <unknown>*): 0xfe86..0xff02 register r13
     result (local, bool): <unavailable>
     out (local, <unknown>): 0xfe50..0xff4c frame -80
-    out_idx (local, int): 0xfe86..0xfed9 register 12
+    out_idx (local, int): 0xfe86..0xfed9 register r12
     out_count (local, int): <unavailable>
-    "#);
+    ");
 
     let source_location = symcache.lookup(0xfecb).last().unwrap();
-    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r#"
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>): <unavailable>
-    str (parameter, void*): 0xfe86..0xff02 register 6
-    length (parameter, unsigned int): 0xfe86..0xff02 register 3
-    mdstring (parameter, void*): 0xfe86..0xff02 register 13
+    str (parameter, <unknown>*): 0xfe86..0xff02 register rbp
+    length (parameter, unsigned int): 0xfe86..0xff02 register rbx
+    mdstring (parameter, <unknown>*): 0xfe86..0xff02 register r13
     result (local, bool): <unavailable>
     out (local, <unknown>): 0xfe50..0xff4c frame -80
-    out_idx (local, int): 0xfe86..0xfed9 register 12
-    out_count (local, int): 0xfecb..0xfeee register 15
-    "#);
+    out_idx (local, int): 0xfe86..0xfed9 register r12
+    out_count (local, int): 0xfecb..0xfeee register r15
+    ");
+
+    Ok(())
+}
+
+#[test]
+fn test_lookup_variables_void_pointer() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("linux/variables/variables"))?;
+    let object = Object::parse(&buffer)?;
+
+    let mut converter = SymCacheConverter::new();
+    converter.set_collect_variables(true);
+    converter.process_object(&object)?;
+    let mut data = Vec::new();
+    converter.serialize(&mut Cursor::new(&mut data))?;
+    let symcache = SymCache::parse(&data)?;
+
+    // `pointers(int *num, int **num_ptr, const char *str, void *any, ...)`
+    let source_location = symcache.lookup(0x1193).last().unwrap();
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
+    num (parameter, int*): 0x1193..0x11ae frame -24
+    num_ptr (parameter, int**): 0x1193..0x11ae frame -32
+    str (parameter, <unknown>*): 0x1193..0x11ae frame -40
+    any (parameter, void*): 0x1193..0x11ae frame -48
+    fn (parameter, <unknown>*): 0x1193..0x11ae frame -56
+    ");
 
     Ok(())
 }
@@ -228,31 +254,31 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     let symcache = SymCache::parse(&buffer)?;
 
     let source_location = symcache.lookup(0xea0).last().unwrap();
-    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r#"
-    this (parameter, void*): 0xea0..0xed2 register 5
-    str (parameter, void*): 0xea0..0xeb6 register 4
-    mdstring (parameter, void*): 0xea0..0xeb1 register 2
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
+    this (parameter, <unknown>*): 0xea0..0xed2 register rdi
+    str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
+    mdstring (parameter, <unknown>*): 0xea0..0xeb1 register rcx
     out (local, <unknown>): 0xea0..0xfe7 frame 16
     out_size (local, <unknown>): <unavailable>
-    "#);
+    ");
 
     let source_location = symcache.lookup(0xeb2).last().unwrap();
-    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r#"
-    this (parameter, void*): 0xea0..0xed2 register 5
-    str (parameter, void*): 0xea0..0xeb6 register 4
-    mdstring (parameter, void*): 0xeb1..0xf41 register 12
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
+    this (parameter, <unknown>*): 0xea0..0xed2 register rdi
+    str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
+    mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
     out (local, <unknown>): 0xea0..0xfe7 frame 16
     out_size (local, <unknown>): <unavailable>
-    "#);
+    ");
 
     let source_location = symcache.lookup(0xed2).last().unwrap();
-    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r#"
-    this (parameter, void*): <unavailable>
-    str (parameter, void*): 0xeb6..0xf23 register 3
-    mdstring (parameter, void*): 0xeb1..0xf41 register 12
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
+    this (parameter, <unknown>*): <unavailable>
+    str (parameter, <unknown>*): 0xeb6..0xf23 register rbx
+    mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
     out (local, <unknown>): 0xea0..0xfe7 frame 16
     out_size (local, <unknown>): <unavailable>
-    "#);
+    ");
 
     Ok(())
 }

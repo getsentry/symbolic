@@ -137,6 +137,19 @@ fn cfi_from_elf_arm64() -> Result<(), Error> {
 }
 
 #[test]
+fn cfi_from_elf_arm64_pac_ret() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("linux/arm64/cfi_pac_ret"))?;
+    let object = Object::parse(&buffer)?;
+
+    let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
+    let cfi = str::from_utf8(&buf)?;
+    // Verify that rows after `DW_CFA_AARCH64_negate_ra_state` are not dropped
+    insta::assert_snapshot!("cfi_elf_arm64_pac_ret", cfi);
+
+    Ok(())
+}
+
+#[test]
 fn cfi_from_pe_arm64() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("windows/arm64/test.exe"))?;
     let object = Object::parse(&buffer)?;
