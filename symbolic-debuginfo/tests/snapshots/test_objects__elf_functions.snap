@@ -752,7 +752,153 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     context (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Structure: CrashContext (1584 bytes)
+            > Member: siginfo (offset 0 bytes)
+              > TypeDef: siginfo_t
+                > Structure: <anonymous> (128 bytes)
+                  > Member: si_signo (offset 0 bytes)
+                    > Primitive: int (SignedInt, 4 bytes)
+                  > Member: si_errno (offset 4 bytes)
+                    > Primitive: int (SignedInt, 4 bytes)
+                  > Member: si_code (offset 8 bytes)
+                    > Primitive: int (SignedInt, 4 bytes)
+                  > Member: _sifields (offset 16 bytes)
+                    > Unknown
+            > Member: tid (offset 128 bytes)
+              > TypeDef: pid_t
+                > TypeDef: __pid_t
+                  > Primitive: int (SignedInt, 4 bytes)
+            > Member: context (offset 136 bytes)
+              > TypeDef: ucontext_t
+                > Structure: ucontext (936 bytes)
+                  > Member: uc_flags (offset 0 bytes)
+                    > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+                  > Member: uc_link (offset 8 bytes)
+                    > Pointer (8 bytes)
+                      > <cycle: ucontext>
+                  > Member: uc_stack (offset 16 bytes)
+                    > TypeDef: stack_t
+                      > Structure: sigaltstack (24 bytes)
+                        > Member: ss_sp (offset 0 bytes)
+                          > Pointer (8 bytes)
+                            > Void
+                        > Member: ss_flags (offset 8 bytes)
+                          > Primitive: int (SignedInt, 4 bytes)
+                        > Member: ss_size (offset 16 bytes)
+                          > TypeDef: size_t
+                            > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+                  > Member: uc_mcontext (offset 40 bytes)
+                    > TypeDef: mcontext_t
+                      > Structure: <anonymous> (256 bytes)
+                        > Member: gregs (offset 0 bytes)
+                          > TypeDef: gregset_t
+                            > Void
+                        > Member: fpregs (offset 184 bytes)
+                          > TypeDef: fpregset_t
+                            > Pointer (8 bytes)
+                              > Structure: _libc_fpstate (512 bytes)
+                                > Member: cwd (offset 0 bytes)
+                                  > TypeDef: __uint16_t
+                                    > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                                > Member: swd (offset 2 bytes)
+                                  > TypeDef: __uint16_t
+                                    > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                                > Member: ftw (offset 4 bytes)
+                                  > TypeDef: __uint16_t
+                                    > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                                > Member: fop (offset 6 bytes)
+                                  > TypeDef: __uint16_t
+                                    > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                                > Member: rip (offset 8 bytes)
+                                  > TypeDef: __uint64_t
+                                    > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+                                > Member: rdp (offset 16 bytes)
+                                  > TypeDef: __uint64_t
+                                    > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+                                > Member: mxcsr (offset 24 bytes)
+                                  > TypeDef: __uint32_t
+                                    > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                                > Member: mxcr_mask (offset 28 bytes)
+                                  > TypeDef: __uint32_t
+                                    > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                                > Member: _st (offset 32 bytes)
+                                  > Unknown
+                                > Member: _xmm (offset 160 bytes)
+                                  > Unknown
+                                > Member: padding (offset 416 bytes)
+                                  > Unknown
+                        > Member: __reserved1 (offset 192 bytes)
+                          > Unknown
+                  > Member: uc_sigmask (offset 296 bytes)
+                    > TypeDef: __sigset_t
+                      > Structure: <anonymous> (128 bytes)
+                        > Member: __val (offset 0 bytes)
+                          > Unknown
+                  > Member: __fpregs_mem (offset 424 bytes)
+                    > Structure: _libc_fpstate (512 bytes)
+                      > Member: cwd (offset 0 bytes)
+                        > TypeDef: __uint16_t
+                          > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                      > Member: swd (offset 2 bytes)
+                        > TypeDef: __uint16_t
+                          > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                      > Member: ftw (offset 4 bytes)
+                        > TypeDef: __uint16_t
+                          > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                      > Member: fop (offset 6 bytes)
+                        > TypeDef: __uint16_t
+                          > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                      > Member: rip (offset 8 bytes)
+                        > TypeDef: __uint64_t
+                          > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+                      > Member: rdp (offset 16 bytes)
+                        > TypeDef: __uint64_t
+                          > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+                      > Member: mxcsr (offset 24 bytes)
+                        > TypeDef: __uint32_t
+                          > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                      > Member: mxcr_mask (offset 28 bytes)
+                        > TypeDef: __uint32_t
+                          > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                      > Member: _st (offset 32 bytes)
+                        > Unknown
+                      > Member: _xmm (offset 160 bytes)
+                        > Unknown
+                      > Member: padding (offset 416 bytes)
+                        > Unknown
+            > Member: float_state (offset 1072 bytes)
+              > TypeDef: fpstate_t
+                > Structure: _libc_fpstate (512 bytes)
+                  > Member: cwd (offset 0 bytes)
+                    > TypeDef: __uint16_t
+                      > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                  > Member: swd (offset 2 bytes)
+                    > TypeDef: __uint16_t
+                      > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                  > Member: ftw (offset 4 bytes)
+                    > TypeDef: __uint16_t
+                      > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                  > Member: fop (offset 6 bytes)
+                    > TypeDef: __uint16_t
+                      > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                  > Member: rip (offset 8 bytes)
+                    > TypeDef: __uint64_t
+                      > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+                  > Member: rdp (offset 16 bytes)
+                    > TypeDef: __uint64_t
+                      > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+                  > Member: mxcsr (offset 24 bytes)
+                    > TypeDef: __uint32_t
+                      > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                  > Member: mxcr_mask (offset 28 bytes)
+                    > TypeDef: __uint32_t
+                      > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                  > Member: _st (offset 32 bytes)
+                    > Unknown
+                  > Member: _xmm (offset 160 bytes)
+                    > Unknown
+                  > Member: padding (offset 416 bytes)
+                    > Unknown
       0x2520..0x2557: register rsi
       0x2557..0x255a: register rbp
       0x257f..0x2595: register rsi
@@ -774,7 +920,23 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x282b..0x2877: register r15
     thread_arg (local)
       type:
-        > Unknown
+        > Structure: ThreadArgument (40 bytes)
+          > Member: pid (offset 0 bytes)
+            > TypeDef: pid_t
+              > TypeDef: __pid_t
+                > Primitive: int (SignedInt, 4 bytes)
+          > Member: minidump_descriptor (offset 8 bytes)
+            > Pointer (8 bytes)
+              > Unknown
+          > Member: handler (offset 16 bytes)
+            > Pointer (8 bytes)
+              > Unknown
+          > Member: context (offset 24 bytes)
+            > Pointer (8 bytes)
+              > Unknown
+          > Member: context_size (offset 32 bytes)
+            > TypeDef: size_t
+              > Primitive: long unsigned int (UnsignedInt, 8 bytes)
       0x2520..0x29e6: frame base -112
     status (local)
       type:
@@ -1030,7 +1192,15 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       type:
         > Pointer (8 bytes)
           > TypeDef: siginfo_t
-            > Unknown
+            > Structure: <anonymous> (128 bytes)
+              > Member: si_signo (offset 0 bytes)
+                > Primitive: int (SignedInt, 4 bytes)
+              > Member: si_errno (offset 4 bytes)
+                > Primitive: int (SignedInt, 4 bytes)
+              > Member: si_code (offset 8 bytes)
+                > Primitive: int (SignedInt, 4 bytes)
+              > Member: _sifields (offset 16 bytes)
+                > Unknown
       0x2bd0..0x2c08: register rsi
       0x2c08..0x2c0d: register r13
       0x2c34..0x2d43: register r13
@@ -1044,7 +1214,19 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x2c34..0x2dbf: register r14
     cur_handler (local)
       type:
-        > Unknown
+        > Structure: sigaction (152 bytes)
+          > Member: __sigaction_handler (offset 0 bytes)
+            > Unknown
+          > Member: sa_mask (offset 8 bytes)
+            > TypeDef: __sigset_t
+              > Structure: <anonymous> (128 bytes)
+                > Member: __val (offset 0 bytes)
+                  > Unknown
+          > Member: sa_flags (offset 136 bytes)
+            > Primitive: int (SignedInt, 4 bytes)
+          > Member: sa_restorer (offset 144 bytes)
+            > Pointer (8 bytes)
+              > Unknown
       0x2bd0..0x2dbf: frame base -208
     handled (local)
       type:

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::ffi::CString;
 use std::fmt;
 use std::io::BufWriter;
@@ -116,6 +117,7 @@ impl fmt::Debug for FunctionsDebug<'_, '_> {
                             session: self.session,
                             ty: Some(ty),
                             depth: self.depth + 4,
+                            seen_types: &HashSet::new(),
                         }
                     )?;
                 }
@@ -161,17 +163,37 @@ struct TypeDebug<'data, 'session, 'type_ref> {
     session: &'session ObjectDebugSession<'data>,
     ty: Option<&'type_ref TypeRef>,
     depth: usize,
+    seen_types: &'type_ref HashSet<TypeRef>,
 }
 
 impl fmt::Debug for TypeDebug<'_, '_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Some(ty) = self.ty else {
+        let Some(type_ref) = self.ty else {
             return writeln!(f, "{:indent$}> Void", "", indent = self.depth * 2);
         };
 
-        let Some(ty) = self.session.lookup_type(ty).unwrap() else {
+        let Some(ty) = self.session.lookup_type(type_ref).unwrap() else {
             return writeln!(f, "{:indent$}> Unknown", "", indent = self.depth * 2);
         };
+
+        let mut seen_types = self.seen_types.clone();
+        if !seen_types.insert(type_ref.clone()) {
+            let name = match &ty {
+                Type::Primitive(ty) => ty.name.as_deref(),
+                Type::Pointer(_) => None,
+                Type::TypeDef(ty) => Some(ty.name.as_ref()),
+                Type::StructureType(ty) => ty.name.as_deref(),
+            };
+            let identifier = name
+                .map(str::to_owned)
+                .unwrap_or_else(|| format!("{type_ref:?}"));
+            return writeln!(
+                f,
+                "{:indent$}> <cycle: {identifier}>",
+                "",
+                indent = self.depth * 2
+            );
+        }
 
         match ty {
             Type::Primitive(ty) => {
@@ -211,6 +233,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                         session: self.session,
                         ty: ty.pointee.as_ref(),
                         depth: self.depth + 1,
+                        seen_types: &seen_types,
                     }
                 )
             }
@@ -229,8 +252,56 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                         session: self.session,
                         ty: ty.ty.as_ref(),
                         depth: self.depth + 1,
+                        seen_types: &seen_types,
                     }
                 )
+            }
+            Type::StructureType(ty) => {
+                let name = ty.name.as_deref().unwrap_or("<anonymous>");
+
+                write!(
+                    f,
+                    "{:indent$}> Structure: {name}",
+                    "",
+                    indent = self.depth * 2
+                )?;
+                match ty.size {
+                    Some(TypeSize::Bytes(size)) => {
+                        let unit = if size == 1 { "byte" } else { "bytes" };
+                        writeln!(f, " ({size} {unit})")?;
+                    }
+                    None => writeln!(f, " (<unknown size>)")?,
+                }
+
+                for member in &ty.members {
+                    let name = member.name.as_deref().unwrap_or("<anonymous>");
+
+                    write!(
+                        f,
+                        "{:indent$}> Member: {name}",
+                        "",
+                        indent = (self.depth + 1) * 2
+                    )?;
+                    match member.offset {
+                        Some(TypeSize::Bytes(offset)) => {
+                            let unit = if offset == 1 { "byte" } else { "bytes" };
+                            writeln!(f, " (offset {offset} {unit})")?;
+                        }
+                        None => writeln!(f, " (<unknown offset>)")?,
+                    }
+                    write!(
+                        f,
+                        "{:?}",
+                        TypeDebug {
+                            session: self.session,
+                            ty: Some(&member.ty),
+                            depth: self.depth + 2,
+                            seen_types: &seen_types,
+                        }
+                    )?;
+                }
+
+                Ok(())
             }
         }
     }

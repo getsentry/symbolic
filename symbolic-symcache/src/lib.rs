@@ -18,6 +18,7 @@
 //! 8. Variables
 //! 9. Variable Locations
 //! 10. Types
+//! 11. Structure Members
 //!
 //! The format uses `u32`s to represent line numbers, addresses, references, and string offsets.
 //! Line numbers use `0` to represent an unknown or invalid value. Addresses, references, and string

@@ -184,7 +184,11 @@ expression: "FunctionsDebug::new(&session, &functions)"
     point (local)
       type:
         > TypeDef: Point
-          > Unknown
+          > Structure: <anonymous> (8 bytes)
+            > Member: x (offset 0 bytes)
+              > Primitive: int (SignedInt, 4 bytes)
+            > Member: y (offset 4 bytes)
+              > Primitive: int (SignedInt, 4 bytes)
       0x11ae..0x11ed: frame base -32
     array (local)
       type:

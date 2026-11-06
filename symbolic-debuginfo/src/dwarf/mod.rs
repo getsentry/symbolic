@@ -170,11 +170,11 @@ impl From<FunctionBuilderError> for DwarfError {
 }
 
 /// A reference to a type in the DWARF file.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DwarfTypeRef(DwarfTypeRefInner);
 
 /// All possible representations of a DWARF type reference, which we can resolve.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum DwarfTypeRefInner {
     /// A offset into a section.
     Offset {

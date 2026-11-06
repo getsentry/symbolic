@@ -88,10 +88,11 @@ fn test_load_header_linux() -> Result<(), Error> {
         functions: 697,
         source_locations: 8431,
         ranges: 6975,
-        string_bytes: 51929,
+        string_bytes: 53743,
         variables: 548,
         variable_locations: 1548,
-        types: 12,
+        types: 146,
+        structure_members: 240,
     }
     "#);
     Ok(())
@@ -121,10 +122,11 @@ fn test_load_header_macos() -> Result<(), Error> {
         functions: 639,
         source_locations: 7382,
         ranges: 5965,
-        string_bytes: 42437,
+        string_bytes: 44669,
         variables: 419,
         variable_locations: 992,
-        types: 8,
+        types: 181,
+        structure_members: 152,
     }
     "#);
     Ok(())

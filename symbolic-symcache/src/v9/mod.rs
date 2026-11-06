@@ -21,6 +21,7 @@ pub struct SymCache<'data> {
     pub variables: &'data [raw::Variable],
     pub variable_locations: &'data [raw::VariableLocationInfo],
     pub types: &'data [raw::Type],
+    pub structure_members: &'data [raw::StructureMember],
 }
 
 impl std::fmt::Debug for SymCache<'_> {
@@ -38,7 +39,8 @@ impl std::fmt::Debug for SymCache<'_> {
         if let Some(vh) = self.variable_header {
             d.field("variables", &vh.num_variables)
                 .field("variable_locations", &vh.num_variable_locations)
-                .field("types", &vh.num_types);
+                .field("types", &vh.num_types)
+                .field("structure_members", &vh.num_structure_members);
         }
 
         d.finish()
@@ -92,6 +94,7 @@ impl<'data> SymCache<'data> {
         let mut variables = &[][..];
         let mut variable_locations = &[][..];
         let mut types = &[][..];
+        let mut structure_members = &[][..];
 
         if header.variable_header == raw::VARIABLE_HEADER_VERSION {
             let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidVariableHeader)?;
@@ -119,9 +122,15 @@ impl<'data> SymCache<'data> {
             variable_locations = vl;
 
             let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidTypes)?;
-            let (tys, _) = raw::Type::slice_from_prefix(rest, vh.num_types as usize)
+            let (tys, rest) = raw::Type::slice_from_prefix(rest, vh.num_types as usize)
                 .ok_or(ErrorKind::InvalidTypes)?;
             types = tys;
+
+            let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidStructureMembers)?;
+            let (members, _) =
+                raw::StructureMember::slice_from_prefix(rest, vh.num_structure_members as usize)
+                    .ok_or(ErrorKind::InvalidStructureMembers)?;
+            structure_members = members;
         }
 
         Ok(Self {
@@ -136,6 +145,7 @@ impl<'data> SymCache<'data> {
             variables,
             variable_locations,
             types,
+            structure_members,
         })
     }
 
