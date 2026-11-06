@@ -113,7 +113,72 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       type:
         > TypeDef: STARTUPINFO
           > TypeDef: STARTUPINFOA
-            > Unknown
+            > Structure: _STARTUPINFOA (104 bytes)
+              > Member: cb (offset 0 bytes)
+                > TypeDef: DWORD
+                  > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+              > Member: lpReserved (offset 8 bytes)
+                > TypeDef: LPSTR
+                  > Pointer (8 bytes)
+                    > TypeDef: CHAR
+                      > Primitive: char (SignedChar, 1 byte)
+              > Member: lpDesktop (offset 16 bytes)
+                > TypeDef: LPSTR
+                  > Pointer (8 bytes)
+                    > TypeDef: CHAR
+                      > Primitive: char (SignedChar, 1 byte)
+              > Member: lpTitle (offset 24 bytes)
+                > TypeDef: LPSTR
+                  > Pointer (8 bytes)
+                    > TypeDef: CHAR
+                      > Primitive: char (SignedChar, 1 byte)
+              > Member: dwX (offset 32 bytes)
+                > TypeDef: DWORD
+                  > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+              > Member: dwY (offset 36 bytes)
+                > TypeDef: DWORD
+                  > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+              > Member: dwXSize (offset 40 bytes)
+                > TypeDef: DWORD
+                  > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+              > Member: dwYSize (offset 44 bytes)
+                > TypeDef: DWORD
+                  > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+              > Member: dwXCountChars (offset 48 bytes)
+                > TypeDef: DWORD
+                  > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+              > Member: dwYCountChars (offset 52 bytes)
+                > TypeDef: DWORD
+                  > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+              > Member: dwFillAttribute (offset 56 bytes)
+                > TypeDef: DWORD
+                  > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+              > Member: dwFlags (offset 60 bytes)
+                > TypeDef: DWORD
+                  > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+              > Member: wShowWindow (offset 64 bytes)
+                > TypeDef: WORD
+                  > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+              > Member: cbReserved2 (offset 66 bytes)
+                > TypeDef: WORD
+                  > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+              > Member: lpReserved2 (offset 72 bytes)
+                > TypeDef: LPBYTE
+                  > Pointer (8 bytes)
+                    > TypeDef: BYTE
+                      > Primitive: unsigned char (UnsignedChar, 1 byte)
+              > Member: hStdInput (offset 80 bytes)
+                > TypeDef: HANDLE
+                  > Pointer (8 bytes)
+                    > Void
+              > Member: hStdOutput (offset 88 bytes)
+                > TypeDef: HANDLE
+                  > Pointer (8 bytes)
+                    > Void
+              > Member: hStdError (offset 96 bytes)
+                > TypeDef: HANDLE
+                  > Pointer (8 bytes)
+                    > Void
       0x1180..0x14a6: frame base -176
     inDoubleQuote (local)
       type:

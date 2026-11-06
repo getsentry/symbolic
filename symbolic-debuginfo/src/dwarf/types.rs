@@ -1,7 +1,10 @@
 use gimli::{AttributeValue, DebuggingInformationEntry, UnitOffset, constants};
 
 use crate::dwarf::{DwarfError, Slice, UnitRef};
-use crate::{PointerType, PrimitiveType, PrimitiveTypeEncoding, Type, TypeDefType, TypeSize};
+use crate::{
+    PointerType, PrimitiveType, PrimitiveTypeEncoding, StructureMember, StructureType, Type,
+    TypeDefType, TypeSize,
+};
 
 pub fn parse_type<'d>(
     unit: UnitRef<'d, '_>,
@@ -18,6 +21,9 @@ pub fn parse_type<'d>(
             parse_pointer_type(unit, entry).map(Type::Pointer)
         }
         constants::DW_TAG_typedef => parse_typedef(unit, entry).map(Type::TypeDef),
+        constants::DW_TAG_structure_type => {
+            parse_structure_type(unit, entry)?.map(Type::StructureType)
+        }
         _ => None,
     })
 }
@@ -111,4 +117,75 @@ fn parse_typedef<'d>(
         name: name?,
         ty: ty.map(Into::into),
     })
+}
+
+fn parse_structure_type<'d>(
+    unit: UnitRef<'d, '_>,
+    entry: DebuggingInformationEntry<Slice<'d>>,
+) -> Result<Option<StructureType<'d>>, DwarfError> {
+    let offset = entry.offset();
+
+    let mut name = None;
+    let mut size = None;
+    let mut members = Vec::new();
+
+    for attr in entry.attrs {
+        match attr.name() {
+            constants::DW_AT_name => {
+                name = unit.string_value(attr.value());
+            }
+            constants::DW_AT_byte_size => size = attr.udata_value(),
+            _ => {}
+        }
+    }
+
+    let mut tree = unit.unit.entries_tree(Some(offset))?;
+    let root = tree.root()?;
+    let mut children = root.children();
+
+    while let Some(child) = children.next()? {
+        let member = child.entry();
+        if member.tag != constants::DW_TAG_member {
+            continue;
+        }
+
+        let mut name = None;
+        let mut ty = None;
+        let mut offset = None;
+
+        for &attr in &member.attrs {
+            match attr.name() {
+                constants::DW_AT_name => {
+                    name = unit.string_value(attr.value());
+                }
+                constants::DW_AT_type => {
+                    ty = unit.to_type_ref(attr).map(Into::into);
+                }
+                constants::DW_AT_data_member_location => {
+                    offset = attr.udata_value();
+                }
+                _ => {}
+            }
+        }
+
+        // A valid member must always have a type.
+        let Some(ty) = ty else {
+            continue;
+        };
+
+        members.push(StructureMember {
+            name,
+            ty,
+            // We're using a `TypeSize` here, as the offset can also be bits,
+            // and type size will have to be extended to support bits in the future.
+            offset: offset.map(TypeSize::Bytes),
+            // TODO: this is required, either a bit offset or a byte offset must exist.
+        });
+    }
+
+    Ok(Some(StructureType {
+        name: name,
+        size: size.map(TypeSize::Bytes),
+        members,
+    }))
 }
