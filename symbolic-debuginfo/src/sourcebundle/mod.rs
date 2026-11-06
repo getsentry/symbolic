@@ -96,7 +96,8 @@ fn open_source_file(path: &str) -> Option<BufReader<File>> {
         return None;
     }
 
-    File::open(decoded.as_ref()).ok().map(BufReader::new)
+    let decoded: &str = decoded.as_ref();
+    File::open(decoded).ok().map(BufReader::new)
 }
 
 /// The error type for [`SourceBundleError`].
@@ -1984,14 +1985,14 @@ mod tests {
         let object = SourceBundle::parse(&object_buf)?;
 
         let mut output_buf = Cursor::new(Vec::new());
-        let written = SourceBundleWriter::start(&mut output_buf)?
-            .write_object(&object, "app.symbols")?;
+        let written =
+            SourceBundleWriter::start(&mut output_buf)?.write_object(&object, "app.symbols")?;
         assert!(written);
 
         let output_buf = output_buf.into_inner();
         let source_bundle = SourceBundle::parse(&output_buf)?;
-        let source = source_bundle
-            .debug_session()?
+        let session = source_bundle.debug_session()?;
+        let source = session
             .source_by_path(&encoded_path)?
             .expect("percent-encoded source path should be bundled");
         assert_eq!(source.contents(), Some("void main() {}"));
