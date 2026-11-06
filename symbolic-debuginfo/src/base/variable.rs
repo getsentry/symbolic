@@ -37,6 +37,8 @@ pub enum Type<'data> {
     Primitive(PrimitiveType<'data>),
     /// A pointer type.
     Pointer(PointerType),
+    /// A type that is defined in the terms of another type.
+    TypeDef(TypeDefType<'data>),
 }
 
 /// A primitive type.
@@ -89,6 +91,18 @@ pub struct PointerType {
     pub pointee: Option<TypeRef>,
     /// The size of a pointer.
     pub size: TypeSize,
+}
+
+/// A type that is defined in the terms of another type.
+#[derive(Debug, Clone)]
+pub struct TypeDefType<'data> {
+    /// The name of the type.
+    pub name: Cow<'data, str>,
+    /// The linked type.
+    ///
+    /// This may be `None` if the debug information provides no underlying type reference,
+    /// for example an alias to `void` or a type declaration without a definition.
+    pub ty: Option<TypeRef>,
 }
 
 /// The size of a type in memory.

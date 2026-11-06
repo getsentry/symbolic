@@ -275,12 +275,28 @@ pub struct PointerType {
     pub _reserved: [u8; 4],
 }
 
+/// A representation of a `typedef`.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct TypeDefType {
+    /// The `typedef` name (reference to a [`String`]).
+    pub name_offset: u32,
+    /// The type this pointer points to (reference to a [`Type`]).
+    ///
+    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown, while [`Type::VOID`]
+    /// indicates that the `typedef` has no associated type.
+    pub ty_idx: u32,
+    /// Padding.
+    pub _reserved: [u8; 4],
+}
+
 pub mod ty {
     use super::*;
 
     crate::utils::tagged_union! {
         primitive: PrimitiveType,
         pointer: PointerType,
+        typedef: TypeDefType,
     }
 }
 
@@ -358,6 +374,7 @@ unsafe impl Pod for VariableLocationInfo {}
 unsafe impl Pod for Type {}
 unsafe impl Pod for PrimitiveType {}
 unsafe impl Pod for PointerType {}
+unsafe impl Pod for TypeDefType {}
 
 #[cfg(test)]
 mod tests {

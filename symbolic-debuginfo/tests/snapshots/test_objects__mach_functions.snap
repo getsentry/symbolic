@@ -168,7 +168,9 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0xea0..0xfe7: frame base +16
     out_size (local)
       type:
-        > Unknown
+        > TypeDef: size_t
+          > TypeDef: __darwin_size_t
+            > Primitive: long unsigned int (UnsignedInt, 8 bytes)
       0xf23..0xf72: register rbx
 
   > 0xefa: _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm (0x25)
@@ -243,7 +245,9 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0xff0..0x1137: frame base +8
     out_size (local)
       type:
-        > Unknown
+        > TypeDef: size_t
+          > TypeDef: __darwin_size_t
+            > Primitive: long unsigned int (UnsignedInt, 8 bytes)
       0x106b..0x10b7: register rbp
 
   > 0x1049: _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm (0x1e)
@@ -292,5 +296,6 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     location (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > TypeDef: MDLocationDescriptor
+            > Unknown
       0x1140..0x1145: register rcx

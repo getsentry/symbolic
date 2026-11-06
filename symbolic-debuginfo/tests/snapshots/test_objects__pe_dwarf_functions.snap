@@ -10,7 +10,9 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   variables:
     func (parameter)
       type:
-        > Unknown
+        > TypeDef: _PVFV
+          > Pointer (8 bytes)
+            > Unknown
       0x14f0..0x14f8: register rcx
 
 > 0x1180: __tmainCRTStartup (0x326)
@@ -104,15 +106,19 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     lpszCommandLine (local)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > TypeDef: _TCHAR
+            > Primitive: char (SignedChar, 1 byte)
       0x1291..0x12fd: register rax
     StartupInfo (local)
       type:
-        > Unknown
+        > TypeDef: STARTUPINFO
+          > TypeDef: STARTUPINFOA
+            > Unknown
       0x1180..0x14a6: frame base -176
     inDoubleQuote (local)
       type:
-        > Unknown
+        > TypeDef: WINBOOL
+          > Primitive: int (SignedInt, 4 bytes)
       0x1298..0x12a7: register rcx
       0x12ae..0x12c8: register rcx
     lock_free (local)
@@ -271,7 +277,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x1000..0x1001: register r9
     pReserved (parameter)
       type:
-        > Unknown
+        > TypeDef: uintptr_t
+          > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
       0x1000..0x1001: frame base +32
 
 > 0x1572: main (0x1f)
