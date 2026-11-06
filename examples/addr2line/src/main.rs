@@ -49,6 +49,13 @@ fn print_type(session: &ObjectDebugSession<'_>, ty: &TypeRef, max_depth: usize) 
             }
             None => print!("void*"),
         },
+        Type::TypeDef(t) => {
+            print!("typedef ");
+            if let Some(ty) = &t.ty {
+                print_type(session, ty, max_depth - 1)?;
+            }
+            print!(" {};", t.name);
+        }
     }
 
     Ok(())

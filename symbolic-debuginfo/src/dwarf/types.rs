@@ -1,7 +1,7 @@
 use gimli::{AttributeValue, DebuggingInformationEntry, UnitOffset, constants};
 
 use crate::dwarf::{DwarfError, Slice, UnitRef};
-use crate::{PointerType, PrimitiveType, PrimitiveTypeEncoding, Type, TypeSize};
+use crate::{PointerType, PrimitiveType, PrimitiveTypeEncoding, Type, TypeDefType, TypeSize};
 
 pub fn parse_type<'d>(
     unit: UnitRef<'d, '_>,
@@ -17,6 +17,7 @@ pub fn parse_type<'d>(
         | constants::DW_TAG_rvalue_reference_type => {
             parse_pointer_type(unit, entry).map(Type::Pointer)
         }
+        constants::DW_TAG_typedef => parse_typedef(unit, entry).map(Type::TypeDef),
         _ => None,
     })
 }
@@ -86,5 +87,28 @@ fn parse_pointer_type<'d>(
     Some(PointerType {
         pointee: pointee.map(Into::into),
         size: TypeSize::Bytes(size.unwrap_or_else(|| unit.unit.encoding().address_size.into())),
+    })
+}
+
+fn parse_typedef<'d>(
+    unit: UnitRef<'d, '_>,
+    entry: DebuggingInformationEntry<Slice<'d>>,
+) -> Option<TypeDefType<'d>> {
+    let mut name = None;
+    let mut ty = None;
+
+    for attr in entry.attrs {
+        match attr.name() {
+            constants::DW_AT_name => {
+                name = unit.string_value(attr.value());
+            }
+            constants::DW_AT_type => ty = Some(unit.to_type_ref(attr)?),
+            _ => {}
+        }
+    }
+
+    Some(TypeDefType {
+        name: name?,
+        ty: ty.map(Into::into),
     })
 }

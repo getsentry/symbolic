@@ -183,7 +183,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
   variables:
     point (local)
       type:
-        > Unknown
+        > TypeDef: Point
+          > Unknown
       0x11ae..0x11ed: frame base -32
     array (local)
       type:

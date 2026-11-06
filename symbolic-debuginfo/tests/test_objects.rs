@@ -214,6 +214,24 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                     }
                 )
             }
+            Type::TypeDef(ty) => {
+                writeln!(
+                    f,
+                    "{:indent$}> TypeDef: {}",
+                    "",
+                    ty.name,
+                    indent = self.depth * 2
+                )?;
+                write!(
+                    f,
+                    "{:?}",
+                    TypeDebug {
+                        session: self.session,
+                        ty: ty.ty.as_ref(),
+                        depth: self.depth + 1,
+                    }
+                )
+            }
         }
     }
 }

@@ -6,7 +6,7 @@ use symbolic_common::{Arch, CpuFamily, Language};
 
 use crate::v9::{SymCache, convert, raw};
 use crate::{
-    File, Function, PointerType, PrimitiveType, Type, TypeId, TypeSize, VariableKind,
+    File, Function, PointerType, PrimitiveType, Type, TypeDefType, TypeId, TypeSize, VariableKind,
     VariableLocation, VariableLocationInfo,
 };
 
@@ -83,6 +83,10 @@ impl<'data> SymCache<'data> {
                 size: TypeSize::Bytes(pointer.size.into()),
                 pointee: (pointer.pointee_idx != raw::Type::VOID)
                     .then_some(TypeId(pointer.pointee_idx)),
+            }),
+            raw::ty::Enum::typedef(td) => Type::TypeDef(TypeDefType {
+                name: self.get_string(td.name_offset).unwrap_or("?"),
+                ty: (td.ty_idx != raw::Type::VOID).then_some(TypeId(td.ty_idx)),
             }),
         })
     }

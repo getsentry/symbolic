@@ -607,6 +607,14 @@ impl<'a> SymCacheConverter<'a> {
                 _reserved: [0; _],
             }
             .into(),
+            di::Type::TypeDef(ty) => v9::raw::TypeDefType {
+                name_offset: self.string_table.insert(&ty.name) as u32,
+                ty_idx: ty.ty.map_or(v9::raw::Type::VOID, |ty| {
+                    self.process_symbolic_type(tr, &ty, depth + 1)
+                }),
+                _reserved: [0; _],
+            }
+            .into(),
         };
 
         self.types.insert_full(ty).0 as u32

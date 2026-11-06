@@ -764,7 +764,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     stack (local)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > TypeDef: uint8_t
+            > Primitive: unsigned char (UnsignedChar, 1 byte)
       0x260d..0x272f: register r15
       0x272f..0x2735: register rsi
       0x2735..0x2782: register r15
@@ -1028,7 +1029,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     info (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > TypeDef: siginfo_t
+            > Unknown
       0x2bd0..0x2c08: register rsi
       0x2c08..0x2c0d: register r13
       0x2c34..0x2d43: register r13
