@@ -8,8 +8,8 @@ use symbolic_debuginfo::ObjectDebugSession;
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
 use symbolic_debuginfo::{
-    FileEntry, Function, LineInfo, Object, ObjectKind, ParseObjectOptions, SymbolMap, Type,
-    TypeRef, TypeSize, VariableLocation, pe::PeObject,
+    FileEntry, Function, LineInfo, MemberOffset, Object, ObjectKind, ParseObjectOptions, SymbolMap,
+    Type, TypeRef, TypeSize, VariableLocation, pe::PeObject,
 };
 use symbolic_testutils::fixture;
 
@@ -283,11 +283,14 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                         indent = (self.depth + 1) * 2
                     )?;
                     match member.offset {
-                        Some(TypeSize::Bytes(offset)) => {
+                        MemberOffset::Bytes(offset) => {
                             let unit = if offset == 1 { "byte" } else { "bytes" };
                             writeln!(f, " (offset {offset} {unit})")?;
                         }
-                        None => writeln!(f, " (<unknown offset>)")?,
+                        MemberOffset::Bits(offset) => {
+                            let unit = if offset == 1 { "bit" } else { "bits" };
+                            writeln!(f, " (offset {offset} {unit})")?;
+                        }
                     }
                     write!(
                         f,

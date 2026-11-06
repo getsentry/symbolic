@@ -1,6 +1,31 @@
 use symbolic_common::CpuFamily;
 use symbolic_common::register::Register;
-use symbolic_debuginfo::{PrimitiveTypeEncoding, VariableKind};
+use symbolic_debuginfo::{MemberOffset, PrimitiveTypeEncoding, VariableKind};
+
+const MEMBER_OFFSET_BITS_FLAG: u32 = 1 << 31;
+
+/// Converts a [`MemberOffset`] to its packed representation, with the top bit set for bit offsets.
+///
+/// Returns `None` if the offset does not fit in 31 bits.
+pub fn member_offset_to_raw(offset: MemberOffset) -> Option<u32> {
+    let (offset, flag) = match offset {
+        MemberOffset::Bytes(offset) => (offset, 0),
+        MemberOffset::Bits(offset) => (offset, MEMBER_OFFSET_BITS_FLAG),
+    };
+
+    let offset = u32::try_from(offset).ok()?;
+    (offset < MEMBER_OFFSET_BITS_FLAG).then_some(offset | flag)
+}
+
+/// Converts a packed offset to a [`MemberOffset`], using the top bit as the unit flag.
+pub fn raw_to_member_offset(offset: u32) -> MemberOffset {
+    let value = (offset & !MEMBER_OFFSET_BITS_FLAG).into();
+    if offset & MEMBER_OFFSET_BITS_FLAG == 0 {
+        MemberOffset::Bytes(value)
+    } else {
+        MemberOffset::Bits(value)
+    }
+}
 
 /// Converts a `u8` back into a [`PrimitiveTypeEncoding`].
 ///
@@ -74,4 +99,37 @@ pub fn register_to_u16(register: Register) -> u16 {
 /// The inverse of [`register_to_u16`]. Invalid inputs are returned as `None`.
 pub fn u16_to_register(cpu_family: CpuFamily, id: u16) -> Option<Register> {
     Register::from_dwarf(cpu_family, id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_member_offset_out_of_range() {
+        for offset in [
+            1 << 31,
+            u64::from(u32::MAX),
+            u64::from(u32::MAX) + 1,
+            u64::MAX,
+        ] {
+            assert_eq!(member_offset_to_raw(MemberOffset::Bytes(offset)), None);
+            assert_eq!(member_offset_to_raw(MemberOffset::Bits(offset)), None);
+        }
+    }
+
+    #[test]
+    fn test_member_offset_roundtrip() {
+        for (offset, raw) in [
+            (MemberOffset::Bytes(0), 0),
+            (MemberOffset::Bits(0), 0x8000_0000),
+            (MemberOffset::Bytes(42), 42),
+            (MemberOffset::Bits(13), 0x8000_000d),
+            (MemberOffset::Bytes(0x7fff_ffff), 0x7fff_ffff),
+            (MemberOffset::Bits(0x7fff_ffff), u32::MAX),
+        ] {
+            assert_eq!(member_offset_to_raw(offset), Some(raw));
+            assert_eq!(raw_to_member_offset(raw), offset);
+        }
+    }
 }
