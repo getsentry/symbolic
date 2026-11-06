@@ -11,7 +11,7 @@ use symbolic_common::DebugId;
 /// The current [`Header::variable_header`] version.
 ///
 /// On a version mismatch, the sections referenced in the [`VariableHeader`] must not be parsed.
-pub const VARIABLE_HEADER_VERSION: u16 = 2;
+pub const VARIABLE_HEADER_VERSION: u16 = 3;
 
 /// This [`FunctionVariables`] is a sentinel for functions without variables.
 pub const NO_VARIABLES: FunctionVariables = FunctionVariables {
@@ -314,7 +314,9 @@ pub struct StructureMember {
     pub name_offset: u32,
     /// The member type (reference to a [`Type`]).
     pub type_idx: u32,
-    /// The offset in bytes, or [`u32::MAX`] if unknown.
+    /// The offset from the beginning of the structure, packed into the low 31 bits.
+    ///
+    /// The top bit is set for bit offsets and clear for byte offsets.
     pub offset: u32,
 }
 

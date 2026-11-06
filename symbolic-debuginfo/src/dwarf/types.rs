@@ -2,8 +2,8 @@ use gimli::{AttributeValue, DebuggingInformationEntry, UnitOffset, constants};
 
 use crate::dwarf::{DwarfError, Slice, UnitRef};
 use crate::{
-    PointerType, PrimitiveType, PrimitiveTypeEncoding, StructureMember, StructureType, Type,
-    TypeDefType, TypeSize,
+    MemberOffset, PointerType, PrimitiveType, PrimitiveTypeEncoding, StructureMember,
+    StructureType, Type, TypeDefType, TypeSize,
 };
 
 pub fn parse_type<'d>(
@@ -162,25 +162,29 @@ fn parse_structure_type<'d>(
                     ty = unit.to_type_ref(attr).map(Into::into);
                 }
                 constants::DW_AT_data_member_location => {
-                    offset = attr.udata_value();
+                    offset = Some(attr.udata_value().map(MemberOffset::Bytes));
+                }
+                constants::DW_AT_data_bit_offset => {
+                    offset = Some(attr.udata_value().map(MemberOffset::Bits));
                 }
                 _ => {}
             }
         }
+
+        let offset = match offset {
+            Some(Some(offset)) => offset,
+            // DWARF 5 §5.7.6 - The offset attributes may be missing if the member is at the beginning.
+            None => MemberOffset::Bytes(0),
+            // A valid member must also have a valid offset.
+            Some(None) => continue,
+        };
 
         // A valid member must always have a type.
         let Some(ty) = ty else {
             continue;
         };
 
-        members.push(StructureMember {
-            name,
-            ty,
-            // We're using a `TypeSize` here, as the offset can also be bits,
-            // and type size will have to be extended to support bits in the future.
-            offset: offset.map(TypeSize::Bytes),
-            // TODO: this is required, either a bit offset or a byte offset must exist.
-        });
+        members.push(StructureMember { name, ty, offset });
     }
 
     Ok(Some(StructureType {

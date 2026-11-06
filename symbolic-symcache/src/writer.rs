@@ -619,12 +619,15 @@ impl<'a> SymCacheConverter<'a> {
                 let members = ty
                     .members
                     .into_iter()
-                    .map(|member| v9::raw::StructureMember {
-                        name_offset: member
-                            .name
-                            .map_or(u32::MAX, |name| self.string_table.insert(&name) as u32),
-                        type_idx: self.process_symbolic_type(tr, &member.ty, depth + 1),
-                        offset: member.offset.map_or(u32::MAX, size),
+                    .filter_map(|member| {
+                        let offset = v9::convert::member_offset_to_raw(member.offset)?;
+                        Some(v9::raw::StructureMember {
+                            name_offset: member
+                                .name
+                                .map_or(u32::MAX, |name| self.string_table.insert(&name) as u32),
+                            type_idx: self.process_symbolic_type(tr, &member.ty, depth + 1),
+                            offset,
+                        })
                     })
                     .collect::<Vec<_>>();
                 let num_members = members.len() as u32;

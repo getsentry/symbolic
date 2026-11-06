@@ -130,7 +130,16 @@ pub struct StructureMember<'data> {
     /// The type of the member.
     pub ty: TypeRef,
     /// The offset of this member from the beginning of the structure.
-    pub offset: Option<TypeSize>,
+    pub offset: MemberOffset,
+}
+
+/// The offset of a member from the beginning of a structure.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum MemberOffset {
+    /// The offset is given in bytes.
+    Bytes(u64),
+    /// The offset is given in bits.
+    Bits(u64),
 }
 
 /// The size of a type in memory.
