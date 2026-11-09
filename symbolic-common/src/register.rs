@@ -505,9 +505,6 @@ define_arch_registers! {
         R14 = { name: "r14", dwarf: 14, alias: "lr" },
         // The minidump crate uses "pc" for register "r15".
         R15 = { name: "r15", dwarf: 15, alias: "pc" },
-        // DWARF numbers 16 to 63 are not implemented. They are obsolescent, as numbers 16 to 47
-        // were historically used by ADS toolkits for both FPA and VFP registers (AADWARF32 Note 1).
-
         // Obsolescent legacy VFP-v2 numbering for `s0` to `s31`. Producers should use `d0` to `d31`
         // instead, but GCC still emits these numbers, and AADWARF32 section 4.1.1 says consumers
         // should accept both numberings.
