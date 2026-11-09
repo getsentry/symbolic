@@ -9,16 +9,25 @@ use symbolic_common::register::Register;
 pub struct TypeRef(NativeTypeRef);
 
 impl TypeRef {
+    /// Creates a new generic [`TypeRef`] from a number.
+    ///
+    /// This can be useful to create synthetic type refs for testing.
+    pub fn generic(id: u64) -> Self {
+        TypeRef(NativeTypeRef::Generic(id))
+    }
+
     #[cfg(feature = "dwarf")]
     pub(crate) fn as_dwarf(&self) -> Option<&crate::dwarf::DwarfTypeRef> {
         match &self.0 {
             NativeTypeRef::Dwarf(dwarf) => Some(dwarf),
+            _ => None,
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum NativeTypeRef {
+    Generic(u64),
     #[cfg(feature = "dwarf")]
     Dwarf(crate::dwarf::DwarfTypeRef),
 }
@@ -41,6 +50,30 @@ pub enum Type<'data> {
     TypeDef(TypeDefType<'data>),
     /// A structure type.
     StructureType(StructureType<'data>),
+}
+
+impl<'data> From<PrimitiveType<'data>> for Type<'data> {
+    fn from(value: PrimitiveType<'data>) -> Self {
+        Self::Primitive(value)
+    }
+}
+
+impl<'data> From<PointerType> for Type<'data> {
+    fn from(value: PointerType) -> Self {
+        Self::Pointer(value)
+    }
+}
+
+impl<'data> From<TypeDefType<'data>> for Type<'data> {
+    fn from(value: TypeDefType<'data>) -> Self {
+        Self::TypeDef(value)
+    }
+}
+
+impl<'data> From<StructureType<'data>> for Type<'data> {
+    fn from(value: StructureType<'data>) -> Self {
+        Self::StructureType(value)
+    }
 }
 
 /// A primitive type.

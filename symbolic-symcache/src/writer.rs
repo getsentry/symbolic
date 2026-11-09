@@ -5,16 +5,18 @@ use std::collections::btree_map;
 use std::io::Write;
 use std::rc::Rc;
 
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
 use symbolic_common::{Arch, DebugId};
-use symbolic_debuginfo::{
-    self as di, DebugSession, FileFormat, Function, ObjectLike, Symbol, TypeRef,
-};
+use symbolic_debuginfo::{self as di, DebugSession, FileFormat, Function, ObjectLike, Symbol};
 use watto::{Pod, StringTable, Writer};
 
 use crate::v9;
 use crate::{Error, ErrorKind};
 use crate::{raw, transform};
+
+mod types;
+
+use self::types::{NoopTypeSerializer, SessionTypeSerializer, TypeSerializer};
 
 /// The SymCache Converter.
 ///
@@ -65,9 +67,8 @@ pub struct SymCacheConverter<'a> {
     ///
     /// Variable locations are stored in continous chunks per variable.
     variable_locations: Vec<v9::raw::VariableLocationInfo>,
-    /// The set of all types referenced from variables.
-    types: IndexSet<v9::raw::Type>,
-    structure_members: IndexMap<Vec<v9::raw::StructureMember>, u32>,
+    /// All types referenced from variables.
+    types: types::TypeWriter,
 
     /// This is highest addr that we know is outside of a valid function.
     /// Functions have an explicit end, while Symbols implicitly extend to infinity.
@@ -146,6 +147,7 @@ impl<'a> SymCacheConverter<'a> {
         // hence they may be decorated and need the decorations removed.
         self.win_undecorate_symbol_names = matches!(file_format, FileFormat::Pe | FileFormat::Pdb);
 
+        let mut ts = SessionTypeSerializer::new(&session);
         for function in session.functions() {
             let function = function.map_err(|e| Error::new(ErrorKind::BadDebugFile, e))?;
 
@@ -156,7 +158,7 @@ impl<'a> SymCacheConverter<'a> {
                 call_locations: Rc::new([(0x0, u32::MAX)]),
             };
             let function_stack = vec![function];
-            self.process_symbolic_functions(&session, function_stack);
+            self.process_symbolic_functions(&mut ts, function_stack);
         }
 
         for symbol in object.symbols() {
@@ -177,13 +179,13 @@ impl<'a> SymCacheConverter<'a> {
             depth: 0,
             call_locations: Rc::new([(0x0, u32::MAX)]),
         };
-        self.process_symbolic_functions(&NoopTypeResolver, vec![function]);
+        self.process_symbolic_functions(&mut NoopTypeSerializer, vec![function]);
     }
 
     /// Processes a stack of [`Function`]s, adding their line information to the converter.
     fn process_symbolic_functions(
         &mut self,
-        tr: &dyn TypeResolver,
+        ts: &mut dyn TypeSerializer,
         mut function_stack: Vec<InProgressFunction<'_>>,
     ) {
         while let Some(in_progress_function) = function_stack.pop() {
@@ -243,7 +245,7 @@ impl<'a> SymCacheConverter<'a> {
                 // inlinees. So keep the existing base.
                 _ => base_idx,
             };
-            self.process_symbolic_variables(tr, function, base_idx, fn_depth);
+            self.process_symbolic_variables(ts, function, base_idx, fn_depth);
 
             // We can divide the instructions in a function into two buckets:
             //  (1) Instructions which are part of an inlined function call, and
@@ -502,7 +504,7 @@ impl<'a> SymCacheConverter<'a> {
     /// and depth is `0`.
     fn process_symbolic_variables(
         &mut self,
-        tr: &dyn TypeResolver,
+        ts: &mut dyn TypeSerializer,
         function: &Function<'_>,
         base_idx: u32,
         fn_depth: u32,
@@ -554,10 +556,11 @@ impl<'a> SymCacheConverter<'a> {
             // Locations must already be sorted, this is an invariant on the `Function`.
             debug_assert!(self.variable_locations[location_idx..].is_sorted_by_key(|v| v.start));
 
-            let type_idx = match &variable.ty {
-                Some(ty) => self.process_symbolic_type(tr, ty, 0),
-                None => v9::raw::Type::UNKNOWN,
-            };
+            let type_idx = variable
+                .ty
+                .as_ref()
+                .and_then(|ty| ts.serialize_type(ty, &mut self.types, &mut self.string_table))
+                .unwrap_or(v9::raw::Type::UNKNOWN);
 
             let name_offset = self.string_table.insert(&variable.name) as u32;
 
@@ -574,82 +577,6 @@ impl<'a> SymCacheConverter<'a> {
                     _reserved: [0; _],
                 });
         }
-    }
-
-    fn process_symbolic_type(&mut self, tr: &dyn TypeResolver, ty: &TypeRef, depth: usize) -> u32 {
-        // This really is just a preliminary limit. In the future we need to currently
-        // be able to handle recursive types such as `Foo(Option<Box<Foo>>)`.
-        const MAX_DEPTH: usize = 5;
-
-        if depth >= MAX_DEPTH {
-            return v9::raw::Type::UNKNOWN;
-        }
-
-        let Some(ty) = tr.lookup_type(ty) else {
-            return v9::raw::Type::UNKNOWN;
-        };
-
-        let ty = match ty {
-            di::Type::Primitive(ty) => v9::raw::PrimitiveType {
-                name_offset: ty
-                    .name
-                    .map_or(u32::MAX, |n| self.string_table.insert(&n) as u32),
-                size: size(ty.size),
-                encoding: v9::convert::primitive_type_encoding_to_u8(ty.encoding),
-                _reserved: [0; _],
-            }
-            .into(),
-            di::Type::Pointer(ty) => v9::raw::PointerType {
-                pointee_idx: ty.pointee.map_or(v9::raw::Type::VOID, |pointee| {
-                    self.process_symbolic_type(tr, &pointee, depth + 1)
-                }),
-                size: size(ty.size),
-                _reserved: [0; _],
-            }
-            .into(),
-            di::Type::TypeDef(ty) => v9::raw::TypeDefType {
-                name_offset: self.string_table.insert(&ty.name) as u32,
-                ty_idx: ty.ty.map_or(v9::raw::Type::VOID, |ty| {
-                    self.process_symbolic_type(tr, &ty, depth + 1)
-                }),
-                _reserved: [0; _],
-            }
-            .into(),
-            di::Type::StructureType(ty) => {
-                let members = ty
-                    .members
-                    .into_iter()
-                    .filter_map(|member| {
-                        let offset = v9::convert::member_offset_to_raw(member.offset)?;
-                        Some(v9::raw::StructureMember {
-                            name_offset: member
-                                .name
-                                .map_or(u32::MAX, |name| self.string_table.insert(&name) as u32),
-                            type_idx: self.process_symbolic_type(tr, &member.ty, depth + 1),
-                            offset,
-                        })
-                    })
-                    .collect::<Vec<_>>();
-                let num_members = members.len() as u32;
-                let next_idx = self
-                    .structure_members
-                    .last()
-                    .map_or(0, |(members, index)| index + members.len() as u32);
-                let member_idx = *self.structure_members.entry(members).or_insert(next_idx);
-
-                v9::raw::StructureType {
-                    name_offset: ty
-                        .name
-                        .map_or(u32::MAX, |name| self.string_table.insert(&name) as u32),
-                    size: ty.size.map_or(u32::MAX, size),
-                    member_idx,
-                    num_members,
-                }
-                .into()
-            }
-        };
-
-        self.types.insert_full(ty).0 as u32
     }
 
     /// Processes an individual [`Symbol`].
@@ -822,16 +749,15 @@ impl<'a> SymCacheConverter<'a> {
             .sum();
 
         writer.align_to(8)?;
+
+        let types::Types { types, members } = self.types.into_types();
+
         writer.write_all(
             v9::raw::VariableHeader {
                 num_variables,
                 num_variable_locations: self.variable_locations.len() as u32,
-                num_types: self.types.len() as u32,
-                num_structure_members: self
-                    .structure_members
-                    .keys()
-                    .map(|members| members.len() as u32)
-                    .sum(),
+                num_types: types.len() as u32,
+                num_structure_members: members.len() as u32,
             }
             .as_bytes(),
         )?;
@@ -874,15 +800,13 @@ impl<'a> SymCacheConverter<'a> {
         }
 
         writer.align_to(8)?;
-        for t in self.types {
+        for t in types {
             writer.write_all(t.as_bytes())?;
         }
 
         writer.align_to(8)?;
-        for (members, _) in self.structure_members {
-            for member in members {
-                writer.write_all(member.as_bytes())?;
-            }
+        for member in members {
+            writer.write_all(member.as_bytes())?;
         }
 
         Ok(())
@@ -965,38 +889,6 @@ fn take_if<T>(opt: &mut Option<T>, predicate: impl FnOnce(&mut T) -> bool) -> Op
     if opt.as_mut().is_some_and(predicate) {
         opt.take()
     } else {
-        None
-    }
-}
-
-fn size(s: di::TypeSize) -> u32 {
-    match s {
-        di::TypeSize::Bytes(bytes) => bytes as u32,
-    }
-}
-
-/// A tiny helper which only exposes type information from a debug session.
-///
-/// This makes passing around a debug session much more convenient and also allows
-/// code to deal with no debug session [`NoopTypeResolver`].
-trait TypeResolver {
-    fn lookup_type(&self, ty: &TypeRef) -> Option<di::Type<'_>>;
-}
-
-impl<S> TypeResolver for S
-where
-    S: for<'session> DebugSession<'session>,
-{
-    fn lookup_type(&self, ty: &TypeRef) -> Option<di::Type<'_>> {
-        DebugSession::lookup_type(self, ty).ok().flatten()
-    }
-}
-
-/// A [`TypeResolver`] which never resolves a type.
-struct NoopTypeResolver;
-
-impl TypeResolver for NoopTypeResolver {
-    fn lookup_type(&self, _ty: &TypeRef) -> Option<di::Type<'_>> {
         None
     }
 }
