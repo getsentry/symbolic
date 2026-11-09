@@ -148,7 +148,7 @@ impl<'data> Iterator for StructureMembers<'data> {
         Some(StructureMember {
             name: StringTable::read(self.string_bytes, member.name_offset as usize).ok(),
             ty: TypeId(member.type_idx),
-            offset: (member.offset != u32::MAX).then_some(TypeSize::Bytes(member.offset.into())),
+            offset: convert::raw_to_member_offset(member.offset),
         })
     }
 }

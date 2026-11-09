@@ -5,7 +5,8 @@ use symbolic_common::{Language, Name, NameMangling};
 use crate::SymCache;
 
 pub use symbolic_debuginfo::{
-    PrimitiveTypeEncoding, TypeSize, VariableKind, VariableLocation, VariableLocationInfo,
+    MemberOffset, PrimitiveTypeEncoding, TypeSize, VariableKind, VariableLocation,
+    VariableLocationInfo,
 };
 
 /// A source File included in the SymCache.
@@ -227,7 +228,7 @@ impl<'data> StructureType<'data> {
 pub struct StructureMember<'data> {
     pub(crate) name: Option<&'data str>,
     pub(crate) ty: TypeId,
-    pub(crate) offset: Option<TypeSize>,
+    pub(crate) offset: MemberOffset,
 }
 
 impl<'data> StructureMember<'data> {
@@ -241,8 +242,8 @@ impl<'data> StructureMember<'data> {
         self.ty
     }
 
-    /// The offset from the beginning of the structure, if known.
-    pub fn offset(&self) -> Option<TypeSize> {
+    /// The offset from the beginning of the structure.
+    pub fn offset(&self) -> MemberOffset {
         self.offset
     }
 }
