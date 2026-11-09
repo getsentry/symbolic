@@ -228,9 +228,10 @@ define_arch_registers! {
     /// assert_eq!(eax, Intel32Register::Eax);
     /// ```
     ///
-    /// On 32-bit Darwin, Clang/LLVM and GCC swap the numbers of `esp` and `ebp` (4 and 5) and
-    /// shift `st0` to `st7` by one (12 to 19), but only in `.eh_frame` unwind information. Darwin
-    /// debug information uses the psABI numbers, which this mapping follows.
+    /// These DWARF register numbers are only valid for debug information (`.debug_info`), not for
+    /// `.eh_frame` unwind information. On 32-bit Darwin, Clang/LLVM and GCC swap the numbers of
+    /// `esp` and `ebp` (4 and 5) and shift `st0` to `st7` by one (12 to 19) in `.eh_frame`, but not
+    /// in debug information.
     ///
     /// [psabi]: https://gitlab.com/x86-psabis/i386-ABI
     pub enum Intel32Register {
