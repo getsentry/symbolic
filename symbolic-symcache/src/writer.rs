@@ -5,7 +5,7 @@ use std::collections::btree_map;
 use std::io::Write;
 use std::rc::Rc;
 
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use symbolic_common::{Arch, DebugId};
 use symbolic_debuginfo::{
     self as di, DebugSession, FileFormat, Function, ObjectLike, Symbol, TypeRef,
@@ -67,6 +67,7 @@ pub struct SymCacheConverter<'a> {
     variable_locations: Vec<v9::raw::VariableLocationInfo>,
     /// The set of all types referenced from variables.
     types: IndexSet<v9::raw::Type>,
+    structure_members: IndexMap<Vec<v9::raw::StructureMember>, u32>,
 
     /// This is highest addr that we know is outside of a valid function.
     /// Functions have an explicit end, while Symbols implicitly extend to infinity.
@@ -577,8 +578,7 @@ impl<'a> SymCacheConverter<'a> {
 
     fn process_symbolic_type(&mut self, tr: &dyn TypeResolver, ty: &TypeRef, depth: usize) -> u32 {
         // This really is just a preliminary limit. In the future we need to currently
-        // be able to handle recursive types such as `Foo(Option<Box<Foo>>)`. For the moment
-        // there is only support for primitive types and pointers which shouldn't be recursive.
+        // be able to handle recursive types such as `Foo(Option<Box<Foo>>)`.
         const MAX_DEPTH: usize = 5;
 
         if depth >= MAX_DEPTH {
@@ -615,6 +615,35 @@ impl<'a> SymCacheConverter<'a> {
                 _reserved: [0; _],
             }
             .into(),
+            di::Type::StructureType(ty) => {
+                let members = ty
+                    .members
+                    .into_iter()
+                    .map(|member| v9::raw::StructureMember {
+                        name_offset: member
+                            .name
+                            .map_or(u32::MAX, |name| self.string_table.insert(&name) as u32),
+                        type_idx: self.process_symbolic_type(tr, &member.ty, depth + 1),
+                        offset: member.offset.map_or(u32::MAX, size),
+                    })
+                    .collect::<Vec<_>>();
+                let num_members = members.len() as u32;
+                let next_idx = self
+                    .structure_members
+                    .last()
+                    .map_or(0, |(members, index)| index + members.len() as u32);
+                let member_idx = *self.structure_members.entry(members).or_insert(next_idx);
+
+                v9::raw::StructureType {
+                    name_offset: ty
+                        .name
+                        .map_or(u32::MAX, |name| self.string_table.insert(&name) as u32),
+                    size: ty.size.map_or(u32::MAX, size),
+                    member_idx,
+                    num_members,
+                }
+                .into()
+            }
         };
 
         self.types.insert_full(ty).0 as u32
@@ -795,6 +824,11 @@ impl<'a> SymCacheConverter<'a> {
                 num_variables,
                 num_variable_locations: self.variable_locations.len() as u32,
                 num_types: self.types.len() as u32,
+                num_structure_members: self
+                    .structure_members
+                    .keys()
+                    .map(|members| members.len() as u32)
+                    .sum(),
             }
             .as_bytes(),
         )?;
@@ -839,6 +873,13 @@ impl<'a> SymCacheConverter<'a> {
         writer.align_to(8)?;
         for t in self.types {
             writer.write_all(t.as_bytes())?;
+        }
+
+        writer.align_to(8)?;
+        for (members, _) in self.structure_members {
+            for member in members {
+                writer.write_all(member.as_bytes())?;
+            }
         }
 
         Ok(())

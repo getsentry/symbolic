@@ -5,7 +5,7 @@
 **Features**
 
 - Represent variable register locations as named registers instead of raw DWARF register numbers. ([#1117](https://github.com/getsentry/symbolic/pull/1117), [#1115](https://github.com/getsentry/symbolic/pull/1115))
-- Add support for `typedef` types. ([#1137](https://github.com/getsentry/symbolic/pull/1137))
+- Add support for `typedef` and `struct` types. ([#1137](https://github.com/getsentry/symbolic/pull/1137), [#1138](https://github.com/getsentry/symbolic/pull/1138))
 
 **Fixes**
 

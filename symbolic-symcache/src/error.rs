@@ -73,6 +73,9 @@ pub enum ErrorKind {
     /// Types could not be parsed from the cache file.
     #[error("could not read types")]
     InvalidTypes,
+    /// Structure members could not be parsed from the cache file.
+    #[error("could not read structure members")]
+    InvalidStructureMembers,
     /// The cache contains unexpected trailing data and is therefor considered invalid.
     #[error("the cache contains trailing data")]
     TrailingData,

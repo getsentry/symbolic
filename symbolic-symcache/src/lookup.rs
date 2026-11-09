@@ -118,6 +118,8 @@ pub enum Type<'data> {
     Pointer(PointerType),
     /// A type that is defined in the terms of another type.
     TypeDef(TypeDefType<'data>),
+    /// A structure type.
+    StructureType(StructureType<'data>),
 }
 
 /// A primitive type contained in the SymCache.
@@ -192,6 +194,62 @@ impl<'data> TypeDefType<'data> {
         self.ty
     }
 }
+
+/// A structure type contained in the SymCache.
+#[derive(Clone, Debug)]
+pub struct StructureType<'data> {
+    pub(crate) name: Option<&'data str>,
+    pub(crate) size: Option<TypeSize>,
+    pub(crate) members: StructureMembers<'data>,
+}
+
+impl<'data> StructureType<'data> {
+    /// The name of the structure.
+    ///
+    /// `None` for anonymous structures.
+    pub fn name(&self) -> Option<&'data str> {
+        self.name
+    }
+
+    /// The size of the structure in memory, if known.
+    pub fn size(&self) -> Option<TypeSize> {
+        self.size
+    }
+
+    /// The members of this structure in declaration order.
+    pub fn members(&self) -> StructureMembers<'data> {
+        self.members.clone()
+    }
+}
+
+/// A member of a [`StructureType`].
+#[derive(Clone, Debug)]
+pub struct StructureMember<'data> {
+    pub(crate) name: Option<&'data str>,
+    pub(crate) ty: TypeId,
+    pub(crate) offset: Option<TypeSize>,
+}
+
+impl<'data> StructureMember<'data> {
+    /// The name of the member, if it is not anonymous.
+    pub fn name(&self) -> Option<&'data str> {
+        self.name
+    }
+
+    /// The member type, resolved with [`SymCache::lookup_type`].
+    pub fn ty(&self) -> TypeId {
+        self.ty
+    }
+
+    /// The offset from the beginning of the structure, if known.
+    pub fn offset(&self) -> Option<TypeSize> {
+        self.offset
+    }
+}
+
+/// Iterator returned by [`StructureType::members`].
+#[derive(Clone, Debug)]
+pub struct StructureMembers<'data>(StructureMembersInner<'data>);
 
 /// A variable contained in the SymCache.
 #[derive(Clone, Debug)]
@@ -456,6 +514,21 @@ macro_rules! impl_version {
             $($version(crate::$module::lookup::VariableLocations<'data>),)+
         }
 
+        #[derive(Debug, Clone)]
+        enum StructureMembersInner<'data> {
+            $($version(crate::$module::lookup::StructureMembers<'data>),)+
+        }
+
+        impl<'data> Iterator for StructureMembers<'data> {
+            type Item = StructureMember<'data>;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                match self.0 {
+                    $(StructureMembersInner::$version(ref mut members) => members.next(),)+
+                }
+            }
+        }
+
         impl<'data> Iterator for VariableLocations<'data> {
             type Item = VariableLocationInfo;
 
@@ -510,6 +583,12 @@ macro_rules! impl_version {
             impl<'data> From<crate::$module::lookup::VariableLocations<'data>> for VariableLocations<'data> {
                 fn from(value: crate::$module::lookup::VariableLocations<'data>) -> Self {
                     Self(VariableLocationsInner::$version(value))
+                }
+            }
+
+            impl<'data> From<crate::$module::lookup::StructureMembers<'data>> for StructureMembers<'data> {
+                fn from(value: crate::$module::lookup::StructureMembers<'data>) -> Self {
+                    Self(StructureMembersInner::$version(value))
                 }
             }
         )+

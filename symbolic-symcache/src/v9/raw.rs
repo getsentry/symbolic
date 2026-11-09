@@ -11,7 +11,7 @@ use symbolic_common::DebugId;
 /// The current [`Header::variable_header`] version.
 ///
 /// On a version mismatch, the sections referenced in the [`VariableHeader`] must not be parsed.
-pub const VARIABLE_HEADER_VERSION: u16 = 1;
+pub const VARIABLE_HEADER_VERSION: u16 = 2;
 
 /// This [`FunctionVariables`] is a sentinel for functions without variables.
 pub const NO_VARIABLES: FunctionVariables = FunctionVariables {
@@ -75,6 +75,8 @@ pub struct VariableHeader {
     pub num_variable_locations: u32,
     /// Number of included [`Type`]'s.
     pub num_types: u32,
+    /// Number of included [`StructureMember`]'s.
+    pub num_structure_members: u32,
 }
 
 /// Serialized Function metadata in the SymCache.
@@ -257,7 +259,7 @@ pub struct PrimitiveType {
     /// The encoding of the type.
     pub encoding: u8,
     /// Padding.
-    pub _reserved: [u8; 3],
+    pub _reserved: [u8; 7],
 }
 
 /// A representation of a pointer type.
@@ -272,7 +274,7 @@ pub struct PointerType {
     /// The size/width of the pointer.
     pub size: u32,
     /// Padding.
-    pub _reserved: [u8; 4],
+    pub _reserved: [u8; 8],
 }
 
 /// A representation of a `typedef`.
@@ -287,7 +289,33 @@ pub struct TypeDefType {
     /// indicates that the `typedef` has no associated type.
     pub ty_idx: u32,
     /// Padding.
-    pub _reserved: [u8; 4],
+    pub _reserved: [u8; 8],
+}
+
+/// A representation of a structure type.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct StructureType {
+    /// The optional structure name (reference to a [`String`]).
+    pub name_offset: u32,
+    /// The size in bytes, or [`u32::MAX`] if unknown.
+    pub size: u32,
+    /// The first member (reference to a [`StructureMember`]).
+    pub member_idx: u32,
+    /// The number of members in the structure.
+    pub num_members: u32,
+}
+
+/// A representation of a structure member.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct StructureMember {
+    /// The optional member name (reference to a [`String`]).
+    pub name_offset: u32,
+    /// The member type (reference to a [`Type`]).
+    pub type_idx: u32,
+    /// The offset in bytes, or [`u32::MAX`] if unknown.
+    pub offset: u32,
 }
 
 pub mod ty {
@@ -297,6 +325,7 @@ pub mod ty {
         primitive: PrimitiveType,
         pointer: PointerType,
         typedef: TypeDefType,
+        structure: StructureType,
     }
 }
 
@@ -375,6 +404,8 @@ unsafe impl Pod for Type {}
 unsafe impl Pod for PrimitiveType {}
 unsafe impl Pod for PointerType {}
 unsafe impl Pod for TypeDefType {}
+unsafe impl Pod for StructureType {}
+unsafe impl Pod for StructureMember {}
 
 #[cfg(test)]
 mod tests {
@@ -403,7 +434,7 @@ mod tests {
         assert_eq!(mem::size_of::<FunctionVariables>(), 8);
         assert_eq!(mem::align_of::<FunctionVariables>(), 4);
 
-        assert_eq!(mem::size_of::<VariableHeader>(), 12);
+        assert_eq!(mem::size_of::<VariableHeader>(), 16);
         assert_eq!(mem::align_of::<VariableHeader>(), 4);
 
         assert_eq!(mem::size_of::<Variable>(), 20);
@@ -412,8 +443,14 @@ mod tests {
         assert_eq!(mem::size_of::<VariableLocationInfo>(), 16);
         assert_eq!(mem::align_of::<VariableLocationInfo>(), 4);
 
-        assert_eq!(mem::size_of::<Type>(), 16);
+        assert_eq!(mem::size_of::<Type>(), 20);
         assert_eq!(mem::align_of::<Type>(), 4);
+
+        assert_eq!(mem::size_of::<StructureType>(), 16);
+        assert_eq!(mem::align_of::<StructureType>(), 4);
+
+        assert_eq!(mem::size_of::<StructureMember>(), 12);
+        assert_eq!(mem::align_of::<StructureMember>(), 4);
     }
 
     #[test]

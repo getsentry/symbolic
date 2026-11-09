@@ -338,6 +338,7 @@ fn test_empty_variable_sections() -> Result<(), Error> {
         variables: 0,
         variable_locations: 0,
         types: 0,
+        structure_members: 0,
     }
     "#);
 
@@ -370,8 +371,8 @@ fn test_variable_cache_size() -> Result<(), Error> {
 
     insta::assert_snapshot!(s, @r"
     no variables  : 219.95 KiB
-    with variables: 263.82 KiB
-    variables     : 43.87 KiB (16.63%)
+    with variables: 269.74 KiB
+    variables     : 49.79 KiB (18.46%)
     ");
 
     Ok(())

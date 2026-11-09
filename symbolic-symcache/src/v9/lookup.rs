@@ -3,11 +3,12 @@ use std::cmp::Ordering;
 use std::collections::HashSet;
 
 use symbolic_common::{Arch, CpuFamily, Language};
+use watto::StringTable;
 
 use crate::v9::{SymCache, convert, raw};
 use crate::{
-    File, Function, PointerType, PrimitiveType, Type, TypeDefType, TypeId, TypeSize, VariableKind,
-    VariableLocation, VariableLocationInfo,
+    File, Function, PointerType, PrimitiveType, StructureMember, StructureType, Type, TypeDefType,
+    TypeId, TypeSize, VariableKind, VariableLocation, VariableLocationInfo,
 };
 
 impl<'data> SymCache<'data> {
@@ -88,6 +89,22 @@ impl<'data> SymCache<'data> {
                 name: self.get_string(td.name_offset).unwrap_or("?"),
                 ty: (td.ty_idx != raw::Type::VOID).then_some(TypeId(td.ty_idx)),
             }),
+            raw::ty::Enum::structure(structure) => {
+                let start = structure.member_idx as usize;
+                let end = start.checked_add(structure.num_members as usize)?;
+                let members = self.structure_members.get(start..end)?;
+
+                Type::StructureType(StructureType {
+                    name: self.get_string(structure.name_offset),
+                    size: (structure.size != u32::MAX)
+                        .then_some(TypeSize::Bytes(structure.size.into())),
+                    members: StructureMembers {
+                        string_bytes: self.string_bytes,
+                        members: members.iter(),
+                    }
+                    .into(),
+                })
+            }
         })
     }
 
@@ -113,6 +130,26 @@ impl<'data> SymCache<'data> {
             cache: self.clone(),
             file_idx: 0,
         }
+    }
+}
+
+/// Iterator over the members of a structure.
+#[derive(Clone, Debug)]
+pub struct StructureMembers<'data> {
+    string_bytes: &'data [u8],
+    members: std::slice::Iter<'data, raw::StructureMember>,
+}
+
+impl<'data> Iterator for StructureMembers<'data> {
+    type Item = StructureMember<'data>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let member = self.members.next()?;
+        Some(StructureMember {
+            name: StringTable::read(self.string_bytes, member.name_offset as usize).ok(),
+            ty: TypeId(member.type_idx),
+            offset: (member.offset != u32::MAX).then_some(TypeSize::Bytes(member.offset.into())),
+        })
     }
 }
 
@@ -481,6 +518,7 @@ mod tests {
             variables: &[],
             variable_locations: &[],
             types: &[],
+            structure_members: &[],
         };
 
         // Without cycle detection, this iterator would never terminate.

@@ -56,6 +56,29 @@ fn print_type(session: &ObjectDebugSession<'_>, ty: &TypeRef, max_depth: usize) 
             }
             print!(" {};", t.name);
         }
+        Type::StructureType(t) => {
+            print!("struct ");
+            if let Some(name) = &t.name {
+                print!("{name} ");
+            }
+
+            print!("{{ ");
+            let mut is_first = true;
+            for member in &t.members {
+                if !is_first {
+                    print!(", ");
+                }
+                is_first = false;
+                if let Some(name) = &member.name {
+                    print!("{name}: ");
+                }
+                print_type(session, &member.ty, max_depth - 1)?;
+            }
+            if !t.members.is_empty() {
+                print!(" ");
+            }
+            print!("}}");
+        }
     }
 
     Ok(())

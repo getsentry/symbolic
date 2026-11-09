@@ -297,5 +297,12 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       type:
         > Pointer (8 bytes)
           > TypeDef: MDLocationDescriptor
-            > Unknown
+            > Structure: <anonymous> (8 bytes)
+              > Member: data_size (offset 0 bytes)
+                > TypeDef: uint32_t
+                  > Primitive: unsigned int (UnsignedInt, 4 bytes)
+              > Member: rva (offset 4 bytes)
+                > TypeDef: MDRVA
+                  > TypeDef: uint32_t
+                    > Primitive: unsigned int (UnsignedInt, 4 bytes)
       0x1140..0x1145: register rcx

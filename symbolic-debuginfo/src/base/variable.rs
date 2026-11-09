@@ -5,7 +5,7 @@ use symbolic_common::register::Register;
 /// A type reference.
 ///
 /// Links a variable to a concrete type.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeRef(NativeTypeRef);
 
 impl TypeRef {
@@ -17,7 +17,7 @@ impl TypeRef {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum NativeTypeRef {
     #[cfg(feature = "dwarf")]
     Dwarf(crate::dwarf::DwarfTypeRef),
@@ -39,6 +39,8 @@ pub enum Type<'data> {
     Pointer(PointerType),
     /// A type that is defined in the terms of another type.
     TypeDef(TypeDefType<'data>),
+    /// A structure type.
+    StructureType(StructureType<'data>),
 }
 
 /// A primitive type.
@@ -103,6 +105,32 @@ pub struct TypeDefType<'data> {
     /// This may be `None` if the debug information provides no underlying type reference,
     /// for example an alias to `void` or a type declaration without a definition.
     pub ty: Option<TypeRef>,
+}
+
+/// A structure type.
+#[derive(Debug, Clone)]
+pub struct StructureType<'data> {
+    /// The name of the structure.
+    ///
+    /// For anonymous structures the name may be missing.
+    pub name: Option<Cow<'data, str>>,
+    /// The size of the structure.
+    pub size: Option<TypeSize>,
+    /// All members of the structure in declaration order.
+    pub members: Vec<StructureMember<'data>>,
+}
+
+/// A member of a [structure](StructureType).
+#[derive(Debug, Clone)]
+pub struct StructureMember<'data> {
+    /// The name of the member.
+    ///
+    /// The name may be missing for anonymous members.
+    pub name: Option<Cow<'data, str>>,
+    /// The type of the member.
+    pub ty: TypeRef,
+    /// The offset of this member from the beginning of the structure.
+    pub offset: Option<TypeSize>,
 }
 
 /// The size of a type in memory.
