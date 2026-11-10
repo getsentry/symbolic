@@ -67,6 +67,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
       type:
         > Primitive: int (SignedInt, 4 bytes)
       0x12c0..0x12cb: register rsi
+      0x12cb..0x12d4: memory at rdi +4
 
 > 0x1280: vla (0x3e)
   0x1280: variables.c:213 (/fixture)
@@ -88,6 +89,10 @@ expression: "FunctionsDebug::new(&session, &functions)"
       type:
         > Primitive: int (SignedInt, 4 bytes)
       0x1280..0x12b6: register rdi
+    arr (local)
+      type:
+        > Unknown
+      0x12a8..0x12bc: memory at rax +0
 
 > 0x1270: stack_home (0xc)
   0x1270: variables.c:202 (/fixture)
