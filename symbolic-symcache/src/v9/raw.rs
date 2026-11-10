@@ -17,15 +17,14 @@ pub const VARIABLE_HEADER_VERSION: u16 = 4;
 pub const NO_VARIABLES: FunctionVariables = FunctionVariables {
     variable_idx: u32::MAX,
     num_variables: 0,
-    frame_base: frame_base::Impl {
-        cfa: CfaFrameBase { _reserved: [0; 4] },
-    },
-    frame_base_kind: NO_FRAME_BASE,
-    _reserved: [0; 3],
+    frame_base: NO_FRAME_BASE,
+    _reserved: [0; 2],
 };
 
-/// This [`FunctionVariables::frame_base_kind`] says that the function has no known frame base.
-pub const NO_FRAME_BASE: u8 = u8::MAX;
+/// This [`FunctionVariables::frame_base`] says that the frame base is unknown.
+pub const NO_FRAME_BASE: u16 = u16::MAX;
+/// This [`FunctionVariables::frame_base`] says that the frame base is the canonical frame address.
+pub const CFA_FRAME_BASE: u16 = u16::MAX - 1;
 
 /// This [`SourceLocation`] is a sentinel value that says that no source location is present here.
 /// This is used to push an "end" range that does not resolve to a valid source location.
@@ -108,51 +107,16 @@ pub struct Function {
 ///
 /// An index into [`Function`]'s can also be used to lookup function variable information from this
 /// section.
-#[derive(Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[repr(C)]
 pub struct FunctionVariables {
     /// The variable index of the first variable.
     pub variable_idx: u32,
     /// The amount of variables associated with the function.
     pub num_variables: u32,
-    /// The frame base that frame offset locations of the function's variables are relative to.
-    pub frame_base: frame_base::Impl,
-    /// Discriminator for [`Self::frame_base`], or [`NO_FRAME_BASE`].
-    pub frame_base_kind: u8,
-    pub _reserved: [u8; 3],
-}
-
-impl FunctionVariables {
-    pub fn frame_base(&self) -> Option<frame_base::Enum> {
-        self.frame_base.into_enum(self.frame_base_kind)
-    }
-}
-
-impl fmt::Debug for FunctionVariables {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FunctionVariables")
-            .field("variable_idx", &self.variable_idx)
-            .field("num_variables", &self.num_variables)
-            .field("frame_base", &self.frame_base.tagged(self.frame_base_kind))
-            .field("_reserved", &self._reserved)
-            .finish()
-    }
-}
-
-/// A frame base given by the canonical frame address (CFA).
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-#[repr(C)]
-pub struct CfaFrameBase {
-    pub _reserved: [u8; 4],
-}
-
-pub mod frame_base {
-    use super::*;
-
-    crate::utils::tagged_union! {
-        register: RegisterLocation,
-        cfa: CfaFrameBase,
-    }
+    /// The frame base of the function, a register, [`CFA_FRAME_BASE`] or [`NO_FRAME_BASE`].
+    pub frame_base: u16,
+    pub _reserved: [u8; 2],
 }
 
 /// Serialized File in the SymCache (V9 format with revision support).
@@ -446,7 +410,6 @@ unsafe impl Pod for SourceLocation {}
 unsafe impl Pod for Range {}
 unsafe impl Pod for Variable {}
 unsafe impl Pod for RegisterLocation {}
-unsafe impl Pod for CfaFrameBase {}
 unsafe impl Pod for FrameOffsetLocation {}
 unsafe impl Pod for VariableLocationInfo {}
 unsafe impl Pod for Type {}
@@ -480,7 +443,7 @@ mod tests {
         assert_eq!(mem::size_of::<Range>(), 4);
         assert_eq!(mem::align_of::<Range>(), 4);
 
-        assert_eq!(mem::size_of::<FunctionVariables>(), 16);
+        assert_eq!(mem::size_of::<FunctionVariables>(), 12);
         assert_eq!(mem::align_of::<FunctionVariables>(), 4);
 
         assert_eq!(mem::size_of::<VariableHeader>(), 16);

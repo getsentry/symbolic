@@ -187,11 +187,6 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
     let symcache = SymCache::parse(&buffer)?;
 
     let source_location = symcache.lookup(0xfe50).last().unwrap();
-    insta::assert_debug_snapshot!(source_location.frame_base(), @r"
-    Some(
-        Cfa,
-    )
-    ");
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>): 0xfe50..0xfe86 register rdi
     str (parameter, <unknown>*): 0xfe50..0xfe86 register rsi
@@ -213,6 +208,14 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
     out (local, <unknown>): 0xfe50..0xff4c frame -80
     out_idx (local, int): 0xfe86..0xfed9 register r12
     out_count (local, int): <unavailable>
+    ");
+
+    // The inlinee at this address uses the frame base of the outer function.
+    let inlinee = symcache.lookup(0xfecb).next().unwrap();
+    insta::assert_debug_snapshot!(inlinee.frame_base(), @r"
+    Some(
+        Cfa,
+    )
     ");
 
     let source_location = symcache.lookup(0xfecb).last().unwrap();

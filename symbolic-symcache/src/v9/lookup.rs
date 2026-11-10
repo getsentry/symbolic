@@ -214,13 +214,9 @@ impl<'data, 'cache> SourceLocation<'data, 'cache> {
     /// This is the frame base of the outermost function, as inlined functions share it.
     pub fn frame_base(&self) -> Option<FrameBase> {
         let (base_fn_idx, _) = self.resolve_base();
-        let frame_base = self
-            .cache
-            .function_variables
-            .get(base_fn_idx as usize)?
-            .frame_base()?;
+        let fv = self.cache.function_variables.get(base_fn_idx as usize)?;
         let cpu_family = Arch::from_u32(self.cache.header.arch).cpu_family();
-        convert::raw_to_frame_base(cpu_family, frame_base)
+        convert::u16_to_frame_base(cpu_family, fv.frame_base)
     }
 
     /// Calculates the inline depth of this source location.

@@ -103,29 +103,25 @@ pub fn u16_to_register(cpu_family: CpuFamily, id: u16) -> Option<Register> {
     Register::from_dwarf(cpu_family, id)
 }
 
-/// Converts a [`FrameBase`] into its raw representation.
-pub fn frame_base_to_raw(frame_base: FrameBase) -> raw::frame_base::Enum {
+/// Converts a [`FrameBase`] into a `u16` to be stored in [`FunctionVariables::frame_base`].
+///
+/// [`FunctionVariables::frame_base`]: crate::v9::raw::FunctionVariables::frame_base
+pub fn frame_base_to_u16(frame_base: Option<FrameBase>) -> u16 {
     match frame_base {
-        FrameBase::Register { register } => raw::RegisterLocation {
-            id: register_to_u16(register),
-            _reserved: [0; _],
-        }
-        .into(),
-        FrameBase::Cfa => raw::CfaFrameBase { _reserved: [0; _] }.into(),
+        Some(FrameBase::Register { register }) => register_to_u16(register),
+        Some(FrameBase::Cfa) => raw::CFA_FRAME_BASE,
+        None => raw::NO_FRAME_BASE,
     }
 }
 
-/// Converts a raw frame base back into a [`FrameBase`] of the given CPU family.
+/// Converts a `u16` back into a [`FrameBase`] of the given CPU family.
 ///
-/// The inverse of [`frame_base_to_raw`]. Invalid registers are returned as `None`.
-pub fn raw_to_frame_base(
-    cpu_family: CpuFamily,
-    frame_base: raw::frame_base::Enum,
-) -> Option<FrameBase> {
-    match frame_base {
-        raw::frame_base::Enum::register(register) => u16_to_register(cpu_family, register.id)
-            .map(|register| FrameBase::Register { register }),
-        raw::frame_base::Enum::cfa(_) => Some(FrameBase::Cfa),
+/// The inverse of [`frame_base_to_u16`].
+pub fn u16_to_frame_base(cpu_family: CpuFamily, id: u16) -> Option<FrameBase> {
+    match id {
+        raw::NO_FRAME_BASE => None,
+        raw::CFA_FRAME_BASE => Some(FrameBase::Cfa),
+        id => u16_to_register(cpu_family, id).map(|register| FrameBase::Register { register }),
     }
 }
 
