@@ -23,6 +23,7 @@ use gimli::{
     AbbreviationsCacheStrategy, DebugTypeSignature, DwarfFileType, Expression, LocListIter,
     LocationLists, Operation, SectionId, UnitSectionOffset, UnitType, constants,
 };
+use indexmap::IndexSet;
 use thiserror::Error;
 
 use symbolic_common::register::Register;
@@ -719,13 +720,21 @@ impl<'a> InProgressSubProgram<'a> {
                             let size = row.size;
                             let file = dwarf_unit.resolve_file(row.file_index).unwrap_or_default();
                             let line = row.line.unwrap_or(0);
-                            builder.add_leaf_line(address, size, file, line);
+                            builder.add_leaf_line(
+                                &mut output.line_infos,
+                                address,
+                                size,
+                                file,
+                                line,
+                            );
                         }
                     }
                 }
 
                 for (_range, builder) in p.builders {
-                    output.functions.push(builder.finish());
+                    output
+                        .functions
+                        .push(builder.finish(&mut output.line_infos));
                 }
 
                 Ok(())
@@ -1519,6 +1528,10 @@ struct FunctionsOutput<'a, 'd> {
     pub range_buf: Vec<Range>,
     /// The set of `(address, size)` ranges of the functions we've already parsed.
     pub seen_ranges: &'a mut BTreeSet<(u64, u64)>,
+    /// Line records encountered while processing functions.
+    ///
+    /// The indices returned by this set are stored in individual [`FunctionBuilder`]s.
+    pub line_infos: IndexSet<LineInfo<'d>>,
 }
 
 impl<'a> FunctionsOutput<'a, '_> {
@@ -1527,6 +1540,7 @@ impl<'a> FunctionsOutput<'a, '_> {
             functions: Vec::new(),
             range_buf: Vec::new(),
             seen_ranges,
+            line_infos: IndexSet::new(),
         }
     }
 }

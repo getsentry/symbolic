@@ -2542,6 +2542,7 @@ dependencies = [
  "flate2",
  "gimli 0.33.0",
  "goblin",
+ "indexmap",
  "insta",
  "memchr",
  "nom",

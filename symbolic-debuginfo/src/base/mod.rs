@@ -458,7 +458,7 @@ impl<'d> FromIterator<Symbol<'d>> for SymbolMap<'d> {
 ///
 /// The file path is usually relative to a compilation directory. It might contain parent directory
 /// segments (`../`).
-#[derive(Clone, Default, Eq, PartialEq)]
+#[derive(Clone, Default, Eq, PartialEq, Hash)]
 pub struct FileInfo<'data> {
     /// The file's basename.
     name: Cow<'data, [u8]>,
@@ -681,7 +681,7 @@ impl<'data> Deref for FileEntry<'data> {
 }
 
 /// File and line number mapping for an instruction address.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub struct LineInfo<'data> {
     /// The instruction address relative to the image base (load address).
     pub address: u64,

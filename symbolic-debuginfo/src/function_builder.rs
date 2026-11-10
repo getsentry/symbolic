@@ -7,6 +7,7 @@ use crate::{
     Variable,
     base::{FileInfo, Function, LineInfo},
 };
+use indexmap::IndexSet;
 use symbolic_common::Name;
 use thiserror::Error;
 
@@ -60,7 +61,11 @@ pub struct FunctionBuilder<'s> {
     inlinees: BinaryHeap<Reverse<FunctionBuilderInlinee<'s>>>,
     /// The lines, in any order. They will be sorted in `finish()`. These record specify locations
     /// at the innermost level of the inline stack at the line record's address.
-    lines: Vec<LineInfo<'s>>,
+    ///
+    /// We don't store the records themselves in the builder; they are stored in an external
+    /// `IndexSet` and only their indices are kept here (see [`Self::add_leaf_line`] and
+    /// [`Self::finish`]).
+    lines: Vec<usize>,
     /// All variables found inside the function.
     variables: Vec<Variable<'s>>,
 }
@@ -99,8 +104,12 @@ impl<'s> FunctionBuilder<'s> {
 
     /// Add a line record, specifying the line at this address inside the innermost inlinee that
     /// covers that address. This method can be called in any order.
+    ///
+    /// The line record is not stored within this builder, but rather in the provided `line_infos`
+    /// set for deduplication purposes.
     pub fn add_leaf_line(
         &mut self,
+        line_infos: &mut IndexSet<LineInfo<'s>>,
         address: u64,
         size: Option<u64>,
         file: FileInfo<'s>,
@@ -111,16 +120,21 @@ impl<'s> FunctionBuilder<'s> {
             return;
         }
 
-        self.lines.push(LineInfo {
+        let (idx, _) = line_infos.insert_full(LineInfo {
             address,
             size,
             file,
             line,
         });
+
+        self.lines.push(idx);
     }
 
     /// Create the `Function`, consuming the builder.
-    pub fn finish(self) -> Function<'s> {
+    ///
+    /// The `line_infos` set is used to resolve the references to
+    /// line records stored in this builder.
+    pub fn finish(self, line_infos: &mut IndexSet<LineInfo<'s>>) -> Function<'s> {
         // Convert our data into the right shape.
         // There are two big differences between what we have and what we want:
         //  - We have all inlinees in a flat list, but we want to create nested functions for them,
@@ -141,7 +155,11 @@ impl<'s> FunctionBuilder<'s> {
         let (inlinees, discard_inlinees) = ensure_proper_nesting(inlinees, MAX_NESTED_INLINEES);
 
         // Sort the lines by address.
-        lines.sort_by_key(|line| line.address);
+        lines.sort_by_key(|&line| {
+            line_infos
+                .get_index(line)
+                .map_or(0, |line_info| line_info.address)
+        });
 
         let outer_function = Function {
             address,
@@ -160,18 +178,19 @@ impl<'s> FunctionBuilder<'s> {
         let mut line_iter = lines.into_iter();
 
         let mut next_inlinee = inlinee_iter.next();
-        let mut next_line = line_iter.next();
+        let mut next_line_idx = line_iter.next();
 
         // Iterate over lines and inlinees.
         loop {
             // If we have both a line and an inlinee at the same address, process the inlinee first.
             // The line belongs "inside" that inlinee.
-            if next_inlinee.is_some()
-                && (next_line.is_none()
-                    || next_inlinee.as_ref().unwrap().address
-                        <= next_line.as_ref().unwrap().address)
-            {
-                let inlinee = next_inlinee.take().unwrap();
+            if let Some(inlinee) = next_inlinee.take_if(|inlinee| {
+                next_line_idx.is_none_or(|idx| {
+                    line_infos
+                        .get_index(idx)
+                        .is_some_and(|next_line| inlinee.address <= next_line.address)
+                })
+            }) {
                 stack.flush_address(inlinee.address);
                 stack.flush_depth(inlinee.depth);
 
@@ -200,7 +219,10 @@ impl<'s> FunctionBuilder<'s> {
             }
 
             // Process the line.
-            if let Some(mut line) = next_line.take() {
+            if let Some(mut line) = next_line_idx
+                .take()
+                .and_then(|line_idx| line_infos.get_index(line_idx).cloned())
+            {
                 stack.flush_address(line.address);
 
                 if line.address >= outer_function_end {
@@ -226,17 +248,19 @@ impl<'s> FunctionBuilder<'s> {
                         let mut split_line = line.clone();
                         split_line.address = split_address;
                         split_line.size = Some(line_end - split_address);
+                        let (split_idx, _) = line_infos.insert_full(split_line);
+
                         line.size = Some(split_address - line.address);
                         stack.last_mut().lines.push(line);
 
-                        next_line = Some(split_line);
+                        next_line_idx = Some(split_idx);
                         continue;
                     }
                 }
 
                 // Handle the case where no overlap was detected.
                 stack.last_mut().lines.push(line);
-                next_line = line_iter.next();
+                next_line_idx = line_iter.next();
                 continue;
             }
 
@@ -528,10 +552,17 @@ mod tests {
 
     #[test]
     fn test_simple() {
+        let mut line_infos = IndexSet::default();
         // 0x10 - 0x40: foo in foo.c on line 1
         let mut builder = FunctionBuilder::new(Name::from("foo"), &[], 0x10, 0x30);
-        builder.add_leaf_line(0x10, Some(0x30), FileInfo::from_filename(b"foo.c"), 1);
-        let func = builder.finish();
+        builder.add_leaf_line(
+            &mut line_infos,
+            0x10,
+            Some(0x30),
+            FileInfo::from_filename(b"foo.c"),
+            1,
+        );
+        let func = builder.finish(&mut line_infos);
 
         assert_eq!(func.name.as_str(), "foo");
         assert_eq!(&func.lines, &[LineInfo::new(0x10, 0x30, b"foo.c", 1)]);
@@ -539,6 +570,7 @@ mod tests {
 
     #[test]
     fn test_inlinee_nesting_bounds_preserve_outer_function() {
+        let mut line_infos = IndexSet::default();
         let mut builder = FunctionBuilder::new(Name::from("outer"), b"/src", 0x10, 0x30);
         builder.add_variable(Variable {
             name: "value".into(),
@@ -572,11 +604,29 @@ mod tests {
                 variables: Vec::new(),
             });
         }
-        builder.add_leaf_line(0x10, Some(0x18), FileInfo::from_filename(b"outer.c"), 1);
-        builder.add_leaf_line(0x28, Some(0x4), FileInfo::from_filename(b"inline.c"), 42);
-        builder.add_leaf_line(0x2c, Some(0x14), FileInfo::from_filename(b"outer.c"), 3);
+        builder.add_leaf_line(
+            &mut line_infos,
+            0x10,
+            Some(0x18),
+            FileInfo::from_filename(b"outer.c"),
+            1,
+        );
+        builder.add_leaf_line(
+            &mut line_infos,
+            0x28,
+            Some(0x4),
+            FileInfo::from_filename(b"inline.c"),
+            42,
+        );
+        builder.add_leaf_line(
+            &mut line_infos,
+            0x2c,
+            Some(0x14),
+            FileInfo::from_filename(b"outer.c"),
+            3,
+        );
 
-        let function = builder.finish();
+        let function = builder.finish(&mut line_infos);
         insta::assert_debug_snapshot!(function, @r#"
         Function {
             address: 0x10,
@@ -642,6 +692,7 @@ mod tests {
 
     #[test]
     fn test_inlinee() {
+        let mut line_infos = IndexSet::default();
         // 0x10 - 0x20: foo in foo.c on line 1
         // 0x20 - 0x40: bar in bar.c on line 1
         // - inlined into: foo in foo.c on line 2
@@ -655,9 +706,21 @@ mod tests {
             call_line: 2,
             variables: Vec::new(),
         });
-        builder.add_leaf_line(0x10, Some(0x10), FileInfo::from_filename(b"foo.c"), 1);
-        builder.add_leaf_line(0x20, Some(0x20), FileInfo::from_filename(b"bar.c"), 1);
-        let func = builder.finish();
+        builder.add_leaf_line(
+            &mut line_infos,
+            0x10,
+            Some(0x10),
+            FileInfo::from_filename(b"foo.c"),
+            1,
+        );
+        builder.add_leaf_line(
+            &mut line_infos,
+            0x20,
+            Some(0x20),
+            FileInfo::from_filename(b"bar.c"),
+            1,
+        );
+        let func = builder.finish(&mut line_infos);
 
         // the outer function has two line records, one for itself, the other for the inlined call
         assert_eq!(func.name.as_str(), "foo");
@@ -703,7 +766,7 @@ mod tests {
             variables: vec![variable],
         });
 
-        let function = builder.finish();
+        let function = builder.finish(&mut IndexSet::default());
 
         insta::assert_debug_snapshot!(function, @r#"
         Function {
@@ -767,6 +830,7 @@ mod tests {
 
     #[test]
     fn test_longer_line_record() {
+        let mut line_infos = IndexSet::default();
         // Consider the following code:
         //
         // ```
@@ -821,10 +885,28 @@ mod tests {
             call_line: 2,
             variables: Vec::new(),
         });
-        builder.add_leaf_line(0x10, Some(0x10), FileInfo::from_filename(b"parent.c"), 1);
-        builder.add_leaf_line(0x20, Some(0x20), FileInfo::from_filename(b"child2.c"), 1);
-        builder.add_leaf_line(0x40, Some(0x10), FileInfo::from_filename(b"parent.c"), 1);
-        let func = builder.finish();
+        builder.add_leaf_line(
+            &mut line_infos,
+            0x10,
+            Some(0x10),
+            FileInfo::from_filename(b"parent.c"),
+            1,
+        );
+        builder.add_leaf_line(
+            &mut line_infos,
+            0x20,
+            Some(0x20),
+            FileInfo::from_filename(b"child2.c"),
+            1,
+        );
+        builder.add_leaf_line(
+            &mut line_infos,
+            0x40,
+            Some(0x10),
+            FileInfo::from_filename(b"parent.c"),
+            1,
+        );
+        let func = builder.finish(&mut line_infos);
 
         assert_eq!(func.name.as_str(), "parent");
         assert_eq!(
