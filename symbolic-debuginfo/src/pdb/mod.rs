@@ -1,6 +1,7 @@
 //! Support for Program Database, the debug companion format on Windows.
 
 use std::borrow::Cow;
+use std::collections::VecDeque;
 use std::collections::btree_map::BTreeMap;
 use std::error::Error;
 use std::fmt;
@@ -11,9 +12,9 @@ use elsa::sync::FrozenMap;
 use parking_lot::Mutex;
 use pdb_addr2line::ModuleProvider;
 use pdb_addr2line::pdb::{
-    AddressMap, FallibleIterator, ImageSectionHeader, InlineSiteSymbol, LineProgram, MachineType,
-    Module, ModuleInfo, PdbInternalSectionOffset, ProcedureSymbol, RawString, SeparatedCodeSymbol,
-    SymbolData, TypeIndex,
+    AddressMap, FallibleIterator, IdIndex, ImageSectionHeader, InlineSiteSymbol, Inlinee,
+    LineProgram, MachineType, Module, ModuleInfo, PdbInternalSectionOffset, ProcedureSymbol,
+    RawString, SeparatedCodeSymbol, SymbolData, SymbolIter, TypeIndex,
 };
 use smallvec::SmallVec;
 use thiserror::Error;
@@ -33,6 +34,7 @@ mod srcsrv;
 type Pdb<'data> = pdb::PDB<'data, Cursor<&'data [u8]>>;
 
 const MAGIC_BIG: &[u8] = b"Microsoft C/C++ MSF 7.00\r\n\x1a\x44\x53\x00\x00\x00";
+const MAX_FUNCTIONS_IN_PROGRESS: usize = 10_000;
 
 // Used for CFI, remove once abstraction is complete
 #[doc(hidden)]
@@ -50,6 +52,10 @@ pub enum PdbErrorKind {
 
     /// Formatting of a type name failed.
     FormattingFailed,
+
+    /// A resource limit was reached while operating on the PDB file.  See the source
+    /// for more details.
+    ExhaustedResourceLimit,
 }
 
 impl fmt::Display for PdbErrorKind {
@@ -58,6 +64,7 @@ impl fmt::Display for PdbErrorKind {
             Self::BadObject => write!(f, "invalid pdb file"),
             Self::UnexpectedInline => write!(f, "unexpected inline function without parent"),
             Self::FormattingFailed => write!(f, "failed to format type name"),
+            Self::ExhaustedResourceLimit => write!(f, "exhausted resource limit"),
         }
     }
 }
@@ -674,7 +681,7 @@ impl<'d> PdbDebugSession<'d> {
     pub fn functions(&self) -> PdbFunctionIterator<'_> {
         PdbFunctionIterator {
             units: self.cell.get().units(),
-            functions: Vec::new().into_iter(),
+            functions: None,
             finished: false,
         }
     }
@@ -730,6 +737,7 @@ impl<'session> DebugSession<'session> for PdbDebugSession<'_> {
     }
 }
 
+#[derive(Clone, Copy)]
 struct Unit<'s> {
     debug_info: &'s PdbDebugInfo<'s>,
     module_index: usize,
@@ -953,10 +961,7 @@ impl<'s> Unit<'s> {
         }))
     }
 
-    fn functions(&self) -> Result<Vec<Function<'s>>, PdbError> {
-        let program = self.module.line_program()?;
-        let mut symbols = self.module.symbols()?;
-
+    fn functions(&self) -> Result<PdbUnitFunctionIterator<'s>, PdbError> {
         // Depending on the compiler version, the inlinee table might not be sorted. Since constant
         // search through inlinees is too slow (due to repeated parsing), but Inlinees are rather
         // small structures, it is relatively cheap to collect them into an in-memory index.
@@ -966,102 +971,220 @@ impl<'s> Unit<'s> {
             .map(|i| Ok((i.index(), i)))
             .collect()?;
 
-        let mut depth = 0;
-        let mut inc_next = false;
-        let mut skipped_depth = None;
+        Ok(PdbUnitFunctionIterator {
+            unit: *self,
+            program: self.module.line_program()?,
+            symbols: self.module.symbols()?,
+            inlinees,
+            depth: 0,
+            inc_next: false,
+            skipped_depth: None,
+            stack: FunctionStack::new(),
+            yielding: VecDeque::new(),
+            proc_offsets: SmallVec::new(),
+            last_proc: None,
+            symbol: None,
+            finished: false,
+            max_in_progress: MAX_FUNCTIONS_IN_PROGRESS,
+        })
+    }
+}
 
-        let mut functions = Vec::new();
-        let mut stack = FunctionStack::new();
-        let mut proc_offsets = SmallVec::<[_; 3]>::new();
-        let mut last_proc = None;
+/// Too many functions were being kept in memory
+/// at the same time during function iteration.
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+#[error("Too many functions in progress")]
+pub struct TooManyFunctionsInProgress;
 
-        while let Some(symbol) = symbols.next()? {
-            if inc_next {
-                depth += 1;
-            }
+impl From<TooManyFunctionsInProgress> for PdbError {
+    fn from(value: TooManyFunctionsInProgress) -> Self {
+        PdbError {
+            kind: PdbErrorKind::ExhaustedResourceLimit,
+            source: Some(Box::new(value)),
+        }
+    }
+}
 
-            inc_next = symbol.starts_scope();
-            if symbol.ends_scope() {
-                depth -= 1;
+struct PdbUnitFunctionIterator<'s> {
+    unit: Unit<'s>,
+    program: LineProgram<'s>,
+    symbols: SymbolIter<'s>,
+    inlinees: BTreeMap<IdIndex, Inlinee<'s>>,
+    depth: isize,
+    inc_next: bool,
+    skipped_depth: Option<isize>,
+    stack: FunctionStack<'s>,
+    yielding: VecDeque<Function<'s>>,
+    proc_offsets: SmallVec<[(isize, PdbInternalSectionOffset); 3]>,
+    last_proc: Option<ProcedureSymbol<'s>>,
+    symbol: Option<pdb::Symbol<'s>>,
+    finished: bool,
+    max_in_progress: usize,
+}
 
-                if proc_offsets.last().is_some_and(|&(d, _)| d >= depth) {
-                    proc_offsets.pop();
-                }
-            }
+impl<'s> PdbUnitFunctionIterator<'s> {
+    fn in_progress(&self) -> usize {
+        self.yielding.len() + self.stack.len()
+    }
 
-            // If we're navigating within a skipped function (see below), we can ignore this
-            // entry completely. Otherwise, we've moved out of any skipped function and can
-            // reset the stored depth.
-            match skipped_depth {
-                Some(skipped) if depth > skipped => continue,
-                _ => skipped_depth = None,
-            }
-
-            // Flush all functions out that exceed the current iteration depth. Since we
-            // encountered a symbol at this level, there will be no more inlinees to the
-            // previous function at the same level or any of it's children.
-            if symbol.ends_scope() {
-                stack.flush(depth, &mut functions);
-            }
-
-            let function = match symbol.parse() {
-                Ok(SymbolData::Procedure(proc)) => {
-                    proc_offsets.push((depth, proc.offset));
-                    let function = self.handle_procedure(&proc, &program)?;
-                    last_proc = Some(proc);
-                    function
-                }
-                Ok(SymbolData::SeparatedCode(sepcode)) => match last_proc.as_ref() {
-                    Some(last_proc) if last_proc.offset == sepcode.parent_offset => {
-                        self.handle_separated_code(last_proc, &sepcode, &program)?
-                    }
-                    _ => continue,
-                },
-                Ok(SymbolData::InlineSite(site)) => {
-                    let parent_offset = proc_offsets
-                        .last()
-                        .map(|&(_, offset)| offset)
-                        .ok_or(PdbErrorKind::UnexpectedInline)?;
-
-                    // We can assume that inlinees will be listed in the inlinee table. If missing,
-                    // skip silently instead of erroring out. Missing a single inline function is
-                    // more acceptable in such a case than halting iteration completely.
-                    if let Some(inlinee) = inlinees.get(&site.inlinee) {
-                        // We have seen that the MSVC Compiler `19.16` (VS 2017) can output
-                        // `ChangeFile` annotations which are not properly aligned to the beginning
-                        // of a file checksum, leading to `UnimplementedFileChecksumKind` errors.
-                        // Investigation showed that this can happen for inlined `{ctor}` functions,
-                        // but there are no clear leads to why that might have happened, and how to
-                        // recover from these broken annotations.
-                        // For that reason, we skip these inlinees completely so we do not fail
-                        // processing the complete pdb file.
-                        self.handle_inlinee(site, parent_offset, inlinee, &program)
-                            .ok()
-                            .flatten()
-                    } else {
-                        None
-                    }
-                }
-                // We need to ignore errors here since the PDB crate does not yet implement all
-                // symbol types. Instead of erroring too often, it's better to swallow these.
-                _ => continue,
-            };
-
-            match function {
-                Some(mut function) => {
-                    Self::sanitize_lines(&mut function);
-                    // TODO: figure out what to do with functions that have no more lines
-                    // after sanitization
-                    stack.push(depth, function)
-                }
-                None => skipped_depth = Some(depth),
-            }
+    fn push_function(
+        &mut self,
+        depth: isize,
+        function: Function<'s>,
+    ) -> Result<(), TooManyFunctionsInProgress> {
+        if self.in_progress() >= self.max_in_progress {
+            return Err(TooManyFunctionsInProgress);
         }
 
-        // We're done, flush the remaining stack.
-        stack.flush(0, &mut functions);
+        self.stack.push(depth, function);
+        Ok(())
+    }
+}
 
-        Ok(functions)
+impl<'s> Iterator for PdbUnitFunctionIterator<'s> {
+    type Item = Result<Function<'s>, PdbError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            // We have functions buffered. Yield them until empty.
+            if let Some(function) = self.yielding.pop_front() {
+                return Some(Ok(function));
+            }
+
+            // We are out of buffered functions and there are no more
+            // symbols to be had.
+            if self.finished {
+                return None;
+            }
+
+            if let Some(symbol) = self.symbol.take() {
+                // We pulled a symbol out of the unit on the previous iteration,
+                // so process it.
+                let function = match symbol.parse() {
+                    Ok(SymbolData::Procedure(proc)) => {
+                        self.proc_offsets.push((self.depth, proc.offset));
+                        let function = match self.unit.handle_procedure(&proc, &self.program) {
+                            Ok(f) => f,
+                            Err(e) => return Some(Err(e)),
+                        };
+                        self.last_proc = Some(proc);
+                        function
+                    }
+                    Ok(SymbolData::SeparatedCode(sepcode)) => match self.last_proc.as_ref() {
+                        Some(last_proc) if last_proc.offset == sepcode.parent_offset => {
+                            match self.unit.handle_separated_code(
+                                last_proc,
+                                &sepcode,
+                                &self.program,
+                            ) {
+                                Ok(f) => f,
+                                Err(e) => return Some(Err(e)),
+                            }
+                        }
+                        _ => continue,
+                    },
+                    Ok(SymbolData::InlineSite(site)) => {
+                        let parent_offset = match self
+                            .proc_offsets
+                            .last()
+                            .map(|&(_, offset)| offset)
+                            .ok_or(PdbErrorKind::UnexpectedInline)
+                        {
+                            Ok(offset) => offset,
+                            Err(e) => return Some(Err(e.into())),
+                        };
+
+                        // We can assume that inlinees will be listed in the inlinee table. If missing,
+                        // skip silently instead of erroring out. Missing a single inline function is
+                        // more acceptable in such a case than halting iteration completely.
+                        if let Some(inlinee) = self.inlinees.get(&site.inlinee) {
+                            // We have seen that the MSVC Compiler `19.16` (VS 2017) can output
+                            // `ChangeFile` annotations which are not properly aligned to the beginning
+                            // of a file checksum, leading to `UnimplementedFileChecksumKind` errors.
+                            // Investigation showed that this can happen for inlined `{ctor}` functions,
+                            // but there are no clear leads to why that might have happened, and how to
+                            // recover from these broken annotations.
+                            // For that reason, we skip these inlinees completely so we do not fail
+                            // processing the complete pdb file.
+                            self.unit
+                                .handle_inlinee(site, parent_offset, inlinee, &self.program)
+                                .ok()
+                                .flatten()
+                        } else {
+                            None
+                        }
+                    }
+                    // We need to ignore errors here since the PDB crate does not yet implement all
+                    // symbol types. Instead of erroring too often, it's better to swallow these.
+                    _ => continue,
+                };
+
+                match function {
+                    Some(mut function) => {
+                        Unit::sanitize_lines(&mut function);
+                        // TODO: figure out what to do with functions that have no more lines
+                        // after sanitization
+                        if let Err(e) = self.push_function(self.depth, function) {
+                            self.yielding.clear();
+                            self.finished = true;
+                            self.stack = FunctionStack::new();
+                            return Some(Err(e.into()));
+                        }
+                    }
+                    None => self.skipped_depth = Some(self.depth),
+                }
+
+                continue;
+            }
+
+            // We have no functions buffered and no symbol prepared, so
+            // see if there are more in the unit.
+            match self.symbols.next() {
+                Ok(None) => {
+                    // There are no more symbols. Flush the stack a last time
+                    // and mark ourselves as finished.
+                    self.stack.flush(0, &mut self.yielding);
+                    self.finished = true;
+                    continue;
+                }
+                Err(e) => return Some(Err(e.into())),
+                Ok(Some(symbol)) => {
+                    if self.inc_next {
+                        self.depth += 1;
+                    }
+
+                    self.inc_next = symbol.starts_scope();
+                    if symbol.ends_scope() {
+                        self.depth -= 1;
+
+                        if self
+                            .proc_offsets
+                            .last()
+                            .is_some_and(|&(d, _)| d >= self.depth)
+                        {
+                            self.proc_offsets.pop();
+                        }
+                    }
+
+                    // If we're navigating within a skipped function (see below), we can ignore this
+                    // entry completely. Otherwise, we've moved out of any skipped function and can
+                    // reset the stored depth.
+                    match self.skipped_depth {
+                        Some(skipped) if self.depth > skipped => continue,
+                        _ => self.skipped_depth = None,
+                    }
+
+                    // Flush all functions out that exceed the current iteration depth. Since we
+                    // encountered a symbol at this level, there will be no more inlinees to the
+                    // previous function at the same level or any of it's children.
+                    if symbol.ends_scope() {
+                        self.stack.flush(self.depth, &mut self.yielding);
+                    }
+
+                    self.symbol = Some(symbol);
+                }
+            }
+        }
     }
 }
 
@@ -1153,7 +1276,7 @@ impl<'s> Iterator for PdbFileIterator<'s> {
 /// An iterator over functions in a PDB file.
 pub struct PdbFunctionIterator<'s> {
     units: PdbUnitIterator<'s>,
-    functions: std::vec::IntoIter<Function<'s>>,
+    functions: Option<Box<PdbUnitFunctionIterator<'s>>>,
     finished: bool,
 }
 
@@ -1166,8 +1289,8 @@ impl<'s> Iterator for PdbFunctionIterator<'s> {
         }
 
         loop {
-            if let Some(func) = self.functions.next() {
-                return Some(Ok(func));
+            if let Some(func) = self.functions.as_mut().and_then(|iter| iter.next()) {
+                return Some(func);
             }
 
             let unit = match self.units.next() {
@@ -1177,7 +1300,7 @@ impl<'s> Iterator for PdbFunctionIterator<'s> {
             };
 
             self.functions = match unit.functions() {
-                Ok(functions) => functions.into_iter(),
+                Ok(functions) => Some(Box::new(functions)),
                 Err(error) => return Some(Err(error)),
             };
         }
