@@ -11,7 +11,7 @@ use symbolic_common::DebugId;
 /// The current [`Header::variable_header`] version.
 ///
 /// On a version mismatch, the sections referenced in the [`VariableHeader`] must not be parsed.
-pub const VARIABLE_HEADER_VERSION: u16 = 3;
+pub const VARIABLE_HEADER_VERSION: u16 = 4;
 
 /// This [`FunctionVariables`] is a sentinel for functions without variables.
 pub const NO_VARIABLES: FunctionVariables = FunctionVariables {
@@ -198,12 +198,21 @@ pub struct Variable {
 #[repr(C)]
 pub struct RegisterLocation {
     pub id: u16,
-    pub _reserved: [u8; 2],
+    pub _reserved: [u8; 6],
 }
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 #[repr(C)]
 pub struct FrameOffsetLocation {
+    pub offset: i32,
+    pub _reserved: [u8; 4],
+}
+
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct RegisterOffsetLocation {
+    pub id: u16,
+    pub _reserved: [u8; 2],
     pub offset: i32,
 }
 
@@ -213,6 +222,7 @@ pub mod location {
     crate::utils::tagged_union! {
         register: RegisterLocation,
         frame_offset: FrameOffsetLocation,
+        register_offset: RegisterOffsetLocation,
     }
 }
 
@@ -401,6 +411,7 @@ unsafe impl Pod for Range {}
 unsafe impl Pod for Variable {}
 unsafe impl Pod for RegisterLocation {}
 unsafe impl Pod for FrameOffsetLocation {}
+unsafe impl Pod for RegisterOffsetLocation {}
 unsafe impl Pod for VariableLocationInfo {}
 unsafe impl Pod for Type {}
 unsafe impl Pod for PrimitiveType {}
@@ -442,7 +453,7 @@ mod tests {
         assert_eq!(mem::size_of::<Variable>(), 20);
         assert_eq!(mem::align_of::<Variable>(), 4);
 
-        assert_eq!(mem::size_of::<VariableLocationInfo>(), 16);
+        assert_eq!(mem::size_of::<VariableLocationInfo>(), 20);
         assert_eq!(mem::align_of::<VariableLocationInfo>(), 4);
 
         assert_eq!(mem::size_of::<Type>(), 20);
