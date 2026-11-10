@@ -1160,10 +1160,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             .map(|range| {
                 let address = offset(range.begin, self.inner.info.address_offset);
                 let size = range.end - range.begin;
-                let mut builder =
-                    FunctionBuilder::new(name.clone(), self.compilation_dir(), address, size);
-                builder.set_frame_base(frame_base);
-                (*range, builder)
+                (
+                    *range,
+                    FunctionBuilder::new(name.clone(), self.compilation_dir(), address, size)
+                        .with_frame_base(frame_base),
+                )
             })
             .collect();
 

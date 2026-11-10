@@ -83,8 +83,9 @@ impl<'s> FunctionBuilder<'s> {
     }
 
     /// Set the frame base of the function and its inlinees.
-    pub fn set_frame_base(&mut self, frame_base: Option<FrameBase>) {
+    pub fn with_frame_base(mut self, frame_base: Option<FrameBase>) -> Self {
         self.frame_base = frame_base;
+        self
     }
 
     /// Add an inlinee record. This method can be called in any order.
