@@ -4,7 +4,7 @@
 
 **Breaking Changes**
 
-- Add `frame_base` to `Function`, parsed from DWARF `DW_AT_frame_base`. ([#1151](https://github.com/getsentry/symbolic/pull/1151))
+- Add `frame_base` to `Function`, parsed from DWARF `DW_AT_frame_base`. ([#1152](https://github.com/getsentry/symbolic/pull/1152))
 
 **Features**
 
