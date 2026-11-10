@@ -882,6 +882,7 @@ impl<'s> Unit<'s> {
             inlinees: Vec::new(),
             variables: Vec::new(),
             inline: false,
+            frame_base: None,
         }))
     }
 
@@ -950,6 +951,7 @@ impl<'s> Unit<'s> {
             inlinees: Vec::new(),
             variables: Vec::new(),
             inline: true,
+            frame_base: None,
         }))
     }
 

@@ -232,6 +232,7 @@ fn test_lookup_gap_inlinee() -> Result<(), Error> {
                 inlinees: vec![],
                 inline: true,
                 variables: vec![],
+                frame_base: None,
             },
             Function {
                 address: 0x1000,
@@ -255,10 +256,12 @@ fn test_lookup_gap_inlinee() -> Result<(), Error> {
                 inlinees: vec![],
                 inline: true,
                 variables: vec![],
+                frame_base: None,
             },
         ],
         inline: false,
         variables: vec![],
+        frame_base: None,
     });
     converter.serialize(&mut buffer)?;
     let symcache = SymCache::parse(&buffer)?;

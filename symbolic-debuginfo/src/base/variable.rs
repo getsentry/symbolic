@@ -216,9 +216,21 @@ pub enum VariableLocation {
         /// The register.
         register: Register,
     },
-    /// The variable can be found at an offset relative to the function's frame base.
+    /// The variable can be found at an offset relative to the function's [frame base](FrameBase).
     FrameOffset {
         /// The signed offset from the frame base.
         offset: i64,
     },
+}
+
+/// The base address for [`VariableLocation::FrameOffset`] locations of a function.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrameBase {
+    /// The frame base is the value of a register.
+    Register {
+        /// The register.
+        register: Register,
+    },
+    /// The frame base is the canonical frame address (CFA) from the call frame information.
+    Cfa,
 }

@@ -118,6 +118,7 @@ expression: r
                     ],
                 },
             ],
+            frame_base: None,
         },
     ),
     Ok(
@@ -144,6 +145,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -179,6 +181,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -214,6 +217,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -249,6 +253,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -275,6 +280,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -301,6 +307,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -317,6 +324,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -333,6 +341,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -349,6 +358,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -365,6 +375,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -381,6 +392,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -397,6 +409,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -413,6 +426,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -429,6 +443,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -445,6 +460,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -461,6 +477,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -477,6 +494,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -493,6 +511,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -509,6 +528,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -525,6 +545,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -541,6 +562,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -557,6 +579,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -573,6 +596,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -617,6 +641,7 @@ expression: r
                     ],
                 },
             ],
+            frame_base: None,
         },
     ),
     Ok(
@@ -633,6 +658,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -649,6 +675,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -665,6 +692,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -681,6 +709,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -697,6 +726,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -741,6 +771,7 @@ expression: r
                     ],
                 },
             ],
+            frame_base: None,
         },
     ),
     Ok(
@@ -757,6 +788,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -773,6 +805,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -789,6 +822,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -815,6 +849,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -841,6 +876,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -857,6 +893,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -873,6 +910,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -889,6 +927,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -905,6 +944,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -921,6 +961,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -937,6 +978,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -953,6 +995,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -988,6 +1031,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -1023,6 +1067,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
     Ok(
@@ -1463,6 +1508,7 @@ expression: r
             inlinees: [],
             inline: false,
             variables: [],
+            frame_base: None,
         },
     ),
 ]

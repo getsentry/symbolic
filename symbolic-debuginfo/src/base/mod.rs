@@ -740,6 +740,10 @@ pub struct Function<'data> {
     pub inline: bool,
     /// List of local variables and parameters of this function.
     pub variables: Vec<variable::Variable<'data>>,
+    /// The frame base of this function, if known and supported.
+    ///
+    /// Inlined functions use the frame base of the function they are inlined into.
+    pub frame_base: Option<variable::FrameBase>,
 }
 
 // We need a custom drop implementation to avoid recursing down the inlinees.
@@ -769,6 +773,7 @@ impl fmt::Debug for Function<'_> {
             .field("inlinees", &self.inlinees)
             .field("inline", &self.inline)
             .field("variables", &self.variables)
+            .field("frame_base", &self.frame_base)
             .finish()
     }
 }

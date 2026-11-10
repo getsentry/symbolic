@@ -1151,6 +1151,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             })
             .unwrap_or_else(|| Name::new("", NameMangling::Unmangled, language));
 
+        let frame_base = self.parse_frame_base(&entry);
+
         // Create one function per range. In the common case there is only one range, so
         // we usually only have one function builder here.
         let builders = ranges
@@ -1158,10 +1160,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             .map(|range| {
                 let address = offset(range.begin, self.inner.info.address_offset);
                 let size = range.end - range.begin;
-                (
-                    *range,
-                    FunctionBuilder::new(name.clone(), self.compilation_dir(), address, size),
-                )
+                let mut builder =
+                    FunctionBuilder::new(name.clone(), self.compilation_dir(), address, size);
+                builder.set_frame_base(frame_base);
+                (*range, builder)
             })
             .collect();
 
@@ -1468,6 +1470,24 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         let op = operations.next().ok()??;
         operations.next().ok()?.is_none().then_some(op)
+    }
+
+    /// Parses the `DW_AT_frame_base` of a subprogram.
+    ///
+    /// Only a register and the CFA are supported, as these are the forms compilers emit.
+    fn parse_frame_base(&self, entry: &Die<'d>) -> Option<FrameBase> {
+        let AttributeValue::Exprloc(expr) = entry.attr_value(constants::DW_AT_frame_base)? else {
+            return None;
+        };
+
+        match self.single_operation(expr)? {
+            Operation::Register { register } => {
+                Register::from_dwarf(self.inner.info.cpu_family, register.0)
+                    .map(|register| FrameBase::Register { register })
+            }
+            Operation::CallFrameCFA => Some(FrameBase::Cfa),
+            _ => None,
+        }
     }
 
     fn parse_location_expression(&self, expr: Expression<Slice<'d>>) -> Option<VariableLocation> {

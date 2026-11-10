@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**Breaking Changes**
+
+- Add `frame_base` to `Function`, parsed from DWARF `DW_AT_frame_base`. ([#1151](https://github.com/getsentry/symbolic/pull/1151))
+
 **Features**
 
 - Represent variable register locations as named registers instead of raw DWARF register numbers. ([#1117](https://github.com/getsentry/symbolic/pull/1117), [#1115](https://github.com/getsentry/symbolic/pull/1115))

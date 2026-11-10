@@ -3,13 +3,14 @@ use std::ffi::CString;
 use std::fmt;
 use std::io::BufWriter;
 
+use symbolic_common::register::{Amd64Register, Register};
 use symbolic_common::{ByteView, Language};
 use symbolic_debuginfo::ObjectDebugSession;
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
 use symbolic_debuginfo::{
-    FileEntry, Function, LineInfo, MemberOffset, Object, ObjectKind, ParseObjectOptions, SymbolMap,
-    Type, TypeRef, TypeSize, VariableLocation, pe::PeObject,
+    FileEntry, FrameBase, Function, LineInfo, MemberOffset, Object, ObjectKind, ParseObjectOptions,
+    SymbolMap, Type, TypeRef, TypeSize, VariableLocation, pe::PeObject,
 };
 use symbolic_testutils::fixture;
 
@@ -655,6 +656,30 @@ fn test_elf_variables_opt() -> Result<(), Error> {
         "elf_variables_opt",
         FunctionsDebug::new(&session, &functions)
     );
+
+    Ok(())
+}
+
+#[test]
+fn test_frame_base() -> Result<(), Error> {
+    let rsp = FrameBase::Register {
+        register: Register::Amd64(Amd64Register::Rsp),
+    };
+    // GCC uses the CFA, clang uses a register.
+    for (path, expected) in [
+        ("linux/variables/variables", FrameBase::Cfa),
+        ("macos/crash.dSYM/Contents/Resources/DWARF/crash", rsp),
+    ] {
+        let view = ByteView::open(fixture(path))?;
+        let session = Object::parse(&view)?.debug_session()?;
+        for function in session.functions() {
+            let function = function?;
+            assert_eq!(function.frame_base, Some(expected));
+            for inlinee in &function.inlinees {
+                assert_eq!(inlinee.frame_base, Some(expected));
+            }
+        }
+    }
 
     Ok(())
 }

@@ -4,7 +4,7 @@
 use std::{cmp::Reverse, collections::BinaryHeap, fmt};
 
 use crate::{
-    Variable,
+    FrameBase, Variable,
     base::{FileInfo, Function, LineInfo},
 };
 use symbolic_common::Name;
@@ -63,6 +63,8 @@ pub struct FunctionBuilder<'s> {
     lines: Vec<LineInfo<'s>>,
     /// All variables found inside the function.
     variables: Vec<Variable<'s>>,
+    /// The frame base of the outer function, shared by all inlinees.
+    frame_base: Option<FrameBase>,
 }
 
 impl<'s> FunctionBuilder<'s> {
@@ -76,7 +78,13 @@ impl<'s> FunctionBuilder<'s> {
             inlinees: BinaryHeap::new(),
             lines: Vec::new(),
             variables: Vec::new(),
+            frame_base: None,
         }
+    }
+
+    /// Set the frame base of the function and its inlinees.
+    pub fn set_frame_base(&mut self, frame_base: Option<FrameBase>) {
+        self.frame_base = frame_base;
     }
 
     /// Add an inlinee record. This method can be called in any order.
@@ -135,6 +143,7 @@ impl<'s> FunctionBuilder<'s> {
             size,
             inlinees,
             variables,
+            frame_base,
             mut lines,
         } = self;
 
@@ -151,6 +160,7 @@ impl<'s> FunctionBuilder<'s> {
             lines: Vec::new(),
             inlinees: Vec::new(),
             variables,
+            frame_base,
             inline: false,
         };
         let outer_function_end = address.saturating_add(size);
@@ -193,6 +203,7 @@ impl<'s> FunctionBuilder<'s> {
                     lines: Vec::new(),
                     inlinees: Vec::new(),
                     variables: inlinee.variables,
+                    frame_base,
                     inline: true,
                 });
                 next_inlinee = inlinee_iter.next();
@@ -636,6 +647,7 @@ mod tests {
                     ],
                 },
             ],
+            frame_base: None,
         }
         "#);
     }
@@ -757,10 +769,12 @@ mod tests {
                             ],
                         },
                     ],
+                    frame_base: None,
                 },
             ],
             inline: false,
             variables: [],
+            frame_base: None,
         }
         "#);
     }
