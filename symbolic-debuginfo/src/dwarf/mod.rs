@@ -1475,7 +1475,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
     /// Parses the `DW_AT_frame_base` of a subprogram.
     ///
-    /// Only a register and the CFA are supported, as these are the forms compilers emit.
+    /// Only a register and the CFA are supported, as these are what most compilers emit.
     fn parse_frame_base(&self, entry: &Die<'d>) -> Option<FrameBase> {
         let AttributeValue::Exprloc(expr) = entry.attr_value(constants::DW_AT_frame_base)? else {
             return None;

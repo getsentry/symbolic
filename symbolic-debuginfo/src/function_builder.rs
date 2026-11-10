@@ -551,7 +551,8 @@ mod tests {
 
     #[test]
     fn test_inlinee_nesting_bounds_preserve_outer_function() {
-        let mut builder = FunctionBuilder::new(Name::from("outer"), b"/src", 0x10, 0x30);
+        let mut builder = FunctionBuilder::new(Name::from("outer"), b"/src", 0x10, 0x30)
+            .with_frame_base(Some(FrameBase::Cfa));
         builder.add_variable(Variable {
             name: "value".into(),
             ty: None,
@@ -648,7 +649,9 @@ mod tests {
                     ],
                 },
             ],
-            frame_base: None,
+            frame_base: Some(
+                Cfa,
+            ),
         }
         "#);
     }
