@@ -708,7 +708,8 @@ mod tests {
             }],
         };
 
-        let mut builder = FunctionBuilder::new(Name::from("outer"), &[], 0x10, 0x40);
+        let mut builder = FunctionBuilder::new(Name::from("outer"), &[], 0x10, 0x40)
+            .with_frame_base(Some(FrameBase::Cfa));
         builder.add_inlinee(FunctionBuilderInlinee {
             depth: 0,
             address: 0x20,
@@ -773,12 +774,16 @@ mod tests {
                             ],
                         },
                     ],
-                    frame_base: None,
+                    frame_base: Some(
+                        Cfa,
+                    ),
                 },
             ],
             inline: false,
             variables: [],
-            frame_base: None,
+            frame_base: Some(
+                Cfa,
+            ),
         }
         "#);
     }

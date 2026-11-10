@@ -11,15 +11,12 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x1eda: main.cpp:19 (../linux)
   0x1ee0: main.cpp:10 (../linux)
   0x1ef7: main.cpp:19 (../linux)
-  frame base: Cfa
 
   > 0x1ec7: printf (0x13)
     0x1ec7: stdio2.h:104 (/usr/include/x86_64-linux-gnu/bits)
-    frame base: Cfa
 
   > 0x1ee0: printf (0x17)
     0x1ee0: stdio2.h:104 (/usr/include/x86_64-linux-gnu/bits)
-    frame base: Cfa
 
 > 0x1f00: _ZN15google_breakpad18MinidumpDescriptorD1Ev (0x32)
   0x1f00: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
@@ -29,74 +26,57 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x1f23: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
   0x1f24: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
   0x1f30: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-  frame base: Cfa
 
   > 0x1f08: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev (0x12)
     0x1f08: basic_string.h:543 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x1f08: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv (0x12)
       0x1f08: basic_string.h:179 (/usr/include/c++/5/bits)
       0x1f0c: basic_string.h:179 (/usr/include/c++/5/bits)
       0x1f11: basic_string.h:180 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x1f08: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv (0x4)
         0x1f08: basic_string.h:170 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x1f08: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv (0x4)
           0x1f08: basic_string.h:151 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
       > 0x1f11: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm (0x9)
         0x1f11: basic_string.h:185 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x1f11: _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm (0x9)
           0x1f11: alloc_traits.h:517 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
           > 0x1f11: _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm (0x9)
             0x1f11: new_allocator.h:110 (/usr/include/c++/5/ext)
-            frame base: Cfa
 
   > 0x1f1a: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev (0x9)
     0x1f1a: basic_string.h:543 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x1f1a: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv (0x9)
       0x1f1a: basic_string.h:179 (/usr/include/c++/5/bits)
       0x1f1e: basic_string.h:179 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x1f1a: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv (0x4)
         0x1f1a: basic_string.h:170 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x1f1a: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv (0x4)
           0x1f1a: basic_string.h:151 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
   > 0x1f24: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev (0xc)
     0x1f24: basic_string.h:543 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x1f24: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv (0xc)
       0x1f24: basic_string.h:180 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x1f24: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm (0xc)
         0x1f24: basic_string.h:185 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x1f24: _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm (0xc)
           0x1f24: alloc_traits.h:517 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
           > 0x1f24: _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm (0xc)
             0x1f24: new_allocator.h:110 (/usr/include/c++/5/ext)
-            frame base: Cfa
 
 > 0x1c70: main (0x14c)
   0x1c70: main.cpp:32 (../linux)
@@ -121,8 +101,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x1d82: main.cpp:33 (../linux)
   0x1d8a: main.cpp:37 (../linux)
   0x1dac: main.cpp:33 (../linux)
-  frame base: Cfa
-  variables:
+  variables (frame base: CFA):
     argc (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
@@ -144,163 +123,125 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
 
   > 0x1c89: _ZN15google_breakpad18MinidumpDescriptorC4ERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE (0x7)
     0x1c89: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa
 
     > 0x1c89: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4ERKS4_ (0x7)
       0x1c89: basic_string.h:399 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x1c89: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_ (0x7)
         0x1c89: basic_string.h:109 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
   > 0x1c97: _ZN15google_breakpad18MinidumpDescriptorC4ERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE (0x14)
     0x1c97: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa
 
   > 0x1cba: _ZN15google_breakpad18MinidumpDescriptorC4ERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE (0x4)
     0x1cba: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa
 
     > 0x1cba: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4ERKS4_ (0x4)
       0x1cba: basic_string.h:399 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x1cba: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_ (0x4)
         0x1cba: basic_string.h:109 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
   > 0x1cc3: _ZN15google_breakpad18MinidumpDescriptorC4ERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE (0x3d)
     0x1cc3: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
     0x1cdc: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
     0x1ce0: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
     0x1ce7: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa
 
     > 0x1cc3: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4ERKS4_ (0x19)
       0x1cc3: basic_string.h:400 (/usr/include/c++/5/bits)
       0x1cd5: basic_string.h:399 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x1cc3: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_M_constructIPcEEvT_S7_ (0x12)
         0x1cc3: basic_string.h:214 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x1cc3: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE16_M_construct_auxIPcEEvT_S7_St12__false_type (0x12)
           0x1cc3: basic_string.h:195 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
           > 0x1cc3: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_M_constructIPKcEEvT_S8_St20forward_iterator_tag (0x12)
             0x1cc3: basic_string.tcc:229 (/usr/include/c++/5/bits)
             0x1cca: basic_string.tcc:236 (/usr/include/c++/5/bits)
-            frame base: Cfa
 
             > 0x1cc3: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_S_copy_charsEPcPKcS7_ (0x7)
               0x1cc3: basic_string.h:346 (/usr/include/c++/5/bits)
-              frame base: Cfa
 
               > 0x1cc3: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_S_copyEPcPKcm (0x7)
                 0x1cc3: basic_string.h:297 (/usr/include/c++/5/bits)
-                frame base: Cfa
 
                 > 0x1cc3: _ZNSt11char_traitsIcE6assignERcRKc (0x7)
                   0x1cc3: char_traits.h:243 (/usr/include/c++/5/bits)
-                  frame base: Cfa
 
             > 0x1cca: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm (0xb)
               0x1cca: basic_string.h:164 (/usr/include/c++/5/bits)
-              frame base: Cfa
 
               > 0x1cca: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm (0xb)
                 0x1cca: basic_string.h:131 (/usr/include/c++/5/bits)
-                frame base: Cfa
 
       > 0x1cd5: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_ (0x7)
         0x1cd5: basic_string.h:109 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
     > 0x1cdc: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4Ev (0x4)
       0x1cdc: basic_string.h:383 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x1cdc: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_ (0x4)
         0x1cdc: basic_string.h:109 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
     > 0x1ce0: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4ERKS4_ (0x7)
       0x1ce0: basic_string.h:400 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x1ce0: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_M_constructIPcEEvT_S7_ (0x7)
         0x1ce0: basic_string.h:214 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x1ce0: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE16_M_construct_auxIPcEEvT_S7_St12__false_type (0x7)
           0x1ce0: basic_string.h:195 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
           > 0x1ce0: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_M_constructIPKcEEvT_S8_St20forward_iterator_tag (0x7)
             0x1ce0: basic_string.tcc:236 (/usr/include/c++/5/bits)
-            frame base: Cfa
 
             > 0x1ce0: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm (0x7)
               0x1ce0: basic_string.h:165 (/usr/include/c++/5/bits)
-              frame base: Cfa
 
               > 0x1ce0: _ZNSt11char_traitsIcE6assignERcRKc (0x7)
                 0x1ce0: char_traits.h:243 (/usr/include/c++/5/bits)
-                frame base: Cfa
 
     > 0x1ce7: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4Ev (0x19)
       0x1ce7: basic_string.h:384 (/usr/include/c++/5/bits)
       0x1cf9: basic_string.h:383 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x1ce7: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm (0x12)
         0x1ce7: basic_string.h:164 (/usr/include/c++/5/bits)
         0x1cf2: basic_string.h:165 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x1ce7: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm (0xb)
           0x1ce7: basic_string.h:131 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
         > 0x1cf2: _ZNSt11char_traitsIcE6assignERcRKc (0x7)
           0x1cf2: char_traits.h:243 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
       > 0x1cf9: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_ (0x7)
         0x1cf9: basic_string.h:109 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
   > 0x1d07: _ZN15google_breakpad18MinidumpDescriptorC4ERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE (0x21)
     0x1d07: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa
 
   > 0x1d2b: _ZN15google_breakpad18MinidumpDescriptorC4ERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE (0x24)
     0x1d2b: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
     0x1d39: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa
 
     > 0x1d39: _ZN15google_breakpad18MicrodumpExtraInfoC4Ev (0x16)
       0x1d39: microdump_extra_info.h:47 (../deps/breakpad/src/client/linux/handler)
-      frame base: Cfa
 
   > 0x1d52: _ZN15google_breakpad18MinidumpDescriptorC4ERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE (0x16)
     0x1d52: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa
 
     > 0x1d52: _ZN15google_breakpad18MicrodumpExtraInfoC4Ev (0x16)
       0x1d52: microdump_extra_info.h:47 (../deps/breakpad/src/client/linux/handler)
-      frame base: Cfa
 
   > 0x1d72: start (0xb)
     0x1d72: main.cpp:27 (../linux)
-    frame base: Cfa
 
     > 0x1d72: crash (0xb)
       0x1d72: main.cpp:23 (../linux)
-      frame base: Cfa
 
 > 0x1f40: _ZN15google_breakpad16ExceptionHandler21InstallHandlersLockedEv (0x122)
   0x1f40: exception_handler.cc:275 (../deps/breakpad/src/client/linux/handler)
@@ -322,15 +263,12 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x2025: exception_handler.cc:302 (../deps/breakpad/src/client/linux/handler)
   0x2038: exception_handler.cc:277 (../deps/breakpad/src/client/linux/handler)
   0x203a: exception_handler.cc:304 (../deps/breakpad/src/client/linux/handler)
-  frame base: Cfa
 
   > 0x1fae: memset (0xd)
     0x1fae: string3.h:90 (/usr/include/x86_64-linux-gnu/bits)
-    frame base: Cfa
 
   > 0x1fce: memset (0x3)
     0x1fce: string3.h:90 (/usr/include/x86_64-linux-gnu/bits)
-    frame base: Cfa
 
 > 0x2070: _ZN15google_breakpad16ExceptionHandler21RestoreHandlersLockedEv (0x7c)
   0x2070: exception_handler.cc:310 (../deps/breakpad/src/client/linux/handler)
@@ -340,11 +278,9 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x20c6: exception_handler.cc:318 (../deps/breakpad/src/client/linux/handler)
   0x20cd: exception_handler.cc:319 (../deps/breakpad/src/client/linux/handler)
   0x20e0: exception_handler.cc:315 (../deps/breakpad/src/client/linux/handler)
-  frame base: Cfa
 
   > 0x20e0: InstallDefaultHandler (0xc)
     0x20e0: exception_handler.cc:199 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa
 
 > 0x20f0: _ZN15google_breakpad16ExceptionHandlerD1Ev (0x341)
   0x20f0: exception_handler.cc:259 (../deps/breakpad/src/client/linux/handler)
@@ -386,31 +322,24 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x23ed: exception_handler.cc:262 (../deps/breakpad/src/client/linux/handler)
   0x2408: exception_handler.cc:267 (../deps/breakpad/src/client/linux/handler)
   0x242c: exception_handler.cc:271 (../deps/breakpad/src/client/linux/handler)
-  frame base: Cfa
 
   > 0x211e: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE3endEv (0x4)
     0x211e: stl_vector.h:566 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x211e: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEC4ERKS4_ (0x4)
       0x211e: stl_iterator.h:741 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
   > 0x2122: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE5beginEv (0x4)
     0x2122: stl_vector.h:548 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x2122: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEC4ERKS4_ (0x4)
       0x2122: stl_iterator.h:741 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
   > 0x2126: _ZSt4findIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEES4_ET_SA_SA_RKT0_ (0xaa)
     0x2126: stl_algo.h:3791 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x2126: _ZSt9__find_ifIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEENS0_5__ops16_Iter_equals_valIKS4_EEET_SE_SE_T0_ (0xaa)
       0x2126: stl_algo.h:162 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x2126: _ZSt9__find_ifIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEENS0_5__ops16_Iter_equals_valIKS4_EEET_SE_SE_T0_St26random_access_iterator_tag (0xaa)
         0x2126: stl_algo.h:116 (/usr/include/c++/5/bits)
@@ -427,83 +356,64 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         0x2192: stl_algo.h:132 (/usr/include/c++/5/bits)
         0x21a3: stl_algo.h:118 (/usr/include/c++/5/bits)
         0x21b2: stl_algo.h:137 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x2126: _ZN9__gnu_cxxmiIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEENS_17__normal_iteratorIT_T0_E15difference_typeERKSB_SE_ (0x9)
           0x2126: stl_iterator.h:926 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
         > 0x2133: _ZN9__gnu_cxxmiIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEENS_17__normal_iteratorIT_T0_E15difference_typeERKSB_SE_ (0x4)
           0x2133: stl_iterator.h:926 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
   > 0x21d0: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE3endEv (0x8)
     0x21d0: stl_vector.h:566 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x21d0: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEC4ERKS4_ (0x8)
       0x21d0: stl_iterator.h:741 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
   > 0x21d8: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE5eraseEN9__gnu_cxx17__normal_iteratorIPKS2_S4_EE (0x23)
     0x21d8: stl_vector.h:1147 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x21d8: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE8_M_eraseEN9__gnu_cxx17__normal_iteratorIPS2_S4_EE (0x23)
       0x21d8: vector.tcc:144 (/usr/include/c++/5/bits)
       0x21dc: vector.tcc:144 (/usr/include/c++/5/bits)
       0x21e1: vector.tcc:145 (/usr/include/c++/5/bits)
       0x21f7: vector.tcc:146 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x21d8: _ZNK9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEplEl (0x4)
         0x21d8: stl_iterator.h:794 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
       > 0x21e1: _ZSt4moveIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEES9_ET0_T_SB_SA_ (0x16)
         0x21e1: stl_algobase.h:504 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x21e1: _ZSt14__copy_move_a2ILb1EN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEES9_ET1_T0_SB_SA_ (0x16)
           0x21e1: stl_algobase.h:438 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
           > 0x21e1: _ZSt13__copy_move_aILb1EPPN15google_breakpad16ExceptionHandlerES3_ET1_T0_S5_S4_ (0x16)
             0x21e1: stl_algobase.h:402 (/usr/include/c++/5/bits)
-            frame base: Cfa
 
             > 0x21e1: _ZNSt11__copy_moveILb1ELb1ESt26random_access_iterator_tagE8__copy_mIPN15google_breakpad16ExceptionHandlerEEEPT_PKS6_S9_S7_ (0x16)
               0x21e1: stl_algobase.h:382 (/usr/include/c++/5/bits)
               0x21e7: stl_algobase.h:383 (/usr/include/c++/5/bits)
-              frame base: Cfa
 
   > 0x21fe: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE5eraseEN9__gnu_cxx17__normal_iteratorIPKS2_S4_EE (0x4)
     0x21fe: stl_vector.h:1147 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x21fe: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE8_M_eraseEN9__gnu_cxx17__normal_iteratorIPS2_S4_EE (0x4)
       0x21fe: vector.tcc:146 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
   > 0x220f: _ZNSt7__cxx114listIN15google_breakpad9AppMemoryESaIS2_EED4Ev (0x7)
     0x220f: stl_list.h:507 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x220f: _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EED4Ev (0x7)
       0x220f: stl_list.h:446 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x220f: _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE8_M_clearEv (0x7)
         0x220f: list.tcc:70 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
   > 0x221b: _ZNSt7__cxx114listIN15google_breakpad9AppMemoryESaIS2_EED4Ev (0x25)
     0x221b: stl_list.h:507 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x221b: _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EED4Ev (0x25)
       0x221b: stl_list.h:446 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x221b: _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE8_M_clearEv (0x25)
         0x221b: list.tcc:69 (/usr/include/c++/5/bits)
@@ -511,23 +421,18 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         0x2230: list.tcc:73 (/usr/include/c++/5/bits)
         0x2233: list.tcc:79 (/usr/include/c++/5/bits)
         0x2238: list.tcc:70 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x2233: _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE11_M_put_nodeEPSt10_List_nodeIS2_E (0x5)
           0x2233: stl_list.h:396 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
           > 0x2233: _ZN9__gnu_cxx13new_allocatorISt10_List_nodeIN15google_breakpad9AppMemoryEEE10deallocateEPS4_m (0x5)
             0x2233: new_allocator.h:110 (/usr/include/c++/5/ext)
-            frame base: Cfa
 
   > 0x2240: _ZNSt7__cxx114listIN15google_breakpad12MappingEntryESaIS2_EED4Ev (0x2c)
     0x2240: stl_list.h:507 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x2240: _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EED4Ev (0x2c)
       0x2240: stl_list.h:446 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x2240: _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE8_M_clearEv (0x2c)
         0x2240: list.tcc:69 (/usr/include/c++/5/bits)
@@ -535,142 +440,109 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         0x2258: list.tcc:73 (/usr/include/c++/5/bits)
         0x225b: list.tcc:79 (/usr/include/c++/5/bits)
         0x2260: list.tcc:70 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x225b: _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE11_M_put_nodeEPSt10_List_nodeIS2_E (0x5)
           0x225b: stl_list.h:396 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
           > 0x225b: _ZN9__gnu_cxx13new_allocatorISt10_List_nodeIN15google_breakpad12MappingEntryEEE10deallocateEPS4_m (0x5)
             0x225b: new_allocator.h:110 (/usr/include/c++/5/ext)
-            frame base: Cfa
 
   > 0x226c: _ZN15google_breakpad18MinidumpDescriptorD4Ev (0x20)
     0x226c: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
     0x227e: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa
 
     > 0x226c: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev (0x12)
       0x226c: basic_string.h:543 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x226c: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv (0x12)
         0x226c: basic_string.h:179 (/usr/include/c++/5/bits)
         0x2270: basic_string.h:179 (/usr/include/c++/5/bits)
         0x2275: basic_string.h:180 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x226c: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv (0x4)
           0x226c: basic_string.h:170 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
           > 0x226c: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv (0x4)
             0x226c: basic_string.h:151 (/usr/include/c++/5/bits)
-            frame base: Cfa
 
         > 0x2275: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm (0x9)
           0x2275: basic_string.h:185 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
           > 0x2275: _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm (0x9)
             0x2275: alloc_traits.h:517 (/usr/include/c++/5/bits)
-            frame base: Cfa
 
             > 0x2275: _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm (0x9)
               0x2275: new_allocator.h:110 (/usr/include/c++/5/ext)
-              frame base: Cfa
 
     > 0x227e: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev (0xe)
       0x227e: basic_string.h:543 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x227e: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv (0xe)
         0x227e: basic_string.h:179 (/usr/include/c++/5/bits)
         0x2282: basic_string.h:179 (/usr/include/c++/5/bits)
         0x2287: basic_string.h:180 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x227e: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv (0x4)
           0x227e: basic_string.h:170 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
           > 0x227e: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv (0x4)
             0x227e: basic_string.h:151 (/usr/include/c++/5/bits)
-            frame base: Cfa
 
         > 0x2287: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm (0x5)
           0x2287: basic_string.h:185 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
           > 0x2287: _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm (0x5)
             0x2287: alloc_traits.h:517 (/usr/include/c++/5/bits)
-            frame base: Cfa
 
             > 0x2287: _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm (0x5)
               0x2287: new_allocator.h:110 (/usr/include/c++/5/ext)
-              frame base: Cfa
 
   > 0x228c: _ZN15google_breakpad10scoped_ptrINS_21CrashGenerationClientEED4Ev (0xf)
     0x228c: scoped_ptr.h:98 (../deps/breakpad/src/common)
-    frame base: Cfa
 
   > 0x22c0: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE5eraseEN9__gnu_cxx17__normal_iteratorIPKS2_S4_EE (0x14)
     0x22c0: stl_vector.h:1147 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x22c0: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE8_M_eraseEN9__gnu_cxx17__normal_iteratorIPS2_S4_EE (0x14)
       0x22c0: vector.tcc:145 (/usr/include/c++/5/bits)
       0x22d0: vector.tcc:146 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x22c0: _ZSt4moveIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEES9_ET0_T_SB_SA_ (0x10)
         0x22c0: stl_algobase.h:504 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x22c0: _ZSt14__copy_move_a2ILb1EN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEES9_ET1_T0_SB_SA_ (0x10)
           0x22c0: stl_algobase.h:438 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
           > 0x22c0: _ZSt13__copy_move_aILb1EPPN15google_breakpad16ExceptionHandlerES3_ET1_T0_S5_S4_ (0x10)
             0x22c0: stl_algobase.h:402 (/usr/include/c++/5/bits)
-            frame base: Cfa
 
             > 0x22c0: _ZNSt11__copy_moveILb1ELb1ESt26random_access_iterator_tagE8__copy_mIPN15google_breakpad16ExceptionHandlerEEEPT_PKS6_S9_S7_ (0x10)
               0x22c0: stl_algobase.h:384 (/usr/include/c++/5/bits)
-              frame base: Cfa
 
   > 0x22d7: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE5eraseEN9__gnu_cxx17__normal_iteratorIPKS2_S4_EE (0x4)
     0x22d7: stl_vector.h:1147 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x22d7: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE8_M_eraseEN9__gnu_cxx17__normal_iteratorIPS2_S4_EE (0x4)
       0x22d7: vector.tcc:146 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
   > 0x22e1: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EED4Ev (0xa)
     0x22e1: stl_vector.h:425 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x22e1: _ZNSt12_Vector_baseIPN15google_breakpad16ExceptionHandlerESaIS2_EED4Ev (0xa)
       0x22e1: stl_vector.h:160 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x22e1: _ZNSt12_Vector_baseIPN15google_breakpad16ExceptionHandlerESaIS2_EE13_M_deallocateEPS2_m (0xa)
         0x22e1: stl_vector.h:177 (/usr/include/c++/5/bits)
         0x22e6: stl_vector.h:178 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x22e6: _ZNSt16allocator_traitsISaIPN15google_breakpad16ExceptionHandlerEEE10deallocateERS3_PS2_m (0x5)
           0x22e6: alloc_traits.h:517 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
           > 0x22e6: _ZN9__gnu_cxx13new_allocatorIPN15google_breakpad16ExceptionHandlerEE10deallocateEPS3_m (0x5)
             0x22e6: new_allocator.h:110 (/usr/include/c++/5/ext)
-            frame base: Cfa
 
   > 0x22f3: RestoreAlternateStackLocked (0x7)
     0x22f3: exception_handler.cc:160 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa
 
   > 0x2305: RestoreAlternateStackLocked (0x3d)
     0x2305: exception_handler.cc:160 (../deps/breakpad/src/client/linux/handler)
@@ -679,19 +551,15 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0x2329: exception_handler.cc:169 (../deps/breakpad/src/client/linux/handler)
     0x2336: exception_handler.cc:181 (../deps/breakpad/src/client/linux/handler)
     0x233b: exception_handler.cc:182 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa
 
     > 0x2307: sys_sigaltstack (0x1d)
       0x2307: linux_syscall_support.h:3533 (../deps/third_party/lss)
-      frame base: Cfa
 
   > 0x2350: _ZSt4findIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEES4_ET_SA_SA_RKT0_ (0x4f)
     0x2350: stl_algo.h:3791 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x2350: _ZSt9__find_ifIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEENS0_5__ops16_Iter_equals_valIKS4_EEET_SE_SE_T0_ (0x4f)
       0x2350: stl_algo.h:162 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x2350: _ZSt9__find_ifIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEENS0_5__ops16_Iter_equals_valIKS4_EEET_SE_SE_T0_St26random_access_iterator_tag (0x4f)
         0x2350: stl_algo.h:122 (/usr/include/c++/5/bits)
@@ -702,27 +570,21 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         0x2386: stl_algo.h:144 (/usr/include/c++/5/bits)
         0x238f: stl_algo.h:146 (/usr/include/c++/5/bits)
         0x2393: stl_algo.h:148 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x2350: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv (0x10)
           0x2350: stl_iterator.h:763 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
         > 0x2360: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv (0x10)
           0x2360: stl_iterator.h:763 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
         > 0x2370: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv (0x9)
           0x2370: stl_iterator.h:763 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
         > 0x2382: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv (0x4)
           0x2382: stl_iterator.h:763 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
         > 0x238f: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv (0x4)
           0x238f: stl_iterator.h:763 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
   > 0x239f: RestoreAlternateStackLocked (0x3e)
     0x239f: exception_handler.cc:164 (../deps/breakpad/src/client/linux/handler)
@@ -730,75 +592,58 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0x23b2: exception_handler.cc:171 (../deps/breakpad/src/client/linux/handler)
     0x23b9: exception_handler.cc:170 (../deps/breakpad/src/client/linux/handler)
     0x23bb: exception_handler.cc:176 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa
 
     > 0x239f: sys_sigaltstack (0xb)
       0x239f: linux_syscall_support.h:3533 (../deps/third_party/lss)
-      frame base: Cfa
 
     > 0x23b2: sys_sigaltstack (0x7)
       0x23b2: linux_syscall_support.h:3533 (../deps/third_party/lss)
-      frame base: Cfa
 
     > 0x23bb: sys_sigaltstack (0x22)
       0x23bb: linux_syscall_support.h:3533 (../deps/third_party/lss)
-      frame base: Cfa
 
   > 0x23dd: _ZSt4findIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEES4_ET_SA_SA_RKT0_ (0x8)
     0x23dd: stl_algo.h:3791 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x23dd: _ZSt9__find_ifIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEENS0_5__ops16_Iter_equals_valIKS4_EEET_SE_SE_T0_ (0x8)
       0x23dd: stl_algo.h:162 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x23dd: _ZSt9__find_ifIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEENS0_5__ops16_Iter_equals_valIKS4_EEET_SE_SE_T0_St26random_access_iterator_tag (0x8)
         0x23dd: stl_algo.h:120 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
   > 0x23e5: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE5beginEv (0x8)
     0x23e5: stl_vector.h:548 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x23e5: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEC4ERKS4_ (0x8)
       0x23e5: stl_iterator.h:741 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
   > 0x23ed: _ZSt4findIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEES4_ET_SA_SA_RKT0_ (0x1b)
     0x23ed: stl_algo.h:3791 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
     > 0x23ed: _ZSt9__find_ifIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEENS0_5__ops16_Iter_equals_valIKS4_EEET_SE_SE_T0_ (0x1b)
       0x23ed: stl_algo.h:162 (/usr/include/c++/5/bits)
-      frame base: Cfa
 
       > 0x23ed: _ZSt9__find_ifIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEENS0_5__ops16_Iter_equals_valIKS4_EEET_SE_SE_T0_St26random_access_iterator_tag (0x1b)
         0x23ed: stl_algo.h:126 (/usr/include/c++/5/bits)
         0x23f6: stl_algo.h:122 (/usr/include/c++/5/bits)
         0x23ff: stl_algo.h:130 (/usr/include/c++/5/bits)
-        frame base: Cfa
 
         > 0x23ed: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv (0x9)
           0x23ed: stl_iterator.h:763 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
         > 0x23f6: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv (0x9)
           0x23f6: stl_iterator.h:763 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
         > 0x23ff: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv (0x9)
           0x23ff: stl_iterator.h:763 (/usr/include/c++/5/bits)
-          frame base: Cfa
 
   > 0x2408: RestoreAlternateStackLocked (0x24)
     0x2408: exception_handler.cc:176 (../deps/breakpad/src/client/linux/handler)
     0x241d: exception_handler.cc:175 (../deps/breakpad/src/client/linux/handler)
     0x2425: exception_handler.cc:176 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa
 
     > 0x2425: sys_sigaltstack (0x7)
       0x2425: linux_syscall_support.h:3533 (../deps/third_party/lss)
-      frame base: Cfa
 
 > 0x2440: _ZN15google_breakpad16ExceptionHandler25SendContinueSignalToChildEv (0xd1)
   0x2440: exception_handler.cc:571 (../deps/breakpad/src/client/linux/handler)
@@ -817,23 +662,18 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x24ec: exception_handler.cc:580 (../deps/breakpad/src/client/linux/handler)
   0x24f8: exception_handler.cc:582 (../deps/breakpad/src/client/linux/handler)
   0x2502: exception_handler.cc:580 (../deps/breakpad/src/client/linux/handler)
-  frame base: Cfa
 
   > 0x2454: sys_write (0xb)
     0x2454: linux_syscall_support.h:3553 (../deps/third_party/lss)
-    frame base: Cfa
 
   > 0x2468: sys_write (0x1d)
     0x2468: linux_syscall_support.h:3553 (../deps/third_party/lss)
-    frame base: Cfa
 
   > 0x24a0: sys_write (0x7)
     0x24a0: linux_syscall_support.h:3553 (../deps/third_party/lss)
-    frame base: Cfa
 
   > 0x24aa: sys_write (0x5)
     0x24aa: linux_syscall_support.h:3553 (../deps/third_party/lss)
-    frame base: Cfa
 
 > 0x2520: _ZN15google_breakpad16ExceptionHandler12GenerateDumpEPNS0_12CrashContextE (0x4c6)
   0x2520: exception_handler.cc:498 (../deps/breakpad/src/client/linux/handler)
@@ -900,8 +740,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x2996: exception_handler.cc:508 (../deps/breakpad/src/client/linux/handler)
   0x299d: exception_handler.cc:568 (../deps/breakpad/src/client/linux/handler)
   0x29a5: exception_handler.cc:505 (../deps/breakpad/src/client/linux/handler)
-  frame base: Cfa
-  variables:
+  variables (frame base: CFA):
     this (parameter)
       type:
         > Unknown
@@ -1117,28 +956,22 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
 
   > 0x2534: _ZNK15google_breakpad16ExceptionHandler14IsOutOfProcessEv (0x4)
     0x2534: exception_handler.h:205 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa
 
     > 0x2534: _ZNK15google_breakpad10scoped_ptrINS_21CrashGenerationClientEE3getEv (0x4)
       0x2534: scoped_ptr.h:122 (../deps/breakpad/src/common)
-      frame base: Cfa
 
   > 0x2584: _ZN15google_breakpad13PageAllocator5AllocEm (0xd)
     0x2584: memory_allocator.h:91 (../deps/breakpad/src/common)
-    frame base: Cfa
 
     > 0x2584: _ZN15google_breakpad13PageAllocator9GetNPagesEm (0xd)
       0x2584: memory_allocator.h:120 (../deps/breakpad/src/common)
-      frame base: Cfa
 
       > 0x2584: sys_mmap (0xd)
         0x2584: linux_syscall_support.h:4064 (../deps/third_party/lss)
-        frame base: Cfa
 
   > 0x2591: _ZN15google_breakpad13PageAllocatorC4Ev (0x8)
     0x2591: memory_allocator.h:63 (../deps/breakpad/src/common)
     0x2596: memory_allocator.h:67 (../deps/breakpad/src/common)
-    frame base: Cfa
 
   > 0x2599: _ZN15google_breakpad13PageAllocator5AllocEm (0x4a)
     0x2599: memory_allocator.h:90 (../deps/breakpad/src/common)
@@ -1149,171 +982,132 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0x25b1: memory_allocator.h:91 (../deps/breakpad/src/common)
     0x25b6: memory_allocator.h:90 (../deps/breakpad/src/common)
     0x25b9: memory_allocator.h:91 (../deps/breakpad/src/common)
-    frame base: Cfa
 
     > 0x259b: _ZN15google_breakpad13PageAllocator9GetNPagesEm (0x5)
       0x259b: memory_allocator.h:120 (../deps/breakpad/src/common)
-      frame base: Cfa
 
       > 0x259b: sys_mmap (0x5)
         0x259b: linux_syscall_support.h:4064 (../deps/third_party/lss)
-        frame base: Cfa
 
     > 0x25a7: _ZN15google_breakpad13PageAllocator9GetNPagesEm (0x7)
       0x25a7: memory_allocator.h:120 (../deps/breakpad/src/common)
-      frame base: Cfa
 
       > 0x25a7: sys_mmap (0x7)
         0x25a7: linux_syscall_support.h:4064 (../deps/third_party/lss)
-        frame base: Cfa
 
     > 0x25b1: _ZN15google_breakpad13PageAllocator9GetNPagesEm (0x5)
       0x25b1: memory_allocator.h:120 (../deps/breakpad/src/common)
-      frame base: Cfa
 
       > 0x25b1: sys_mmap (0x5)
         0x25b1: linux_syscall_support.h:4064 (../deps/third_party/lss)
-        frame base: Cfa
 
     > 0x25b9: _ZN15google_breakpad13PageAllocator9GetNPagesEm (0x2a)
       0x25b9: memory_allocator.h:120 (../deps/breakpad/src/common)
       0x25d9: memory_allocator.h:121 (../deps/breakpad/src/common)
-      frame base: Cfa
 
       > 0x25b9: sys_mmap (0x20)
         0x25b9: linux_syscall_support.h:4064 (../deps/third_party/lss)
-        frame base: Cfa
 
   > 0x25e7: _ZN15google_breakpad13PageAllocator5AllocEm (0xb)
     0x25e7: memory_allocator.h:91 (../deps/breakpad/src/common)
-    frame base: Cfa
 
     > 0x25e7: _ZN15google_breakpad13PageAllocator9GetNPagesEm (0xb)
       0x25e7: memory_allocator.h:131 (../deps/breakpad/src/common)
       0x25ee: memory_allocator.h:132 (../deps/breakpad/src/common)
-      frame base: Cfa
 
   > 0x262a: sys_pipe (0x5)
     0x262a: linux_syscall_support.h:4256 (../deps/third_party/lss)
-    frame base: Cfa
 
   > 0x2648: sys_pipe (0x1c)
     0x2648: linux_syscall_support.h:4256 (../deps/third_party/lss)
-    frame base: Cfa
 
   > 0x26c7: sys_clone (0x71)
     0x26c7: linux_syscall_support.h:2408 (../deps/third_party/lss)
     0x2720: linux_syscall_support.h:2410 (../deps/third_party/lss)
     0x2726: linux_syscall_support.h:2408 (../deps/third_party/lss)
     0x2729: linux_syscall_support.h:2410 (../deps/third_party/lss)
-    frame base: Cfa
 
   > 0x2738: sys_close (0x24)
     0x2738: linux_syscall_support.h:3357 (../deps/third_party/lss)
-    frame base: Cfa
 
   > 0x275c: sys_close (0x10)
     0x275c: linux_syscall_support.h:3357 (../deps/third_party/lss)
-    frame base: Cfa
 
   > 0x276e: sys_close (0x1a)
     0x276e: linux_syscall_support.h:3357 (../deps/third_party/lss)
-    frame base: Cfa
 
   > 0x2788: _ZN15google_breakpad13PageAllocatorD4Ev (0x48)
     0x2788: memory_allocator.h:71 (../deps/breakpad/src/common)
-    frame base: Cfa
 
     > 0x2788: _ZN15google_breakpad13PageAllocator7FreeAllEv (0x48)
       0x2788: memory_allocator.h:145 (../deps/breakpad/src/common)
       0x2793: memory_allocator.h:144 (../deps/breakpad/src/common)
       0x2797: memory_allocator.h:145 (../deps/breakpad/src/common)
       0x27b9: memory_allocator.h:143 (../deps/breakpad/src/common)
-      frame base: Cfa
 
       > 0x2788: sys_munmap (0xb)
         0x2788: linux_syscall_support.h:3454 (../deps/third_party/lss)
-        frame base: Cfa
 
       > 0x2797: sys_munmap (0x22)
         0x2797: linux_syscall_support.h:3454 (../deps/third_party/lss)
-        frame base: Cfa
 
   > 0x27d0: _ZN15google_breakpad13PageAllocator5AllocEm (0xb)
     0x27d0: memory_allocator.h:91 (../deps/breakpad/src/common)
-    frame base: Cfa
 
     > 0x27d0: _ZN15google_breakpad13PageAllocator9GetNPagesEm (0xb)
       0x27d0: memory_allocator.h:120 (../deps/breakpad/src/common)
-      frame base: Cfa
 
       > 0x27d0: sys_mmap (0xb)
         0x27d0: linux_syscall_support.h:4064 (../deps/third_party/lss)
-        frame base: Cfa
 
   > 0x2809: sys_close (0x26)
     0x2809: linux_syscall_support.h:3357 (../deps/third_party/lss)
-    frame base: Cfa
 
   > 0x2832: sys_prctl (0x2f)
     0x2832: linux_syscall_support.h:3479 (../deps/third_party/lss)
-    frame base: Cfa
 
   > 0x286e: sys_waitpid (0x1e)
     0x286e: linux_syscall_support.h:4496 (../deps/third_party/lss)
-    frame base: Cfa
 
     > 0x286e: sys_wait4 (0x1e)
       0x286e: linux_syscall_support.h:3718 (../deps/third_party/lss)
-      frame base: Cfa
 
   > 0x2891: sys_waitpid (0x21)
     0x2891: linux_syscall_support.h:4496 (../deps/third_party/lss)
-    frame base: Cfa
 
     > 0x2891: sys_wait4 (0x21)
       0x2891: linux_syscall_support.h:3718 (../deps/third_party/lss)
-      frame base: Cfa
 
   > 0x28b5: sys_waitpid (0x2)
     0x28b5: linux_syscall_support.h:4496 (../deps/third_party/lss)
-    frame base: Cfa
 
     > 0x28b5: sys_wait4 (0x2)
       0x28b5: linux_syscall_support.h:3718 (../deps/third_party/lss)
-      frame base: Cfa
 
   > 0x28cd: sys_close (0x2a)
     0x28cd: linux_syscall_support.h:3357 (../deps/third_party/lss)
     0x28eb: linux_syscall_support.h:3357 (../deps/third_party/lss)
-    frame base: Cfa
 
   > 0x2990: _ZN15google_breakpad13PageAllocatorD4Ev (0x2)
     0x2990: memory_allocator.h:71 (../deps/breakpad/src/common)
-    frame base: Cfa
 
     > 0x2990: _ZN15google_breakpad13PageAllocator7FreeAllEv (0x2)
       0x2990: memory_allocator.h:143 (../deps/breakpad/src/common)
-      frame base: Cfa
 
   > 0x29a5: _ZN15google_breakpad13PageAllocatorD4Ev (0x41)
     0x29a5: memory_allocator.h:71 (../deps/breakpad/src/common)
-    frame base: Cfa
 
     > 0x29a5: _ZN15google_breakpad13PageAllocator7FreeAllEv (0x41)
       0x29a5: memory_allocator.h:145 (../deps/breakpad/src/common)
       0x29ae: memory_allocator.h:144 (../deps/breakpad/src/common)
       0x29b2: memory_allocator.h:145 (../deps/breakpad/src/common)
       0x29d4: memory_allocator.h:143 (../deps/breakpad/src/common)
-      frame base: Cfa
 
       > 0x29a5: sys_munmap (0x9)
         0x29a5: linux_syscall_support.h:3454 (../deps/third_party/lss)
-        frame base: Cfa
 
       > 0x29b2: sys_munmap (0x22)
         0x29b2: linux_syscall_support.h:3454 (../deps/third_party/lss)
-        frame base: Cfa
 
 > 0x29f0: _ZN15google_breakpad16ExceptionHandler12HandleSignalEiP9siginfo_tPv (0x1da)
   0x29f0: exception_handler.cc:440 (../deps/breakpad/src/client/linux/handler)
@@ -1335,23 +1129,18 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x2b97: exception_handler.cc:482 (../deps/breakpad/src/client/linux/handler)
   0x2b9d: exception_handler.cc:481 (../deps/breakpad/src/client/linux/handler)
   0x2ba8: exception_handler.cc:448 (../deps/breakpad/src/client/linux/handler)
-  frame base: Cfa
 
   > 0x2a2c: sys_prctl (0x31)
     0x2a2c: linux_syscall_support.h:3479 (../deps/third_party/lss)
-    frame base: Cfa
 
   > 0x2a5d: memset (0x1c)
     0x2a5d: string3.h:90 (/usr/include/x86_64-linux-gnu/bits)
-    frame base: Cfa
 
   > 0x2a79: memcpy (0xbc)
     0x2a79: string3.h:53 (/usr/include/x86_64-linux-gnu/bits)
-    frame base: Cfa
 
   > 0x2b42: memcpy (0x8)
     0x2b42: string3.h:53 (/usr/include/x86_64-linux-gnu/bits)
-    frame base: Cfa
 
 > 0x2bd0: _ZN15google_breakpad16ExceptionHandler13SignalHandlerEiP9siginfo_tPv (0x1ef)
   0x2bd0: exception_handler.cc:328 (../deps/breakpad/src/client/linux/handler)
@@ -1392,8 +1181,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x2da0: exception_handler.cc:398 (../deps/breakpad/src/client/linux/handler)
   0x2dae: exception_handler.cc:368 (../deps/breakpad/src/client/linux/handler)
   0x2dba: exception_handler.cc:409 (../deps/breakpad/src/client/linux/handler)
-  frame base: Cfa
-  variables:
+  variables (frame base: CFA):
     sig (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
@@ -1455,20 +1243,15 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
 
   > 0x2c63: _ZNKSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE4sizeEv (0x3)
     0x2c63: stl_vector.h:655 (/usr/include/c++/5/bits)
-    frame base: Cfa
 
   > 0x2cec: sys_tgkill (0x21)
     0x2cec: linux_syscall_support.h:3545 (../deps/third_party/lss)
-    frame base: Cfa
 
   > 0x2d90: InstallDefaultHandler (0x10)
     0x2d90: exception_handler.cc:199 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa
 
   > 0x2da0: sys_tgkill (0xe)
     0x2da0: linux_syscall_support.h:3545 (../deps/third_party/lss)
-    frame base: Cfa
 
   > 0x2dae: InstallDefaultHandler (0xc)
     0x2dae: exception_handler.cc:199 (../deps/breakpad/src/client/linux/handler)
-    frame base: Cfa

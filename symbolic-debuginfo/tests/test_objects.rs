@@ -8,8 +8,8 @@ use symbolic_debuginfo::ObjectDebugSession;
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
 use symbolic_debuginfo::{
-    FileEntry, Function, LineInfo, MemberOffset, Object, ObjectKind, ParseObjectOptions, SymbolMap,
-    Type, TypeRef, TypeSize, VariableLocation, pe::PeObject,
+    FileEntry, FrameBase, Function, LineInfo, MemberOffset, Object, ObjectKind, ParseObjectOptions,
+    SymbolMap, Type, TypeRef, TypeSize, VariableLocation, pe::PeObject,
 };
 use symbolic_testutils::fixture;
 
@@ -94,17 +94,20 @@ impl fmt::Debug for FunctionsDebug<'_, '_> {
                 )?;
             }
 
-            if let Some(frame_base) = function.frame_base {
+            if !function.variables.is_empty() {
+                let frame_base = match function.frame_base {
+                    Some(FrameBase::Cfa) => " (frame base: CFA)".to_owned(),
+                    Some(FrameBase::Register { register }) => {
+                        format!(" (frame base: register {register})")
+                    }
+                    None => String::new(),
+                };
                 writeln!(
                     f,
-                    "{:indent$}  frame base: {frame_base:?}",
+                    "{:indent$}  variables{frame_base}:",
                     "",
                     indent = self.depth * 2
                 )?;
-            }
-
-            if !function.variables.is_empty() {
-                writeln!(f, "{:indent$}  variables:", "", indent = self.depth * 2)?;
             }
 
             for variable in &function.variables {
