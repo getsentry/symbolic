@@ -116,7 +116,7 @@ pub fn frame_base_to_u16(frame_base: Option<FrameBase>) -> u16 {
 
 /// Converts a `u16` back into a [`FrameBase`] of the given CPU family.
 ///
-/// The inverse of [`frame_base_to_u16`].
+/// The inverse of [`frame_base_to_u16`]. Unknown registers are returned as `None`.
 pub fn u16_to_frame_base(cpu_family: CpuFamily, id: u16) -> Option<FrameBase> {
     match id {
         raw::NO_FRAME_BASE => None,

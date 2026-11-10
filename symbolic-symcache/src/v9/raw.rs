@@ -114,7 +114,7 @@ pub struct FunctionVariables {
     pub variable_idx: u32,
     /// The amount of variables associated with the function.
     pub num_variables: u32,
-    /// The frame base of the function, a register, [`CFA_FRAME_BASE`] or [`NO_FRAME_BASE`].
+    /// The frame base of the function: either a register, [`CFA_FRAME_BASE`] or [`NO_FRAME_BASE`].
     pub frame_base: u16,
     pub _reserved: [u8; 2],
 }
