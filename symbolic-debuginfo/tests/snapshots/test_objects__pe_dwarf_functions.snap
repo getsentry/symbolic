@@ -7,7 +7,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x14f4: crtexe.c:419 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x14f9: crtexe.c:419 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x14ff: crtexe.c:420 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     func (parameter)
       type:
         > TypeDef: _PVFV
@@ -102,7 +103,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x148e: crtexe.c:251 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x1494: crtexe.c:252 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x149e: crtexe.c:324 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     lpszCommandLine (local)
       type:
         > Pointer (8 bytes)
@@ -249,7 +251,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x14e1: crtexe.c:202 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x14e6: crtexe.c:204 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x14e8: crtexe.c:213 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     ret (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
@@ -261,7 +264,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x14c1: crtexe.c:176 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x14c6: crtexe.c:178 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x14c8: crtexe.c:187 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     ret (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
@@ -320,7 +324,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
 
 > 0x1000: __mingw_invalidParameterHandler (0x1)
   0x1000: crtexe.c:123 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     expression (parameter)
       type:
         > Pointer (8 bytes)
@@ -351,7 +356,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x1576: hello.c:3 (/src)
   0x157b: hello.c:4 (/src)
   0x1587: hello.c:5 (/src)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     argc (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
@@ -370,7 +376,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x1557: stdio.h:372 (/mxe/usr/x86_64-w64-mingw32.static/include)
   0x156b: stdio.h:375 (/mxe/usr/x86_64-w64-mingw32.static/include)
   0x1570: stdio.h:375 (/mxe/usr/x86_64-w64-mingw32.static/include)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     __format (parameter)
       type:
         > Pointer (8 bytes)

@@ -21,7 +21,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x13be: variables.c:216 (/fixture)
   0x13c7: variables.c:217 (/fixture)
   0x13cc: variables.c:218 (/fixture)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     result (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
@@ -32,7 +33,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x1301: variables.c:202 (/fixture)
   0x1307: variables.c:203 (/fixture)
   0x130d: variables.c:204 (/fixture)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
@@ -47,7 +49,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x12e9: variables.c:190 (/fixture)
   0x12f0: variables.c:191 (/fixture)
   0x12f8: variables.c:192 (/fixture)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
@@ -66,7 +69,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x12d3: variables.c:179 (/fixture)
   0x12db: variables.c:179 (/fixture)
   0x12e0: variables.c:180 (/fixture)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
@@ -87,7 +91,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x1293: variables.c:164 (/fixture)
   0x12a5: variables.c:165 (/fixture)
   0x12ad: variables.c:166 (/fixture)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
@@ -109,7 +114,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x126c: variables.c:150 (/fixture)
   0x1271: variables.c:151 (/fixture)
   0x127b: variables.c:152 (/fixture)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     a (parameter)
       type:
         > Primitive: float (Float, 4 bytes)
@@ -135,7 +141,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x1230: variables.c:137 (/fixture)
   0x1233: variables.c:138 (/fixture)
   0x1239: variables.c:139 (/fixture)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
@@ -158,7 +165,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x11fa: variables.c:120 (/fixture)
   0x1208: variables.c:120 (/fixture)
   0x120b: variables.c:121 (/fixture)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     outer (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
@@ -180,7 +188,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x11dc: variables.c:104 (/fixture)
   0x11e3: variables.c:105 (/fixture)
   0x11ea: variables.c:106 (/fixture)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     point (local)
       type:
         > TypeDef: Point
@@ -210,7 +219,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
 > 0x1193: pointers (0x1b)
   0x1193: variables.c:78 (/fixture)
   0x11ab: variables.c:79 (/fixture)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     num (parameter)
       type:
         > Pointer (8 bytes)
@@ -253,7 +263,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x1176: variables.c:66 (/fixture)
   0x117a: variables.c:67 (/fixture)
   0x1190: variables.c:68 (/fixture)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     sc (local)
       type:
         > Primitive: signed char (SignedChar, 1 byte)

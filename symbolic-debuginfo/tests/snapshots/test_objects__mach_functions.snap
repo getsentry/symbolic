@@ -12,7 +12,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
 > 0xd40: _ZN15google_breakpad18MinidumpFileWriterC1Ev (0x1a)
   0xd40: minidump_file_writer.cc:96 (../deps/breakpad/src/client)
   0xd59: minidump_file_writer.cc:97 (../deps/breakpad/src/client)
-  variables (frame base: register rsp):
+  frame base: register rsp
+  variables:
     this (parameter)
       type:
         > Pointer (8 bytes)
@@ -60,7 +61,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0xde4: minidump_file_writer.cc:99 (../deps/breakpad/src/client)
   0xe0a: minidump_file_writer.cc:102 (../deps/breakpad/src/client)
   0xe0c: minidump_file_writer.cc:99 (../deps/breakpad/src/client)
-  variables (frame base: register rsp):
+  frame base: register rsp
+  variables:
     this (parameter)
       type:
         > Pointer (8 bytes)
@@ -94,7 +96,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0xe42: minidump_file_writer.cc:112 (../deps/breakpad/src/client)
   0xe48: minidump_file_writer.cc:112 (../deps/breakpad/src/client)
   0xe4a: minidump_file_writer.cc:105 (../deps/breakpad/src/client)
-  variables (frame base: register rsp):
+  frame base: register rsp
+  variables:
     this (parameter)
       type:
         > Pointer (8 bytes)
@@ -116,7 +119,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0xe78: minidump_file_writer.cc:118 (../deps/breakpad/src/client)
   0xe7c: minidump_file_writer.cc:122 (../deps/breakpad/src/client)
   0xe7e: minidump_file_writer.cc:116 (../deps/breakpad/src/client)
-  variables (frame base: register rsp):
+  frame base: register rsp
+  variables:
     this (parameter)
       type:
         > Pointer (8 bytes)
@@ -141,7 +145,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0xf7b: minidump_file_writer.cc:160 (../deps/breakpad/src/client)
   0xf97: minidump_file_writer.cc:179 (../deps/breakpad/src/client)
   0xfa9: minidump_file_writer.cc:174 (../deps/breakpad/src/client)
-  variables (frame base: register rsp):
+  frame base: register rsp
+  variables:
     this (parameter)
       type:
         > Pointer (8 bytes)
@@ -219,7 +224,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x10c5: minidump_file_writer.cc:189 (../deps/breakpad/src/client)
   0x10e7: minidump_file_writer.cc:205 (../deps/breakpad/src/client)
   0x10f9: minidump_file_writer.cc:201 (../deps/breakpad/src/client)
-  variables (frame base: register rsp):
+  frame base: register rsp
+  variables:
     this (parameter)
       type:
         > Pointer (8 bytes)
@@ -282,7 +288,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
 
 > 0x1140: _ZN15google_breakpad18MinidumpFileWriter11WriteStringEPKwjP20MDLocationDescriptor (0x5)
   0x1140: minidump_file_writer.cc:245 (../deps/breakpad/src/client)
-  variables (frame base: register rsp):
+  frame base: register rsp
+  variables:
     this (parameter)
       type:
         > Pointer (8 bytes)

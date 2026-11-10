@@ -101,7 +101,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x1d82: main.cpp:33 (../linux)
   0x1d8a: main.cpp:37 (../linux)
   0x1dac: main.cpp:33 (../linux)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     argc (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
@@ -740,7 +741,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x2996: exception_handler.cc:508 (../deps/breakpad/src/client/linux/handler)
   0x299d: exception_handler.cc:568 (../deps/breakpad/src/client/linux/handler)
   0x29a5: exception_handler.cc:505 (../deps/breakpad/src/client/linux/handler)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     this (parameter)
       type:
         > Unknown
@@ -1181,7 +1183,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x2da0: exception_handler.cc:398 (../deps/breakpad/src/client/linux/handler)
   0x2dae: exception_handler.cc:368 (../deps/breakpad/src/client/linux/handler)
   0x2dba: exception_handler.cc:409 (../deps/breakpad/src/client/linux/handler)
-  variables (frame base: CFA):
+  frame base: CFA
+  variables:
     sig (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)

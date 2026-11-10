@@ -95,19 +95,22 @@ impl fmt::Debug for FunctionsDebug<'_, '_> {
             }
 
             if !function.variables.is_empty() {
-                let frame_base = match function.frame_base {
-                    Some(FrameBase::Cfa) => " (frame base: CFA)".to_owned(),
-                    Some(FrameBase::Register { register }) => {
-                        format!(" (frame base: register {register})")
-                    }
-                    None => String::new(),
-                };
-                writeln!(
-                    f,
-                    "{:indent$}  variables{frame_base}:",
-                    "",
-                    indent = self.depth * 2
-                )?;
+                match function.frame_base {
+                    Some(FrameBase::Cfa) => writeln!(
+                        f,
+                        "{:indent$}  frame base: CFA",
+                        "",
+                        indent = self.depth * 2
+                    )?,
+                    Some(FrameBase::Register { register }) => writeln!(
+                        f,
+                        "{:indent$}  frame base: register {register}",
+                        "",
+                        indent = self.depth * 2
+                    )?,
+                    None => {}
+                }
+                writeln!(f, "{:indent$}  variables:", "", indent = self.depth * 2)?;
             }
 
             for variable in &function.variables {
