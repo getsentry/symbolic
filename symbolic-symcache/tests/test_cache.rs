@@ -97,7 +97,7 @@ fn test_load_header_linux() -> Result<(), Error> {
         ranges: 6975,
         string_bytes: 53754,
         variables: 548,
-        variable_locations: 1548,
+        variable_locations: 1610,
         types: 143,
         structure_members: 186,
     }
@@ -129,11 +129,11 @@ fn test_load_header_macos() -> Result<(), Error> {
         functions: 639,
         source_locations: 7382,
         ranges: 5965,
-        string_bytes: 45724,
-        variables: 419,
-        variable_locations: 992,
-        types: 192,
-        structure_members: 239,
+        string_bytes: 46192,
+        variables: 477,
+        variable_locations: 1098,
+        types: 197,
+        structure_members: 246,
     }
     "#);
     Ok(())
@@ -227,6 +227,28 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
     out (local, <unknown>): 0xfe50..0xff4c frame -80
     out_idx (local, int): 0xfe86..0xfed9 register r12
     out_count (local, int): 0xfecb..0xfeee register r15
+    ");
+
+    Ok(())
+}
+
+#[test]
+fn test_lookup_variables_register_offset() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("linux/variables/variables_opt"))?;
+    let object = Object::parse(&buffer)?;
+
+    let mut converter = SymCacheConverter::new();
+    converter.set_collect_variables(true);
+    converter.process_object(&object)?;
+    let mut data = Vec::new();
+    converter.serialize(&mut Cursor::new(&mut data))?;
+    let symcache = SymCache::parse(&data)?;
+
+    // `through_pointer(Point *out, int value)`, after `value` was stored to `out->y`.
+    let source_location = symcache.lookup(0x12cc).last().unwrap();
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
+    out (parameter, <unknown>*): 0x12c0..0x12d4 register rdi
+    value (parameter, int): 0x12cb..0x12d4 memory at rdi +4
     ");
 
     Ok(())
