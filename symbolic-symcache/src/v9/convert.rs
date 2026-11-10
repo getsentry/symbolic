@@ -1,6 +1,8 @@
 use symbolic_common::CpuFamily;
 use symbolic_common::register::Register;
-use symbolic_debuginfo::{MemberOffset, PrimitiveTypeEncoding, VariableKind};
+use symbolic_debuginfo::{FrameBase, MemberOffset, PrimitiveTypeEncoding, VariableKind};
+
+use crate::v9::raw;
 
 const MEMBER_OFFSET_BITS_FLAG: u32 = 1 << 31;
 
@@ -99,6 +101,32 @@ pub fn register_to_u16(register: Register) -> u16 {
 /// The inverse of [`register_to_u16`]. Invalid inputs are returned as `None`.
 pub fn u16_to_register(cpu_family: CpuFamily, id: u16) -> Option<Register> {
     Register::from_dwarf(cpu_family, id)
+}
+
+/// Converts a [`FrameBase`] into its raw representation.
+pub fn frame_base_to_raw(frame_base: FrameBase) -> raw::frame_base::Enum {
+    match frame_base {
+        FrameBase::Register { register } => raw::RegisterLocation {
+            id: register_to_u16(register),
+            _reserved: [0; _],
+        }
+        .into(),
+        FrameBase::Cfa => raw::CfaFrameBase { _reserved: [0; _] }.into(),
+    }
+}
+
+/// Converts a raw frame base back into a [`FrameBase`] of the given CPU family.
+///
+/// The inverse of [`frame_base_to_raw`]. Invalid registers are returned as `None`.
+pub fn raw_to_frame_base(
+    cpu_family: CpuFamily,
+    frame_base: raw::frame_base::Enum,
+) -> Option<FrameBase> {
+    match frame_base {
+        raw::frame_base::Enum::register(register) => u16_to_register(cpu_family, register.id)
+            .map(|register| FrameBase::Register { register }),
+        raw::frame_base::Enum::cfa(_) => Some(FrameBase::Cfa),
+    }
 }
 
 #[cfg(test)]

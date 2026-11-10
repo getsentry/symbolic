@@ -187,6 +187,11 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
     let symcache = SymCache::parse(&buffer)?;
 
     let source_location = symcache.lookup(0xfe50).last().unwrap();
+    insta::assert_debug_snapshot!(source_location.frame_base(), @r"
+    Some(
+        Cfa,
+    )
+    ");
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>): 0xfe50..0xfe86 register rdi
     str (parameter, <unknown>*): 0xfe50..0xfe86 register rsi
@@ -256,6 +261,15 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     let symcache = SymCache::parse(&buffer)?;
 
     let source_location = symcache.lookup(0xea0).last().unwrap();
+    insta::assert_debug_snapshot!(source_location.frame_base(), @r"
+    Some(
+        Register {
+            register: Amd64(
+                Rsp,
+            ),
+        },
+    )
+    ");
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>*): 0xea0..0xed2 register rdi
     str (parameter, <unknown>*): 0xea0..0xeb6 register rsi

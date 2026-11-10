@@ -7,8 +7,8 @@ use watto::StringTable;
 
 use crate::v9::{SymCache, convert, raw};
 use crate::{
-    File, Function, PointerType, PrimitiveType, StructureMember, StructureType, Type, TypeDefType,
-    TypeId, TypeSize, VariableKind, VariableLocation, VariableLocationInfo,
+    File, FrameBase, Function, PointerType, PrimitiveType, StructureMember, StructureType, Type,
+    TypeDefType, TypeId, TypeSize, VariableKind, VariableLocation, VariableLocationInfo,
 };
 
 impl<'data> SymCache<'data> {
@@ -206,6 +206,21 @@ impl<'data, 'cache> SourceLocation<'data, 'cache> {
             addr: self.addr,
             depth,
         }
+    }
+
+    /// The frame base that [`VariableLocation::FrameOffset`] locations of [`Self::variables`]
+    /// are relative to.
+    ///
+    /// This is the frame base of the outermost function, as inlined functions share it.
+    pub fn frame_base(&self) -> Option<FrameBase> {
+        let (base_fn_idx, _) = self.resolve_base();
+        let frame_base = self
+            .cache
+            .function_variables
+            .get(base_fn_idx as usize)?
+            .frame_base()?;
+        let cpu_family = Arch::from_u32(self.cache.header.arch).cpu_family();
+        convert::raw_to_frame_base(cpu_family, frame_base)
     }
 
     /// Calculates the inline depth of this source location.

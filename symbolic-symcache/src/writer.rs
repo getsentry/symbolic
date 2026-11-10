@@ -61,6 +61,10 @@ pub struct SymCacheConverter<'a> {
     /// This is keyed with the function id and contains a list of variables associated with that function,
     /// importantly the variables from inlined functions are attributed to their base function.
     function_variables: BTreeMap<u32, Vec<v9::raw::Variable>>,
+    /// The frame bases of functions, keyed with the function id.
+    ///
+    /// Only base functions are included, inlined functions share the frame base of their base function.
+    function_frame_bases: BTreeMap<u32, di::FrameBase>,
     /// A list of all variable locations.
     ///
     /// Variable locations are stored in continous chunks per variable.
@@ -495,7 +499,7 @@ impl<'a> SymCacheConverter<'a> {
         }
     }
 
-    /// Collects all variables from a [`Function`].
+    /// Collects all variables and the frame base from a [`Function`].
     ///
     /// This takes the current `function`, which may have been inlined into an `outer` function.
     /// If the passed function is not inlined, then `base_idx` must point to the index of `function`
@@ -509,6 +513,14 @@ impl<'a> SymCacheConverter<'a> {
     ) {
         if !self.collect_variables || fn_depth > u8::MAX.into() {
             return;
+        }
+
+        if fn_depth == 0 {
+            if let Some(frame_base) = function.frame_base {
+                self.function_frame_bases
+                    .entry(base_idx)
+                    .or_insert(frame_base);
+            }
         }
 
         for variable in &function.variables {
@@ -849,9 +861,17 @@ impl<'a> SymCacheConverter<'a> {
             // Sort by depth, to allow a more efficient lookup/scan.
             variables.sort_unstable_by_key(|v| v.depth);
 
+            let (frame_base_kind, frame_base) = match self.function_frame_bases.get(&function_idx) {
+                Some(&frame_base) => v9::convert::frame_base_to_raw(frame_base).into_impl(),
+                None => (v9::raw::NO_FRAME_BASE, v9::raw::NO_VARIABLES.frame_base),
+            };
+
             let res = v9::raw::FunctionVariables {
                 variable_idx: *next_idx,
                 num_variables: variables.len() as u32,
+                frame_base,
+                frame_base_kind,
+                _reserved: [0; _],
             };
             *next_idx += res.num_variables;
             Some(res)

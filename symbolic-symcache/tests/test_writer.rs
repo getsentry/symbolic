@@ -276,6 +276,75 @@ fn test_lookup_gap_inlinee() -> Result<(), Error> {
     Ok(())
 }
 
+/// Inlined functions use the frame base of the function they are inlined into.
+#[test]
+fn test_lookup_inlinee_frame_base() -> Result<(), Error> {
+    use symbolic_common::register::Register;
+    use symbolic_common::{Arch, CpuFamily, Language, Name, NameMangling};
+    use symbolic_debuginfo::{
+        FileInfo, FrameBase, Function, LineInfo, Variable, VariableKind, VariableLocation,
+        VariableLocationInfo,
+    };
+
+    let rbp = Register::from_dwarf(CpuFamily::Amd64, 6).unwrap();
+    let line = |address, size, line| LineInfo {
+        address,
+        size: Some(size),
+        file: FileInfo::from_filename(b"main.rs"),
+        line,
+    };
+
+    let mut buffer = Vec::new();
+    let mut converter = SymCacheConverter::new();
+    converter.set_arch(Arch::Amd64);
+    converter.set_collect_variables(true);
+    converter.process_symbolic_function(&Function {
+        address: 0x1000,
+        size: 0x20,
+        name: Name::new("outer", NameMangling::Unmangled, Language::Rust),
+        compilation_dir: b"",
+        lines: vec![line(0x1000, 0x20, 5)],
+        inlinees: vec![Function {
+            address: 0x1010,
+            size: 0x10,
+            name: Name::new("inlinee", NameMangling::Unmangled, Language::Rust),
+            compilation_dir: b"",
+            lines: vec![line(0x1010, 0x10, 20)],
+            inlinees: vec![],
+            inline: true,
+            variables: vec![Variable {
+                name: "value".into(),
+                ty: None,
+                kind: VariableKind::Local,
+                locations: vec![VariableLocationInfo {
+                    address: 0x1010,
+                    size: 0x10,
+                    location: VariableLocation::FrameOffset { offset: -8 },
+                }],
+            }],
+            frame_base: None,
+        }],
+        inline: false,
+        variables: vec![],
+        frame_base: Some(FrameBase::Register { register: rbp }),
+    });
+    converter.serialize(&mut buffer)?;
+    let symcache = SymCache::parse(&buffer)?;
+
+    let symbols = symcache.lookup(0x1010).collect::<Vec<_>>();
+    assert_eq!(symbols.len(), 2);
+    assert_eq!(symbols[0].function().name(), "inlinee");
+    assert_eq!(symbols[0].variables().count(), 1);
+    for symbol in &symbols {
+        assert_eq!(
+            symbol.frame_base(),
+            Some(FrameBase::Register { register: rbp })
+        );
+    }
+
+    Ok(())
+}
+
 #[test]
 fn test_undecorate_windows_symbols() -> Result<(), Error> {
     let buffer = serialize_fixture("windows/crash.pdb", false)?;
@@ -374,8 +443,8 @@ fn test_variable_cache_size() -> Result<(), Error> {
 
     insta::assert_snapshot!(s, @r"
     no variables  : 219.95 KiB
-    with variables: 269.74 KiB
-    variables     : 49.79 KiB (18.46%)
+    with variables: 275.19 KiB
+    variables     : 55.24 KiB (20.07%)
     ");
 
     Ok(())

@@ -5,7 +5,7 @@ use symbolic_common::{Language, Name, NameMangling};
 use crate::SymCache;
 
 pub use symbolic_debuginfo::{
-    MemberOffset, PrimitiveTypeEncoding, TypeSize, VariableKind, VariableLocation,
+    FrameBase, MemberOffset, PrimitiveTypeEncoding, TypeSize, VariableKind, VariableLocation,
     VariableLocationInfo,
 };
 
@@ -411,6 +411,16 @@ macro_rules! impl_version {
             pub fn variables(&self) -> Variables<'data, 'cache> {
                 match self.0 {
                     $(SourceLocationInner::$version(ref loc) => loc.variables().into(),)+
+                }
+            }
+
+            /// The frame base that [`VariableLocation::FrameOffset`] locations of
+            /// [`Self::variables`] are relative to.
+            ///
+            /// This is the frame base of the outermost function, as inlined functions share it.
+            pub fn frame_base(&self) -> Option<FrameBase> {
+                match self.0 {
+                    $(SourceLocationInner::$version(ref loc) => loc.frame_base(),)+
                 }
             }
         }
