@@ -23,6 +23,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x109d: variables.c:216 (/fixture)
   0x10a3: variables.c:218 (/fixture)
   0x10a5: variables.c:218 (/fixture)
+  frame base: Cfa
   variables:
     result (local)
       type:
@@ -34,6 +35,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x1240: variables.c:202 (/fixture)
   0x1244: variables.c:203 (/fixture)
   0x124b: variables.c:204 (/fixture)
+  frame base: Cfa
   variables:
     a (parameter)
       type:
@@ -47,6 +49,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
 > 0x1230: optimized_out (0x4)
   0x1230: variables.c:191 (/fixture)
   0x1233: variables.c:192 (/fixture)
+  frame base: Cfa
   variables:
     a (parameter)
       type:
@@ -64,6 +67,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x122c: variables.c:179 (/fixture)
   0x122e: variables.c:180 (/fixture)
   0x122f: variables.c:180 (/fixture)
+  frame base: Cfa
   variables:
     a (parameter)
       type:
@@ -84,6 +88,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x1203: variables.c:164 (/fixture)
   0x120a: variables.c:165 (/fixture)
   0x120c: variables.c:166 (/fixture)
+  frame base: Cfa
   variables:
     a (parameter)
       type:
@@ -104,6 +109,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x11f8: variables.c:151 (/fixture)
   0x11fc: variables.c:152 (/fixture)
   0x11ff: variables.c:152 (/fixture)
+  frame base: Cfa
   variables:
     a (parameter)
       type:
@@ -127,6 +133,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x11e3: variables.c:136 (/fixture)
   0x11e6: variables.c:138 (/fixture)
   0x11e8: variables.c:139 (/fixture)
+  frame base: Cfa
   variables:
     a (parameter)
       type:
@@ -147,6 +154,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
 
 > 0x11d0: inlining (0x1)
   0x11d0: variables.c:121 (/fixture)
+  frame base: Cfa
   variables:
     outer (parameter)
       type:
@@ -155,9 +163,11 @@ expression: "FunctionsDebug::new(&session, &functions)"
 
 > 0x11c0: aggregates (0x1)
   0x11c0: variables.c:106 (/fixture)
+  frame base: Cfa
 
 > 0x11b0: pointers (0x1)
   0x11b0: variables.c:79 (/fixture)
+  frame base: Cfa
   variables:
     num (parameter)
       type:
@@ -188,3 +198,4 @@ expression: "FunctionsDebug::new(&session, &functions)"
 
 > 0x11a0: primitives (0x1)
   0x11a0: variables.c:68 (/fixture)
+  frame base: Cfa
