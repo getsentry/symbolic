@@ -210,6 +210,80 @@ define_arch_registers! {
 }
 
 define_arch_registers! {
+    /// An x86 (i386) register.
+    ///
+    /// The set of registers follows the DWARF register number mapping of the
+    /// [System V i386 psABI][psabi] (section 2.4.2), without the reserved numbers.
+    ///
+    /// The registers are `eax` to `edi` (general purpose), `eip` (the return address), `eflags`,
+    /// `st0` to `st7` (x87), `xmm0` to `xmm7` (vectors), `mm0` to `mm7` (MMX), `mxcsr`, the
+    /// segment registers, `tr`, `ldtr`, `fs.base` and `gs.base`.
+    ///
+    /// We can parse the registers from their canonical names via the [`FromStr`] implementation,
+    /// as shown below.
+    ///
+    /// ```rust
+    /// # use symbolic_common::register::Intel32Register;
+    /// let eax = "eax".parse::<Intel32Register>().expect("\"eax\" is a valid Intel32 register");
+    /// assert_eq!(eax, Intel32Register::Eax);
+    /// ```
+    ///
+    /// These DWARF register numbers are only valid for debug information (`.debug_info`), not for
+    /// `.eh_frame` unwind information. On 32-bit Darwin, Clang/LLVM and GCC swap the numbers of
+    /// `esp` and `ebp` (4 and 5) and shift `st0` to `st7` by one (12 to 19) in `.eh_frame`, but not
+    /// in debug information.
+    ///
+    /// [psabi]: https://gitlab.com/x86-psabis/i386-ABI
+    pub enum Intel32Register {
+        Eax = { name: "eax", dwarf: 0 },
+        Ecx = { name: "ecx", dwarf: 1 },
+        Edx = { name: "edx", dwarf: 2 },
+        Ebx = { name: "ebx", dwarf: 3 },
+        Esp = { name: "esp", dwarf: 4 },
+        Ebp = { name: "ebp", dwarf: 5 },
+        Esi = { name: "esi", dwarf: 6 },
+        Edi = { name: "edi", dwarf: 7 },
+        Eip = { name: "eip", dwarf: 8 },
+        Eflags = { name: "eflags", dwarf: 9 },
+        St0 = { name: "st0", dwarf: 11 },
+        St1 = { name: "st1", dwarf: 12 },
+        St2 = { name: "st2", dwarf: 13 },
+        St3 = { name: "st3", dwarf: 14 },
+        St4 = { name: "st4", dwarf: 15 },
+        St5 = { name: "st5", dwarf: 16 },
+        St6 = { name: "st6", dwarf: 17 },
+        St7 = { name: "st7", dwarf: 18 },
+        Xmm0 = { name: "xmm0", dwarf: 21 },
+        Xmm1 = { name: "xmm1", dwarf: 22 },
+        Xmm2 = { name: "xmm2", dwarf: 23 },
+        Xmm3 = { name: "xmm3", dwarf: 24 },
+        Xmm4 = { name: "xmm4", dwarf: 25 },
+        Xmm5 = { name: "xmm5", dwarf: 26 },
+        Xmm6 = { name: "xmm6", dwarf: 27 },
+        Xmm7 = { name: "xmm7", dwarf: 28 },
+        Mm0 = { name: "mm0", dwarf: 29 },
+        Mm1 = { name: "mm1", dwarf: 30 },
+        Mm2 = { name: "mm2", dwarf: 31 },
+        Mm3 = { name: "mm3", dwarf: 32 },
+        Mm4 = { name: "mm4", dwarf: 33 },
+        Mm5 = { name: "mm5", dwarf: 34 },
+        Mm6 = { name: "mm6", dwarf: 35 },
+        Mm7 = { name: "mm7", dwarf: 36 },
+        Mxcsr = { name: "mxcsr", dwarf: 39 },
+        Es = { name: "es", dwarf: 40 },
+        Cs = { name: "cs", dwarf: 41 },
+        Ss = { name: "ss", dwarf: 42 },
+        Ds = { name: "ds", dwarf: 43 },
+        Fs = { name: "fs", dwarf: 44 },
+        Gs = { name: "gs", dwarf: 45 },
+        Tr = { name: "tr", dwarf: 48 },
+        Ldtr = { name: "ldtr", dwarf: 49 },
+        FsBase = { name: "fs.base", dwarf: 93 },
+        GsBase = { name: "gs.base", dwarf: 94 },
+    }
+}
+
+define_arch_registers! {
     /// An AArch64 register.
     ///
     /// The set of registers follows the DWARF register mapping of the
@@ -452,6 +526,9 @@ define_register_wrapper! {
 
     /// An AArch64 register.
     Arm64(Arm64Register) => [CpuFamily::Arm64, CpuFamily::Arm64_32],
+
+    /// An x86 register.
+    Intel32(Intel32Register) => [CpuFamily::Intel32],
 }
 
 /// An error returned when parsing a register name fails.
