@@ -214,7 +214,7 @@ where
             Err(ResolvedState::Unknown) => return None,
             Err(ResolvedState::Pending) => {
                 // This should not be possible. Types are only marked as progress within the context
-                // of this function and it is not called recursively.
+                // of this function, which is not called recursively.
                 debug_assert!(false);
                 return None;
             }
@@ -232,19 +232,19 @@ where
         // break cycles and stop processing.
         //
         // As dependencies are resolved, they are serialized and stored in the `type_writer`.
-        // Whenever a cycle is detected the dependency in question cannot be fully resolved before
-        // its dependencies are resolved. To allow its dependencies to resolve a "dummy" type is
-        // pushed to the type writer to reserve an index which later dependencies can reference.
+        // Whenever a cycle is detected, the dependency in question cannot be fully resolved before
+        // its dependencies are resolved. To allow its dependencies to resolve, a "dummy" type is
+        // pushed to the type writer to reserve an index, which later dependencies can reference.
         //
         // After all dependencies have been resolved, all previously written "dummy" items are
-        // serialized again, this time for each type all of its dependencies have now been fully resolved.
+        // serialized again.
         while let Some(resolved) = q.last_mut() {
             if let Some(child) = resolved.next_child() {
                 if let Ok(child) = self.resolve(child) {
                     q.push(child);
                 }
             } else {
-                let resolved = q.pop().unwrap();
+                let resolved = q.pop().expect("`while` guarantees an item in `q`");
 
                 let idx = match self.serialize(&resolved.ty, type_writer, string_table) {
                     Ok(ty) => type_writer.push_type(ty),
