@@ -62,62 +62,7 @@ expression: r
             ],
             inlinees: [],
             inline: false,
-            variables: [
-                Variable {
-                    name: "a",
-                    ty: Some(
-                        TypeRef(
-                            Dwarf(
-                                DwarfTypeRef(
-                                    Offset {
-                                        section: DebugInfo,
-                                        offset: UnitSectionOffset(
-                                            687,
-                                        ),
-                                    },
-                                ),
-                            ),
-                        ),
-                    ),
-                    kind: Parameter,
-                    locations: [
-                        VariableLocationInfo {
-                            address: 0x1a6,
-                            size: 0x29,
-                            location: FrameOffset {
-                                offset: 12,
-                            },
-                        },
-                    ],
-                },
-                Variable {
-                    name: "b",
-                    ty: Some(
-                        TypeRef(
-                            Dwarf(
-                                DwarfTypeRef(
-                                    Offset {
-                                        section: DebugInfo,
-                                        offset: UnitSectionOffset(
-                                            687,
-                                        ),
-                                    },
-                                ),
-                            ),
-                        ),
-                    ),
-                    kind: Parameter,
-                    locations: [
-                        VariableLocationInfo {
-                            address: 0x1a6,
-                            size: 0x29,
-                            location: FrameOffset {
-                                offset: 8,
-                            },
-                        },
-                    ],
-                },
-            ],
+            variables: [],
         },
     ),
     Ok(
@@ -588,35 +533,7 @@ expression: r
             lines: [],
             inlinees: [],
             inline: false,
-            variables: [
-                Variable {
-                    name: "tmp",
-                    ty: Some(
-                        TypeRef(
-                            Dwarf(
-                                DwarfTypeRef(
-                                    Offset {
-                                        section: DebugInfo,
-                                        offset: UnitSectionOffset(
-                                            9384,
-                                        ),
-                                    },
-                                ),
-                            ),
-                        ),
-                    ),
-                    kind: Local,
-                    locations: [
-                        VariableLocationInfo {
-                            address: 0x10000019e,
-                            size: 0xd7,
-                            location: FrameOffset {
-                                offset: 8,
-                            },
-                        },
-                    ],
-                },
-            ],
+            variables: [],
         },
     ),
     Ok(
@@ -712,35 +629,7 @@ expression: r
             lines: [],
             inlinees: [],
             inline: false,
-            variables: [
-                Variable {
-                    name: "t",
-                    ty: Some(
-                        TypeRef(
-                            Dwarf(
-                                DwarfTypeRef(
-                                    Offset {
-                                        section: DebugInfo,
-                                        offset: UnitSectionOffset(
-                                            11615,
-                                        ),
-                                    },
-                                ),
-                            ),
-                        ),
-                    ),
-                    kind: Local,
-                    locations: [
-                        VariableLocationInfo {
-                            address: 0x10000019e,
-                            size: 0xc7,
-                            location: FrameOffset {
-                                offset: 0,
-                            },
-                        },
-                    ],
-                },
-            ],
+            variables: [],
         },
     ),
     Ok(

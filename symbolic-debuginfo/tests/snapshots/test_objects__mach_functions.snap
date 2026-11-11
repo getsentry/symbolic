@@ -165,7 +165,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     out (local)
       type:
         > Unknown
-      0xea0..0xfe7: frame base +16
+      0xea0..0xfe7: memory at rsp +16
     out_size (local)
       type:
         > TypeDef: size_t
@@ -242,7 +242,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     out (local)
       type:
         > Unknown
-      0xff0..0x1137: frame base +8
+      0xff0..0x1137: memory at rsp +8
     out_size (local)
       type:
         > TypeDef: size_t
