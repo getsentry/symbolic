@@ -1485,8 +1485,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             Operation::RegisterOffset {
                 register,
                 offset,
-                base_type,
-            } if base_type.0 == 0 => Register::from_dwarf(self.inner.info.cpu_family, register.0)
+                base_type: gimli::UnitOffset(0),
+            } => Register::from_dwarf(self.inner.info.cpu_family, register.0)
                 .map(|register| VariableLocation::RegisterOffset { register, offset }),
             // Currently more operations are not supported.
             _ => None,

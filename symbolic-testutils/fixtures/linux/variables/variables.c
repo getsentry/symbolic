@@ -206,7 +206,7 @@ NOINLINE int stack_home(int a)
 /*
  * A variable-length array is addressed through the register that holds its
  * dynamically allocated base rather than through the frame base. At -O2 that
- * gives `arr` the fixture's only `DW_OP_breg` location. At -O0 GCC instead
+ * gives `arr` a `DW_OP_breg` location with a zero offset. At -O0 GCC instead
  * emits `DW_OP_fbreg, DW_OP_deref`, a two-op expression that symbolic drops.
  */
 NOINLINE int vla(int n)
