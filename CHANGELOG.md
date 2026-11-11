@@ -7,6 +7,7 @@
 - Represent variable register locations as named registers instead of raw DWARF register numbers. ([#1117](https://github.com/getsentry/symbolic/pull/1117), [#1115](https://github.com/getsentry/symbolic/pull/1115), [#1146](https://github.com/getsentry/symbolic/pull/1146), [#1147](https://github.com/getsentry/symbolic/pull/1147))
 - Add support for `typedef` and `struct` types. ([#1137](https://github.com/getsentry/symbolic/pull/1137), [#1138](https://github.com/getsentry/symbolic/pull/1138))
 - Add `VariableLocation::RegisterOffset` for variables in memory at an offset from a register's contents. ([#1160](https://github.com/getsentry/symbolic/pull/1160))
+- Parse `DW_OP_breg<n>` and `DW_OP_bregx` locations from DWARF into `VariableLocation::RegisterOffset`. ([#1151](https://github.com/getsentry/symbolic/pull/1151))
 
 **Fixes**
 
