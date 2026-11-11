@@ -443,6 +443,221 @@ define_arch_registers! {
     }
 }
 
+define_arch_registers! {
+    /// A 32-bit ARM register.
+    ///
+    /// The set of registers follows the DWARF register mapping of the
+    /// [DWARF for the Arm Architecture ABI][aadwarf32] (AADWARF32, section 4.1), without the
+    /// reserved and unspecified numbers.
+    ///
+    /// The registers are `r0` to `r15` (core integer registers), `s0` to `s31` (legacy VFP-v2),
+    /// `f0` to `f7` (legacy FPA), the Intel Wireless MMX registers `wcgr0` to `wcgr7`, `wr0` to
+    /// `wr15` and `wc0` to `wc7`, the SPSR registers, `ra_auth_code`, the banked mode registers
+    /// (such as `r8_usr` or `r13_irq`), `d0` to `d31` (VFP-v3/Neon) and the software thread ID
+    /// registers.
+    ///
+    /// Registers can be parsed from their canonical names via the [`FromStr`] implementation:
+    ///
+    /// ```rust
+    /// # use symbolic_common::register::Arm32Register;
+    /// let r0 = "r0".parse::<Arm32Register>().expect("\"r0\" is a valid Arm32 register");
+    /// assert_eq!(r0, Arm32Register::R0);
+    /// ```
+    ///
+    /// The registers `r11`, `r13`, `r14` and `r15` are also known as `fp` (frame pointer), `sp`
+    /// (stack pointer), `lr` (link register) and `pc` (program counter), respectively. Each can be
+    /// parsed using either name:
+    ///
+    /// ```rust
+    /// # use symbolic_common::register::Arm32Register;
+    /// assert_eq!("r11".parse::<Arm32Register>().unwrap(), Arm32Register::R11);
+    /// assert_eq!("fp".parse::<Arm32Register>().unwrap(), Arm32Register::R11);
+    ///
+    /// assert_eq!("r13".parse::<Arm32Register>().unwrap(), Arm32Register::R13);
+    /// assert_eq!("sp".parse::<Arm32Register>().unwrap(), Arm32Register::R13);
+    ///
+    /// assert_eq!("r14".parse::<Arm32Register>().unwrap(), Arm32Register::R14);
+    /// assert_eq!("lr".parse::<Arm32Register>().unwrap(), Arm32Register::R14);
+    ///
+    /// assert_eq!("r15".parse::<Arm32Register>().unwrap(), Arm32Register::R15);
+    /// assert_eq!("pc".parse::<Arm32Register>().unwrap(), Arm32Register::R15);
+    /// ```
+    ///
+    /// [aadwarf32]: https://github.com/ARM-software/abi-aa/blob/main/aadwarf32/aadwarf32.rst#dwarf-register-names
+    pub enum Arm32Register {
+        R0 = { name: "r0", dwarf: 0 },
+        R1 = { name: "r1", dwarf: 1 },
+        R2 = { name: "r2", dwarf: 2 },
+        R3 = { name: "r3", dwarf: 3 },
+        R4 = { name: "r4", dwarf: 4 },
+        R5 = { name: "r5", dwarf: 5 },
+        R6 = { name: "r6", dwarf: 6 },
+        R7 = { name: "r7", dwarf: 7 },
+        R8 = { name: "r8", dwarf: 8 },
+        R9 = { name: "r9", dwarf: 9 },
+        R10 = { name: "r10", dwarf: 10 },
+        // The minidump crate uses "fp" for register "r11".
+        R11 = { name: "r11", dwarf: 11, alias: "fp" },
+        R12 = { name: "r12", dwarf: 12 },
+        // The minidump crate uses "sp" for register "r13".
+        R13 = { name: "r13", dwarf: 13, alias: "sp" },
+        // The minidump crate uses "lr" for register "r14".
+        R14 = { name: "r14", dwarf: 14, alias: "lr" },
+        // The minidump crate uses "pc" for register "r15".
+        R15 = { name: "r15", dwarf: 15, alias: "pc" },
+        // Obsolescent legacy VFP-v2 numbering for `s0` to `s31`. Producers should use `d0` to `d31`
+        // instead, but GCC still emits these numbers, and AADWARF32 section 4.1.1 says consumers
+        // should accept both numberings.
+        S0 = { name: "s0", dwarf: 64 },
+        S1 = { name: "s1", dwarf: 65 },
+        S2 = { name: "s2", dwarf: 66 },
+        S3 = { name: "s3", dwarf: 67 },
+        S4 = { name: "s4", dwarf: 68 },
+        S5 = { name: "s5", dwarf: 69 },
+        S6 = { name: "s6", dwarf: 70 },
+        S7 = { name: "s7", dwarf: 71 },
+        S8 = { name: "s8", dwarf: 72 },
+        S9 = { name: "s9", dwarf: 73 },
+        S10 = { name: "s10", dwarf: 74 },
+        S11 = { name: "s11", dwarf: 75 },
+        S12 = { name: "s12", dwarf: 76 },
+        S13 = { name: "s13", dwarf: 77 },
+        S14 = { name: "s14", dwarf: 78 },
+        S15 = { name: "s15", dwarf: 79 },
+        S16 = { name: "s16", dwarf: 80 },
+        S17 = { name: "s17", dwarf: 81 },
+        S18 = { name: "s18", dwarf: 82 },
+        S19 = { name: "s19", dwarf: 83 },
+        S20 = { name: "s20", dwarf: 84 },
+        S21 = { name: "s21", dwarf: 85 },
+        S22 = { name: "s22", dwarf: 86 },
+        S23 = { name: "s23", dwarf: 87 },
+        S24 = { name: "s24", dwarf: 88 },
+        S25 = { name: "s25", dwarf: 89 },
+        S26 = { name: "s26", dwarf: 90 },
+        S27 = { name: "s27", dwarf: 91 },
+        S28 = { name: "s28", dwarf: 92 },
+        S29 = { name: "s29", dwarf: 93 },
+        S30 = { name: "s30", dwarf: 94 },
+        S31 = { name: "s31", dwarf: 95 },
+        // Obsolescent FPA registers (AADWARF32 Note 1).
+        F0 = { name: "f0", dwarf: 96 },
+        F1 = { name: "f1", dwarf: 97 },
+        F2 = { name: "f2", dwarf: 98 },
+        F3 = { name: "f3", dwarf: 99 },
+        F4 = { name: "f4", dwarf: 100 },
+        F5 = { name: "f5", dwarf: 101 },
+        F6 = { name: "f6", dwarf: 102 },
+        F7 = { name: "f7", dwarf: 103 },
+        // DWARF numbers 104 to 111 are shared between the Intel Wireless MMX general purpose
+        // registers `wcgr0` to `wcgr7` and the XScale accumulators `acc0` to `acc7` (AADWARF32
+        // Note 2: "No system can contain both acc0 and MMX, so these numberings can overlap").
+        // These are different registers, not aliases of each other. Because each DWARF number
+        // maps to exactly one register, only `wcgr0` to `wcgr7` are implemented, and `acc0` to
+        // `acc7` are not.
+        Wcgr0 = { name: "wcgr0", dwarf: 104 },
+        Wcgr1 = { name: "wcgr1", dwarf: 105 },
+        Wcgr2 = { name: "wcgr2", dwarf: 106 },
+        Wcgr3 = { name: "wcgr3", dwarf: 107 },
+        Wcgr4 = { name: "wcgr4", dwarf: 108 },
+        Wcgr5 = { name: "wcgr5", dwarf: 109 },
+        Wcgr6 = { name: "wcgr6", dwarf: 110 },
+        Wcgr7 = { name: "wcgr7", dwarf: 111 },
+        Wr0 = { name: "wr0", dwarf: 112 },
+        Wr1 = { name: "wr1", dwarf: 113 },
+        Wr2 = { name: "wr2", dwarf: 114 },
+        Wr3 = { name: "wr3", dwarf: 115 },
+        Wr4 = { name: "wr4", dwarf: 116 },
+        Wr5 = { name: "wr5", dwarf: 117 },
+        Wr6 = { name: "wr6", dwarf: 118 },
+        Wr7 = { name: "wr7", dwarf: 119 },
+        Wr8 = { name: "wr8", dwarf: 120 },
+        Wr9 = { name: "wr9", dwarf: 121 },
+        Wr10 = { name: "wr10", dwarf: 122 },
+        Wr11 = { name: "wr11", dwarf: 123 },
+        Wr12 = { name: "wr12", dwarf: 124 },
+        Wr13 = { name: "wr13", dwarf: 125 },
+        Wr14 = { name: "wr14", dwarf: 126 },
+        Wr15 = { name: "wr15", dwarf: 127 },
+        Spsr = { name: "spsr", dwarf: 128 },
+        SpsrFiq = { name: "spsr_fiq", dwarf: 129 },
+        SpsrIrq = { name: "spsr_irq", dwarf: 130 },
+        SpsrAbt = { name: "spsr_abt", dwarf: 131 },
+        SpsrUnd = { name: "spsr_und", dwarf: 132 },
+        SpsrSvc = { name: "spsr_svc", dwarf: 133 },
+        RaAuthCode = { name: "ra_auth_code", dwarf: 143 },
+        R8Usr = { name: "r8_usr", dwarf: 144 },
+        R9Usr = { name: "r9_usr", dwarf: 145 },
+        R10Usr = { name: "r10_usr", dwarf: 146 },
+        R11Usr = { name: "r11_usr", dwarf: 147 },
+        R12Usr = { name: "r12_usr", dwarf: 148 },
+        R13Usr = { name: "r13_usr", dwarf: 149 },
+        R14Usr = { name: "r14_usr", dwarf: 150 },
+        R8Fiq = { name: "r8_fiq", dwarf: 151 },
+        R9Fiq = { name: "r9_fiq", dwarf: 152 },
+        R10Fiq = { name: "r10_fiq", dwarf: 153 },
+        R11Fiq = { name: "r11_fiq", dwarf: 154 },
+        R12Fiq = { name: "r12_fiq", dwarf: 155 },
+        R13Fiq = { name: "r13_fiq", dwarf: 156 },
+        R14Fiq = { name: "r14_fiq", dwarf: 157 },
+        R13Irq = { name: "r13_irq", dwarf: 158 },
+        R14Irq = { name: "r14_irq", dwarf: 159 },
+        R13Abt = { name: "r13_abt", dwarf: 160 },
+        R14Abt = { name: "r14_abt", dwarf: 161 },
+        R13Und = { name: "r13_und", dwarf: 162 },
+        R14Und = { name: "r14_und", dwarf: 163 },
+        R13Svc = { name: "r13_svc", dwarf: 164 },
+        R14Svc = { name: "r14_svc", dwarf: 165 },
+        Wc0 = { name: "wc0", dwarf: 192 },
+        Wc1 = { name: "wc1", dwarf: 193 },
+        Wc2 = { name: "wc2", dwarf: 194 },
+        Wc3 = { name: "wc3", dwarf: 195 },
+        Wc4 = { name: "wc4", dwarf: 196 },
+        Wc5 = { name: "wc5", dwarf: 197 },
+        Wc6 = { name: "wc6", dwarf: 198 },
+        Wc7 = { name: "wc7", dwarf: 199 },
+        D0 = { name: "d0", dwarf: 256 },
+        D1 = { name: "d1", dwarf: 257 },
+        D2 = { name: "d2", dwarf: 258 },
+        D3 = { name: "d3", dwarf: 259 },
+        D4 = { name: "d4", dwarf: 260 },
+        D5 = { name: "d5", dwarf: 261 },
+        D6 = { name: "d6", dwarf: 262 },
+        D7 = { name: "d7", dwarf: 263 },
+        D8 = { name: "d8", dwarf: 264 },
+        D9 = { name: "d9", dwarf: 265 },
+        D10 = { name: "d10", dwarf: 266 },
+        D11 = { name: "d11", dwarf: 267 },
+        D12 = { name: "d12", dwarf: 268 },
+        D13 = { name: "d13", dwarf: 269 },
+        D14 = { name: "d14", dwarf: 270 },
+        D15 = { name: "d15", dwarf: 271 },
+        D16 = { name: "d16", dwarf: 272 },
+        D17 = { name: "d17", dwarf: 273 },
+        D18 = { name: "d18", dwarf: 274 },
+        D19 = { name: "d19", dwarf: 275 },
+        D20 = { name: "d20", dwarf: 276 },
+        D21 = { name: "d21", dwarf: 277 },
+        D22 = { name: "d22", dwarf: 278 },
+        D23 = { name: "d23", dwarf: 279 },
+        D24 = { name: "d24", dwarf: 280 },
+        D25 = { name: "d25", dwarf: 281 },
+        D26 = { name: "d26", dwarf: 282 },
+        D27 = { name: "d27", dwarf: 283 },
+        D28 = { name: "d28", dwarf: 284 },
+        D29 = { name: "d29", dwarf: 285 },
+        D30 = { name: "d30", dwarf: 286 },
+        D31 = { name: "d31", dwarf: 287 },
+        // DWARF numbers 288 to 319 are reserved for VFP/Neon and are not implemented.
+        Tpidruro = { name: "tpidruro", dwarf: 320 },
+        Tpidrurw = { name: "tpidrurw", dwarf: 321 },
+        Tpidpr = { name: "tpidpr", dwarf: 322 },
+        Htpidpr = { name: "htpidpr", dwarf: 323 },
+        // DWARF numbers 8192 to 16383 are for vendor co-processor registers, which AADWARF32 does
+        // not specify, so they are not implemented.
+    }
+}
+
 /// Defines the architecture-independent register type and conversions from a shared CPU-family mapping.
 macro_rules! define_register_wrapper {
     (
@@ -529,6 +744,9 @@ define_register_wrapper! {
 
     /// An x86 register.
     Intel32(Intel32Register) => [CpuFamily::Intel32],
+
+    /// A 32-bit ARM register.
+    Arm32(Arm32Register) => [CpuFamily::Arm32],
 }
 
 /// An error returned when parsing a register name fails.
