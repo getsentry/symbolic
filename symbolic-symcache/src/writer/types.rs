@@ -34,7 +34,7 @@ impl TypeSerializer<'static> for NoopTypeSerializer {
 }
 
 /// The resolution state of a single type ref.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 enum ResolvedState {
     /// The type ref is currently being resolved.
     Pending,
@@ -78,20 +78,21 @@ impl<'data, S> SessionTypeSerializer<'data, S>
 where
     S: DebugSession<'data>,
 {
-    fn resolve(&mut self, ty_ref: TypeRef) -> Option<Resolved<'data>> {
+    fn resolve(&mut self, ty_ref: TypeRef) -> Result<Resolved<'data>, ResolvedState> {
         use indexmap::map::Entry;
 
-        let Entry::Vacant(entry) = self.resolved.entry(ty_ref.clone()) else {
-            // There is already an entry in the resolved table, this can only happen with a cycle.
-            return None;
+        let entry = match self.resolved.entry(ty_ref.clone()) {
+            Entry::Occupied(entry) => return Err(*entry.get()),
+            Entry::Vacant(entry) => entry,
         };
 
-        let ty = self.session.lookup_type(&ty_ref).ok().flatten();
-        entry.insert(match ty.is_some() {
-            true => ResolvedState::Pending,
-            false => ResolvedState::Unknown,
-        });
-        ty.map(|ty| Resolved::new(ty_ref, ty))
+        let Some(ty) = self.session.lookup_type(&ty_ref).ok().flatten() else {
+            entry.insert(ResolvedState::Unknown);
+            return Err(ResolvedState::Unknown);
+        };
+
+        entry.insert(ResolvedState::Pending);
+        Ok(Resolved::new(ty_ref, ty))
     }
 
     fn try_lookup_type_idx(&self, ty_ref: &TypeRef) -> FwdResult<u32> {
@@ -207,20 +208,19 @@ where
         type_writer: &mut TypeWriter,
         string_table: &mut StringTable,
     ) -> Option<u32> {
-        match self.resolved.get(ty_ref) {
-            Some(ResolvedState::Stored(idx)) => return Some(*idx),
-            Some(ResolvedState::Unknown) => return None,
-            Some(ResolvedState::Pending) => {
+        let resolved = match self.resolve(ty_ref.clone()) {
+            Ok(resolved) => resolved,
+            Err(ResolvedState::Stored(idx)) => return Some(idx),
+            Err(ResolvedState::Unknown) => return None,
+            Err(ResolvedState::Pending) => {
                 // This should not be possible. Types are only marked as progress within the context
                 // of this function and it is not called recursively.
                 debug_assert!(false);
                 return None;
             }
-            // The type ref has not yet been resolved and must be resolved.
-            None => {}
-        }
+        };
 
-        let mut q = vec![self.resolve(ty_ref.clone())?];
+        let mut q = vec![resolved];
         let mut pending = Vec::new();
 
         // This is a depth first post-order traversal of all dependencies.
@@ -240,8 +240,8 @@ where
         // serialized again, this time for each type all of its dependencies have now been fully resolved.
         while let Some(resolved) = q.last_mut() {
             if let Some(child) = resolved.next_child() {
-                if let Some(r) = self.resolve(child) {
-                    q.push(r);
+                if let Ok(child) = self.resolve(child) {
+                    q.push(child);
                 }
             } else {
                 let resolved = q.pop().unwrap();
