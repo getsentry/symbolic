@@ -221,4 +221,11 @@ pub enum VariableLocation {
         /// The signed offset from the frame base.
         offset: i64,
     },
+    /// The variable can be found in memory at an offset relative to the contents of a register.
+    RegisterOffset {
+        /// The register holding the base address.
+        register: Register,
+        /// The signed offset from the register's contents.
+        offset: i64,
+    },
 }

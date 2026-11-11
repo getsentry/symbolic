@@ -533,6 +533,8 @@ impl<'a> SymCacheConverter<'a> {
                         offset: offset as i32,
                     }
                     .into(),
+                    // Not supported by the symcache yet.
+                    di::VariableLocation::RegisterOffset { .. } => continue,
                 };
                 let (kind, data) = raw_loc.into_impl();
 
