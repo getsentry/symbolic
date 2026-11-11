@@ -683,12 +683,16 @@ impl<'a> InProgressSubProgram<'a> {
         }
     }
 
-    /// The frame base of a regular subprogram, which `DW_OP_fbreg` locations are relative to.
-    fn frame_base(&self) -> Option<FrameBase> {
-        match self {
-            InProgressSubProgram::Regular(p) => p.frame_base,
-            InProgressSubProgram::Inlined(_) | InProgressSubProgram::Deadcode(_) => None,
-        }
+    /// The frame base that `DW_OP_fbreg` locations in this subprogram are relative to.
+    ///
+    /// This is the frame base of the owning function, so inlinees use the frame base of the
+    /// function they are inlined into.
+    fn frame_base(&self, function_stack: &[InProgressSubProgram<'a>]) -> Option<FrameBase> {
+        let InProgressSubProgram::Regular(owner) = &function_stack[self.owning_function_idx()]
+        else {
+            return None;
+        };
+        owner.frame_base
     }
 
     fn owning_function_idx(&self) -> usize {
@@ -1316,11 +1320,9 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     function_stack.push(program);
                 }
                 constants::DW_TAG_variable | constants::DW_TAG_formal_parameter => {
-                    // Variables of inlinees are relative to the frame base of the function they
-                    // are inlined into.
                     let frame_base = function_stack
                         .last()
-                        .and_then(|f| function_stack[f.owning_function_idx()].frame_base());
+                        .and_then(|f| f.frame_base(&function_stack));
                     if let Some(variable) = self.parse_variable(entries, abbrev, frame_base)? {
                         if let Some(last_function) = function_stack.last_mut() {
                             last_function.push_variable(variable);
