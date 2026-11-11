@@ -7,6 +7,7 @@ use std::fmt;
 use std::ops::Range;
 use std::str;
 
+use indexmap::IndexSet;
 use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameMangling};
@@ -1358,6 +1359,7 @@ pub struct BreakpadFunctionIterator<'s> {
     next_line: Option<&'s [u8]>,
     inline_origin_map: BreakpadInlineOriginMap<'s>,
     lines: Lines<'s>,
+    line_infos: IndexSet<LineInfo<'s>>,
 }
 
 impl<'s> BreakpadFunctionIterator<'s> {
@@ -1368,6 +1370,7 @@ impl<'s> BreakpadFunctionIterator<'s> {
             next_line,
             inline_origin_map: Default::default(),
             lines,
+            line_infos: Default::default(),
         }
     }
 }
@@ -1486,6 +1489,7 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
             let filename = line_record.filename(self.file_map).unwrap_or_default();
 
             builder.add_leaf_line(
+                &mut self.line_infos,
                 line_record.address,
                 Some(line_record.size),
                 FileInfo::from_path(filename.as_bytes()),
@@ -1493,7 +1497,9 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
             );
         }
 
-        Some(Ok(builder.finish()))
+        let out = builder.finish(&mut self.line_infos);
+        self.line_infos.clear();
+        Some(Ok(out))
     }
 }
 

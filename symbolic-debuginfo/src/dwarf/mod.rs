@@ -23,6 +23,7 @@ use gimli::{
     AbbreviationsCacheStrategy, DebugTypeSignature, DwarfFileType, Expression, LocListIter,
     LocationLists, Operation, SectionId, UnitSectionOffset, UnitType, constants,
 };
+use indexmap::IndexSet;
 use thiserror::Error;
 
 use symbolic_common::register::Register;
@@ -712,6 +713,7 @@ impl<'a> InProgressSubProgram<'a> {
                     }
                 }
 
+                let mut line_infos = IndexSet::new();
                 if let Some(line_program) = &dwarf_unit.line_program {
                     for (range, builder) in p.builders.iter_mut() {
                         for row in line_program.get_rows(range) {
@@ -719,13 +721,13 @@ impl<'a> InProgressSubProgram<'a> {
                             let size = row.size;
                             let file = dwarf_unit.resolve_file(row.file_index).unwrap_or_default();
                             let line = row.line.unwrap_or(0);
-                            builder.add_leaf_line(address, size, file, line);
+                            builder.add_leaf_line(&mut line_infos, address, size, file, line);
                         }
                     }
                 }
 
                 for (_range, builder) in p.builders {
-                    output.functions.push(builder.finish());
+                    output.functions.push(builder.finish(&mut line_infos));
                 }
 
                 Ok(())
