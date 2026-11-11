@@ -654,6 +654,7 @@ struct InlinedSubProgram<'a> {
     call_file: FileInfo<'a>,
     call_line: u64,
     language: Language,
+    frame_base: Option<FrameBase>,
 }
 
 struct DeadcodeSubProgram {
@@ -685,15 +686,16 @@ impl<'a> InProgressSubProgram<'a> {
 
     /// The frame base that `DW_OP_fbreg` locations in this subprogram are relative to.
     ///
-    /// This is the frame base of the owning function, so inlinees use the frame base of the
-    /// function they are inlined into.
-    fn frame_base(&self, function_stack: &[InProgressSubProgram<'a>]) -> Option<FrameBase> {
-        let InProgressSubProgram::Regular(owner) = &function_stack[self.owning_function_idx()]
-        else {
-            debug_assert!(false, "the owning function is always a regular subprogram");
-            return None;
-        };
-        owner.frame_base
+    /// Inlinees use the frame base of the function they are inlined into.
+    fn frame_base(&self) -> Option<FrameBase> {
+        match self {
+            InProgressSubProgram::Regular(p) => p.frame_base,
+            InProgressSubProgram::Inlined(p) => p.frame_base,
+            InProgressSubProgram::Deadcode(_) => {
+                debug_assert!(false, "entries below dead code are skipped");
+                None
+            }
+        }
     }
 
     fn owning_function_idx(&self) -> usize {
@@ -1193,6 +1195,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         dw_die_offset: gimli::UnitOffset<usize>,
         owning_function_idx: usize,
         language: Language,
+        frame_base: Option<FrameBase>,
         entries: &mut EntriesRaw<'d, '_>,
         abbrev: &gimli::Abbreviation,
         ranges: &mut Vec<Range>,
@@ -1245,6 +1248,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             call_file,
             call_line,
             language,
+            frame_base,
         }))
     }
 
@@ -1307,6 +1311,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     };
                     let owning_function_idx = prev_program.owning_function_idx();
                     let language = prev_program.language();
+                    let frame_base = prev_program.frame_base();
 
                     let program = self.consume_inline_subprogram_tag(
                         next_depth,
@@ -1314,6 +1319,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                         dw_die_offset,
                         owning_function_idx,
                         language,
+                        frame_base,
                         entries,
                         abbrev,
                         &mut output.range_buf,
@@ -1321,9 +1327,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     function_stack.push(program);
                 }
                 constants::DW_TAG_variable | constants::DW_TAG_formal_parameter => {
-                    let frame_base = function_stack
-                        .last()
-                        .and_then(|f| f.frame_base(&function_stack));
+                    let frame_base = function_stack.last().and_then(|f| f.frame_base());
                     if let Some(variable) = self.parse_variable(entries, abbrev, frame_base)? {
                         if let Some(last_function) = function_stack.last_mut() {
                             last_function.push_variable(variable);
