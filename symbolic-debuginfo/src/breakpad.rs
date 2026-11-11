@@ -1497,7 +1497,9 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
             );
         }
 
-        Some(Ok(builder.finish(&mut self.line_infos)))
+        let out = builder.finish(&mut self.line_infos);
+        self.line_infos.clear();
+        Some(Ok(out))
     }
 }
 
