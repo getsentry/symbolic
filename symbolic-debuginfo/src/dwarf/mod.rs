@@ -1464,16 +1464,17 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         Ok((!result.is_empty()).then_some(Locations::Many(result)))
     }
 
-    fn parse_location_expression(&self, expr: Expression<Slice<'d>>) -> Option<VariableLocation> {
+    /// Returns the operation of an expression that consists of exactly one operation.
+    fn single_operation(&self, expr: Expression<Slice<'d>>) -> Option<Operation<Slice<'d>>> {
         let mut operations = expr.operations(self.inner.unit.encoding());
 
         let op = operations.next().ok()??;
-        if operations.next().ok()?.is_some() {
-            // Currently we only support location expressions with a single op.
-            return None;
-        }
+        operations.next().ok()?.is_none().then_some(op)
+    }
 
-        match op {
+    fn parse_location_expression(&self, expr: Expression<Slice<'d>>) -> Option<VariableLocation> {
+        // Currently we only support location expressions with a single op.
+        match self.single_operation(expr)? {
             Operation::Register { register } => {
                 Register::from_dwarf(self.inner.info.cpu_family, register.0)
                     .map(|register| VariableLocation::Register { register })
