@@ -140,6 +140,14 @@ impl fmt::Debug for FunctionsDebug<'_, '_> {
                             location.address.saturating_add(location.size),
                             indent = self.depth * 2
                         )?,
+                        VariableLocation::RegisterOffset { register, offset } => writeln!(
+                            f,
+                            "{:indent$}      {:#x}..{:#x}: memory at {register} {offset:+}",
+                            "",
+                            location.address,
+                            location.address.saturating_add(location.size),
+                            indent = self.depth * 2
+                        )?,
                     }
                 }
             }

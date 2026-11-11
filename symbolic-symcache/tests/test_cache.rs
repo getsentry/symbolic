@@ -63,6 +63,13 @@ impl fmt::Debug for VariablesDebug<'_, '_> {
                     VariableLocation::FrameOffset { offset } => {
                         write!(f, "{:#x}..{end:#x} frame {offset}", location.address)?;
                     }
+                    VariableLocation::RegisterOffset { register, offset } => {
+                        write!(
+                            f,
+                            "{:#x}..{end:#x} memory at {register} {offset:+}",
+                            location.address
+                        )?;
+                    }
                 }
             }
             writeln!(f)?;

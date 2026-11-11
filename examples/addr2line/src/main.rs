@@ -146,6 +146,9 @@ fn resolve(
                 match location.location {
                     VariableLocation::Register { register } => print!("reg:{register}"),
                     VariableLocation::FrameOffset { offset } => print!("fbreg:{offset}"),
+                    VariableLocation::RegisterOffset { register, offset } => {
+                        print!("breg:{register}{offset:+}")
+                    }
                 }
                 print_range(location.address, Some(location.size), matches);
                 println!();
