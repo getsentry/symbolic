@@ -690,6 +690,7 @@ impl<'a> InProgressSubProgram<'a> {
     fn frame_base(&self, function_stack: &[InProgressSubProgram<'a>]) -> Option<FrameBase> {
         let InProgressSubProgram::Regular(owner) = &function_stack[self.owning_function_idx()]
         else {
+            debug_assert!(false, "the owning function is always a regular subprogram");
             return None;
         };
         owner.frame_base
