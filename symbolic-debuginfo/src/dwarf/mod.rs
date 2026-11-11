@@ -685,8 +685,6 @@ impl<'a> InProgressSubProgram<'a> {
     }
 
     /// The frame base that `DW_OP_fbreg` locations in this subprogram are relative to.
-    ///
-    /// Inlinees use the frame base of the function they are inlined into.
     fn frame_base(&self) -> Option<FrameBase> {
         match self {
             InProgressSubProgram::Regular(p) => p.frame_base,
