@@ -198,22 +198,21 @@ pub struct Variable {
 #[repr(C)]
 pub struct RegisterLocation {
     pub id: u16,
-    pub _reserved: [u8; 6],
-}
-
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-#[repr(C)]
-pub struct FrameOffsetLocation {
-    pub offset: i32,
     pub _reserved: [u8; 4],
 }
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-#[repr(C)]
-pub struct RegisterOffsetLocation {
-    pub id: u16,
-    pub _reserved: [u8; 2],
+#[repr(C, packed(2))]
+pub struct FrameOffsetLocation {
     pub offset: i32,
+    pub _reserved: [u8; 2],
+}
+
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(C, packed(2))]
+pub struct RegisterOffsetLocation {
+    pub offset: i32,
+    pub id: u16,
 }
 
 pub mod location {
@@ -238,7 +237,7 @@ pub struct VariableLocationInfo {
     pub location: location::Impl,
     /// The location kind.
     pub kind: u8,
-    pub _reserved: [u8; 3],
+    pub _reserved: [u8; 1],
 }
 
 impl VariableLocationInfo {
@@ -453,7 +452,7 @@ mod tests {
         assert_eq!(mem::size_of::<Variable>(), 20);
         assert_eq!(mem::align_of::<Variable>(), 4);
 
-        assert_eq!(mem::size_of::<VariableLocationInfo>(), 20);
+        assert_eq!(mem::size_of::<VariableLocationInfo>(), 16);
         assert_eq!(mem::align_of::<VariableLocationInfo>(), 4);
 
         assert_eq!(mem::size_of::<Type>(), 20);
