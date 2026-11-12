@@ -444,6 +444,16 @@ impl<'data> Iterator for VariableLocations<'data> {
                     Some(raw::location::Enum::frame_offset(fo)) => VariableLocation::FrameOffset {
                         offset: fo.offset.into(),
                     },
+                    Some(raw::location::Enum::register_offset(ro)) => {
+                        let Some(register) = convert::u16_to_register(self.cpu_family, ro.id)
+                        else {
+                            continue;
+                        };
+                        VariableLocation::RegisterOffset {
+                            register,
+                            offset: ro.offset.into(),
+                        }
+                    }
                     None => {
                         debug_assert!(false, "invalid variable location kind");
                         continue;

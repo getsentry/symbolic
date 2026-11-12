@@ -531,12 +531,27 @@ impl<'a> SymCacheConverter<'a> {
                         _reserved: [0; _],
                     }
                     .into(),
-                    di::VariableLocation::FrameOffset { offset } => v9::raw::FrameOffsetLocation {
-                        offset: offset as i32,
+                    di::VariableLocation::FrameOffset { offset } => {
+                        let Ok(offset) = i32::try_from(offset) else {
+                            continue;
+                        };
+                        v9::raw::FrameOffsetLocation {
+                            offset,
+                            _reserved: [0; _],
+                        }
+                        .into()
                     }
-                    .into(),
-                    // Not supported by the symcache yet.
-                    di::VariableLocation::RegisterOffset { .. } => continue,
+                    di::VariableLocation::RegisterOffset { register, offset } => {
+                        let Ok(offset) = i32::try_from(offset) else {
+                            continue;
+                        };
+                        v9::raw::RegisterOffsetLocation {
+                            offset,
+                            id: v9::convert::register_to_u16(register),
+                            _reserved: [0; _],
+                        }
+                        .into()
+                    }
                 };
                 let (kind, data) = raw_loc.into_impl();
 
