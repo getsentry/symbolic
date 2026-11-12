@@ -546,9 +546,9 @@ impl<'a> SymCacheConverter<'a> {
                             continue;
                         };
                         v9::raw::RegisterOffsetLocation {
+                            offset,
                             id: v9::convert::register_to_u16(register),
                             _reserved: [0; _],
-                            offset,
                         }
                         .into()
                     }

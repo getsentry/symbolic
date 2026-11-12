@@ -211,9 +211,9 @@ pub struct FrameOffsetLocation {
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 #[repr(C)]
 pub struct RegisterOffsetLocation {
+    pub offset: i32,
     pub id: u16,
     pub _reserved: [u8; 2],
-    pub offset: i32,
 }
 
 pub mod location {
