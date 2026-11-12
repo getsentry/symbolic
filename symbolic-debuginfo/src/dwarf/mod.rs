@@ -1480,6 +1480,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     .map(|register| VariableLocation::Register { register })
             }
             Operation::FrameOffset { offset } => Some(VariableLocation::FrameOffset { offset }),
+            Operation::RegisterOffset {
+                register, offset, ..
+            } => Register::from_dwarf(self.inner.info.cpu_family, register.0)
+                .map(|register| VariableLocation::RegisterOffset { register, offset }),
             // Currently more operations are not supported.
             _ => None,
         }

@@ -203,6 +203,34 @@ NOINLINE int stack_home(int a)
     return slot + 1;
 }
 
+/*
+ * A variable-length array is addressed through the register that holds its
+ * dynamically allocated base rather than through the frame base. At -O2 that
+ * gives `arr` a `DW_OP_breg` location with a zero offset. At -O0 GCC instead
+ * emits `DW_OP_fbreg, DW_OP_deref`, a two-op expression that symbolic drops.
+ */
+NOINLINE int vla(int n)
+{
+    int arr[n];
+    arr[0] = n;
+    opaque = arr[0];
+    return arr[n - 1];
+}
+
+/*
+ * A parameter stored through a pointer. `value + opaque` is computed in place
+ * and overwrites the argument register, so afterwards the only copy of `value`
+ * is the one at `out->y`, and GCC describes it as living there: a `DW_OP_breg`
+ * with the member's offset. This gives the fixture a register-relative
+ * location with a non-zero offset and a resolvable type.
+ */
+NOINLINE void through_pointer(Point *out, int value)
+{
+    out->y = value;
+    out->x = value + opaque;
+    opaque = out->x;
+}
+
 int main(void)
 {
     primitives();
@@ -212,6 +240,10 @@ int main(void)
 
     int result = across_call(opaque) + optimized_out(opaque) + external_call(opaque);
     result += stack_home(opaque);
+    result += vla(opaque + 1);
+    Point stored;
+    through_pointer(&stored, opaque);
+    result += stored.y;
     result += (int)float_registers((float)opaque, (float)opaque);
     opaque = result;
     return 0;

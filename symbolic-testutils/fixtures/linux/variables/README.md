@@ -71,5 +71,8 @@ Currently not covered, worth adding when the surrounding support lands:
   `optimized_out`) — symbolic drops these entirely today: present at `-O0`, absent at `-O2`.
 - `DW_OP_entry_value` and `DW_OP_stack_value` location entries already occur in the fixture's
   DWARF (for example, the parameter tails in `float_registers`), but symbolic drops them today.
+- Multi-operation memory locations such as the `DW_OP_fbreg, DW_OP_deref` that `arr` in `vla` gets
+  at `-O0`. Only single-operation expressions are resolved, so `arr` has no location in the
+  unoptimized snapshot and a `DW_OP_breg` one in the optimized snapshot.
 - Non-DWARF formats. The same source should build to a PDB and a dSYM once those backends grow
   variable support.

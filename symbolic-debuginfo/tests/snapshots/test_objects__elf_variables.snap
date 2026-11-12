@@ -2,30 +2,85 @@
 source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug::new(&session, &functions)"
 ---
-> 0x130f: main (0xc3)
-  0x130f: variables.c:207 (/fixture)
-  0x1318: variables.c:208 (/fixture)
-  0x131d: variables.c:209 (/fixture)
-  0x133c: variables.c:210 (/fixture)
-  0x1341: variables.c:211 (/fixture)
-  0x134b: variables.c:213 (/fixture)
-  0x135a: variables.c:213 (/fixture)
-  0x1367: variables.c:213 (/fixture)
-  0x1369: variables.c:213 (/fixture)
-  0x1376: variables.c:213 (/fixture)
-  0x137b: variables.c:214 (/fixture)
-  0x1388: variables.c:214 (/fixture)
-  0x138b: variables.c:215 (/fixture)
-  0x13b7: variables.c:215 (/fixture)
-  0x13bb: variables.c:215 (/fixture)
-  0x13be: variables.c:216 (/fixture)
-  0x13c7: variables.c:217 (/fixture)
-  0x13cc: variables.c:218 (/fixture)
+> 0x13ca: main (0xf0)
+  0x13ca: variables.c:235 (/fixture)
+  0x13d3: variables.c:236 (/fixture)
+  0x13d8: variables.c:237 (/fixture)
+  0x13f7: variables.c:238 (/fixture)
+  0x13fc: variables.c:239 (/fixture)
+  0x1406: variables.c:241 (/fixture)
+  0x1415: variables.c:241 (/fixture)
+  0x1422: variables.c:241 (/fixture)
+  0x1424: variables.c:241 (/fixture)
+  0x1431: variables.c:241 (/fixture)
+  0x1436: variables.c:242 (/fixture)
+  0x1443: variables.c:242 (/fixture)
+  0x1446: variables.c:243 (/fixture)
+  0x1456: variables.c:243 (/fixture)
+  0x1459: variables.c:245 (/fixture)
+  0x146d: variables.c:246 (/fixture)
+  0x1470: variables.c:246 (/fixture)
+  0x1473: variables.c:247 (/fixture)
+  0x149f: variables.c:247 (/fixture)
+  0x14a3: variables.c:247 (/fixture)
+  0x14a6: variables.c:248 (/fixture)
+  0x14af: variables.c:249 (/fixture)
+  0x14b4: variables.c:250 (/fixture)
   variables:
     result (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x130f..0x13d2: frame base -36
+      0x13ca..0x14ba: frame base -36
+    stored (local)
+      type:
+        > TypeDef: Point
+          > Structure: <anonymous> (8 bytes)
+            > Member: x (offset 0 bytes)
+              > Primitive: int (SignedInt, 4 bytes)
+            > Member: y (offset 4 bytes)
+              > Primitive: int (SignedInt, 4 bytes)
+      0x13ca..0x14ba: frame base -44
+
+> 0x1395: through_pointer (0x35)
+  0x1395: variables.c:228 (/fixture)
+  0x13a0: variables.c:229 (/fixture)
+  0x13aa: variables.c:230 (/fixture)
+  0x13b5: variables.c:230 (/fixture)
+  0x13bb: variables.c:231 (/fixture)
+  0x13c1: variables.c:231 (/fixture)
+  0x13c7: variables.c:232 (/fixture)
+  variables:
+    out (parameter)
+      type:
+        > Pointer (8 bytes)
+          > TypeDef: Point
+            > Structure: <anonymous> (8 bytes)
+              > Member: x (offset 0 bytes)
+                > Primitive: int (SignedInt, 4 bytes)
+              > Member: y (offset 4 bytes)
+                > Primitive: int (SignedInt, 4 bytes)
+      0x1395..0x13ca: frame base -24
+    value (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x1395..0x13ca: frame base -28
+
+> 0x130f: vla (0x86)
+  0x130f: variables.c:213 (/fixture)
+  0x131a: variables.c:213 (/fixture)
+  0x1320: variables.c:214 (/fixture)
+  0x1323: variables.c:214 (/fixture)
+  0x136b: variables.c:215 (/fixture)
+  0x1374: variables.c:216 (/fixture)
+  0x137a: variables.c:216 (/fixture)
+  0x1380: variables.c:217 (/fixture)
+  0x1386: variables.c:217 (/fixture)
+  0x1393: variables.c:218 (/fixture)
+  variables:
+    n (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x130f..0x1395: frame base -36
 
 > 0x12fa: stack_home (0x15)
   0x12fa: variables.c:201 (/fixture)
