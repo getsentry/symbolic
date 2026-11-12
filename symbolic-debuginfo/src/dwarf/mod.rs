@@ -1480,12 +1480,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     .map(|register| VariableLocation::Register { register })
             }
             Operation::FrameOffset { offset } => Some(VariableLocation::FrameOffset { offset }),
-            // A non-zero `base_type` means this is a `DW_OP_regval_type`, which yields the
-            // register's value rather than an address.
             Operation::RegisterOffset {
-                register,
-                offset,
-                base_type: gimli::UnitOffset(0),
+                register, offset, ..
             } => Register::from_dwarf(self.inner.info.cpu_family, register.0)
                 .map(|register| VariableLocation::RegisterOffset { register, offset }),
             // Currently more operations are not supported.
