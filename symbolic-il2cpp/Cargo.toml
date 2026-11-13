@@ -21,3 +21,6 @@ symbolic-debuginfo = { version = "14.0.0-alpha.5", path = "../symbolic-debuginfo
 symbolic-testutils = { path = "../symbolic-testutils" }
 
 insta = { workspace = true, features = ["json"] }
+
+[lints]
+workspace = true

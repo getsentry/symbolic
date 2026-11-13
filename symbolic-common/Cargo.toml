@@ -34,3 +34,6 @@ minidump = { workspace = true }
 symbolic-testutils = { path = "../symbolic-testutils" }
 tempfile = { workspace = true }
 similar-asserts = { workspace = true }
+
+[lints]
+workspace = true

@@ -23,3 +23,6 @@ symbolic = { version = "14.0.0-alpha.5", path = "../symbolic", features = [
     "symcache",
 ] }
 tempfile = { workspace = true }
+
+[lints]
+workspace = true

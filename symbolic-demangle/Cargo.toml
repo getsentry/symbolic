@@ -38,3 +38,6 @@ cc = { workspace = true, optional = true }
 
 [dev-dependencies]
 similar-asserts = { workspace = true }
+
+[lints]
+workspace = true

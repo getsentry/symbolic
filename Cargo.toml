@@ -76,6 +76,8 @@ watto = { version = "0.2.0", features = ["writer", "strings"] }
 zip = { version = "9.0.0", default-features = false, features = ["deflate"] }
 zstd = { version = "0.14.3" }
 
+[workspace.lints]
+
 [profile.release]
 debug = true
 lto = true

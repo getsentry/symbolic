@@ -28,6 +28,9 @@
 //!    possible in `object` due to the use of lifetimes on the `object::Object` trait.
 
 #![warn(missing_docs)]
+// fix(SYMBOL-37): This is a false positive triggered in derive macros.
+// See <https://github.com/getsentry/symbolic/issues/1086>.
+#![allow(clippy::redundant_field_names)]
 
 mod base;
 

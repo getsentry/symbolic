@@ -39,3 +39,6 @@ il2cpp = ["symbolic-il2cpp"]
 [[bench]]
 name = "bench_writer"
 harness = false
+
+[lints]
+workspace = true

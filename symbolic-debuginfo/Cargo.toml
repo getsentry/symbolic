@@ -123,7 +123,5 @@ name = "breakpad_parser"
 harness = false
 required-features = ["breakpad"]
 
-[lints.clippy]
-# fix(SYMBOL-37): This is a false positive triggered in derive macros.
-# See https://linear.app/getsentry/issue/SYMBOL-37 and https://github.com/rust-lang/rust-clippy/issues/17525.
-redundant_field_names = "allow"
+[lints]
+workspace = true

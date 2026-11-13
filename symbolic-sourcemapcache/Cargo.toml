@@ -21,3 +21,6 @@ watto = { workspace = true }
 
 [dev-dependencies]
 symbolic-testutils = { path = "../symbolic-testutils" }
+
+[lints]
+workspace = true
