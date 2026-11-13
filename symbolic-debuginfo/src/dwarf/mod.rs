@@ -1,13 +1,9 @@
 //! Support for DWARF debugging information, common to ELF and MachO.
 //! In rare cases, PE's may contain it as well.
 //!
-//! The central element of this module is the [`Dwarf`] trait, which is implemented by [`ElfObject`],
-//! [`MachObject`] and [`PeObject`]. The dwarf debug session object can be obtained via getters on those types.
-//!
-//! [`Dwarf`]: trait.Dwarf.html
-//! [`ElfObject`]: ../elf/struct.ElfObject.html
-//! [`MachObject`]: ../macho/struct.MachObject.html
-//! [`PeObject`]: ../pe/struct.PeObject.html
+//! The central element of this module is the [`Dwarf`] trait, which is implemented by [`ElfObject`](crate::elf::ElfObject),
+//! [`MachObject`](crate::macho::MachObject) and [`PeObject`](crate::pe::PeObject).
+//! The dwarf debug session object can be obtained via getters on those types.
 
 use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap};
@@ -122,7 +118,7 @@ impl fmt::Display for DwarfErrorKind {
     }
 }
 
-/// An error handling [`DWARF`](trait.Dwarf.html) debugging information.
+/// An error handling [`DWARF`](Dwarf) debugging information.
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct DwarfError {
@@ -193,8 +189,6 @@ enum DwarfTypeRefInner {
 /// DWARF section information including its data.
 ///
 /// This is returned from objects implementing the [`Dwarf`] trait.
-///
-/// [`Dwarf`]: trait.Dwarf.html
 #[derive(Clone)]
 pub struct DwarfSection<'data> {
     /// Memory address of this section in virtual memory.

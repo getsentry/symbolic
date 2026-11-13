@@ -13,8 +13,6 @@ use serde::{Deserialize, Serialize};
 /// families with distinct properties, such as a generally common instruction set and pointer size.
 ///
 /// This enumeration is represented as `u32` for C-bindings and lowlevel APIs.
-///
-/// [`Arch`]: enum.Arch.html
 #[repr(u32)]
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Default)]
@@ -134,7 +132,7 @@ impl CpuFamily {
     }
 }
 
-/// An error returned for an invalid [`Arch`](enum.Arch.html).
+/// An error returned for an invalid [`Arch`].
 #[derive(Debug)]
 pub struct UnknownArchError;
 
@@ -148,19 +146,16 @@ impl std::error::Error for UnknownArchError {}
 
 /// An enumeration of CPU architectures and variants.
 ///
-/// The architectues are grouped into families, which can be retrieved by [`cpu_family`]. There are
+/// The architectues are grouped into families, which can be retrieved by [`cpu_family`](Self::cpu_family). There are
 /// `*Unknown` variants for each architecture to maintain forward-compatibility. This allows to
 /// support architectures where the family is known but the subtype is not.
 ///
-/// Each architecture has a canonical name, returned by [`Arch::name`]. Likewise, architectures can
+/// Each architecture has a canonical name, returned by [`name`](Self::name). Likewise, architectures can
 /// be parsed from their string names. In addition to that, in some cases aliases are supported. For
 /// instance, `"x86"` is aliased as `"i386"`.
 ///
 /// This enumeration is represented as `u32` for C-bindings and lowlevel APIs. The values are
 /// grouped by CPU family for forward compatibility.
-///
-/// [`cpu_family`]: enum.Arch.html#method.cpu_family
-/// [`Arch::name`]: enum.Arch.html#method.name
 #[repr(u32)]
 #[non_exhaustive]
 #[allow(missing_docs)]
@@ -431,8 +426,6 @@ impl std::error::Error for UnknownLanguageError {}
 /// function name with an optional language.
 ///
 /// This enumeration is represented as `u32` for C-bindings and lowlevel APIs.
-///
-/// [`Name`]: struct.Name.html
 #[repr(u32)]
 #[non_exhaustive]
 #[allow(missing_docs)]

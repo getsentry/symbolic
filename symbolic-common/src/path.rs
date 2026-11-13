@@ -296,8 +296,6 @@ pub fn split_path_bytes(path: &[u8]) -> (Option<&[u8]>, &[u8]) {
 /// ```
 /// assert_eq!(symbolic_common::split_path("C:\\a\\b"), (Some("C:\\a"), "b"));
 /// ```
-///
-/// [`split_path_bytes`]: fn.split_path_bytes.html
 pub fn split_path(path: &str) -> (Option<&str>, &str) {
     let (dir, name) = split_path_bytes(path.as_bytes());
     unsafe {
@@ -437,7 +435,7 @@ pub trait DSymPathExt {
 
     /// Resolves the path of the debug file in a `dSYM` directory structure.
     ///
-    /// Returns `Some(path)` if this path is a dSYM directory according to [`is_dsym_dir`], and a
+    /// Returns `Some(path)` if this path is a dSYM directory according to [`is_dsym_dir`](Self::is_dsym_dir), and a
     /// file of the same name is located at `Contents/Resources/DWARF/`.
     ///
     /// # Examples
@@ -450,8 +448,6 @@ pub trait DSymPathExt {
     /// let dsym_path = path.resolve_dsym().unwrap();
     /// assert_eq!(dsym_path, Path::new("Foo.dSYM/Contents/Resources/DWARF/Foo"));
     /// ```
-    ///
-    /// [`is_dsym_dir`]: trait.DSymPathExt.html#tymethod.is_dsym_dir
     fn resolve_dsym(&self) -> Option<PathBuf>;
 
     /// Resolves the `dSYM` parent directory if this file is a dSYM.

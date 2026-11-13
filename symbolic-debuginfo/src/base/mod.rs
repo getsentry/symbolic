@@ -152,7 +152,7 @@ impl FromStr for ObjectKind {
     }
 }
 
-/// An error returned for unknown or invalid [`FileFormats`](enum.FileFormat.html).
+/// An error returned for unknown or invalid [`FileFormat`]s.
 #[derive(Debug)]
 pub struct UnknownFileFormatError;
 
@@ -244,8 +244,6 @@ pub struct Symbol<'data> {
     ///
     /// When loading symbols from an object file, the size will generally not be known. Instead,
     /// construct a [`SymbolMap`] from the object, which also fills in sizes.
-    ///
-    /// [`SymbolMap`]: struct.SymbolMap.html
     pub size: u64,
 }
 
@@ -275,7 +273,7 @@ impl fmt::Debug for Symbol<'_> {
     }
 }
 
-/// IntoIterator type for [`SymbolMap`](struct.SymbolMap.html).
+/// IntoIterator type for [`SymbolMap`].
 pub type SymbolMapIter<'data> = std::vec::IntoIter<Symbol<'data>>;
 
 /// A sorted list of symbols, suitable for quick lookups.
@@ -304,8 +302,6 @@ pub type SymbolMapIter<'data> = std::vec::IntoIter<Symbol<'data>>;
 ///     size: 0x200,
 /// });
 /// ```
-///
-/// [`ObjectLike::symbol_map`]: trait.ObjectLike.html#tymethod.symbol_map
 #[derive(Clone, Debug, Default)]
 pub struct SymbolMap<'data> {
     symbols: Vec<Symbol<'data>>,
@@ -346,10 +342,8 @@ impl<'data> SymbolMap<'data> {
 
     /// Looks up a symbol covering an entire range.
     ///
-    /// This is similar to [`lookup`], but it only returns the symbol result if it _also_ covers the
+    /// This is similar to [`lookup`](Self::lookup), but it only returns the symbol result if it _also_ covers the
     /// inclusive end address of the range.
-    ///
-    /// [`lookup`]: struct.SymbolMap.html#method.lookup
     pub fn lookup_range<R>(&self, range: R) -> Option<&Symbol<'data>>
     where
         R: RangeBounds<u64>,
@@ -454,7 +448,7 @@ impl<'d> FromIterator<Symbol<'d>> for SymbolMap<'d> {
     }
 }
 
-/// File information referred by [`LineInfo`](struct.LineInfo.html) comprising a directory and name.
+/// File information referred by [`LineInfo`] comprising a directory and name.
 ///
 /// The file path is usually relative to a compilation directory. It might contain parent directory
 /// segments (`../`).
@@ -807,8 +801,6 @@ pub type DynIterator<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 ///  - Build a symbol map for random access to public symbols.
 ///  - Map string tables and other lookup tables.
 ///  - Read headers of compilation units (compilands) to resolve cross-unit references.
-///
-/// [`ObjectLike::debug_session`]: trait.ObjectLike.html#tymethod.debug_session
 pub trait DebugSession<'session> {
     /// The error returned when reading debug information fails.
     type Error;
@@ -896,7 +888,7 @@ pub trait ObjectLike<'data, 'object> {
     ///
     /// Constructing this session will also work if the object does not contain debugging
     /// information, in which case the session will be a no-op. This can be checked via
-    /// [`has_debug_info`](trait.ObjectLike.html#tymethod.has_debug_info).
+    /// [`has_debug_info`](Self::has_debug_info).
     fn debug_session(&'object self) -> Result<Self::Session, Self::Error>;
 
     /// Determines whether this object contains stack unwinding information.

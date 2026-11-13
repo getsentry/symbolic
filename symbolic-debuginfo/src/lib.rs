@@ -26,12 +26,6 @@
 //!    usage.
 //!  - `symbolic` contains an abstraction for multi-object files ([`Archive`]), which is not easily
 //!    possible in `object` due to the use of lifetimes on the `object::Object` trait.
-//!
-//! [`Object`]: enum.Object.html
-//! [`Archive`]: enum.Archive.html
-//! [`ObjectLike`]: trait.ObjectLike.html
-//! [`DebugSession`]: trait.DebugSession.html
-//! [`object crate`]: https://docs.rs/object
 
 #![warn(missing_docs)]
 
