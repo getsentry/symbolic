@@ -4,7 +4,7 @@
 
 **Breaking Changes**
 
-- Rename `VariableLocation::FrameOffset` to `VariableLocation::CfaOffset`. It now only describes variables at an offset from the CFA. ([#PR](https://github.com/getsentry/symbolic/pull/PR))
+- Rename `VariableLocation::FrameOffset` to `VariableLocation::CfaOffset`. It now only describes variables at an offset from the CFA. ([#1168](https://github.com/getsentry/symbolic/pull/1168))
 
 **Features**
 
