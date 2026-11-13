@@ -4,7 +4,6 @@ version.workspace = true
 license.workspace = true
 authors.workspace = true
 documentation = "https://docs.rs/symbolic-cfi"
-homepage.workspace = true
 repository.workspace = true
 description = """
 A library to process call frame information

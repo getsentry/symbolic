@@ -4,7 +4,6 @@ version.workspace = true
 license.workspace = true
 authors.workspace = true
 documentation = "https://docs.rs/symbolic-il2cpp"
-homepage.workspace = true
 repository.workspace = true
 description = """
 A library for parsing il2cpp line mappings.

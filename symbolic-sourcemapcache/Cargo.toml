@@ -4,7 +4,6 @@ version.workspace = true
 license.workspace = true
 authors.workspace = true
 documentation = "https://docs.rs/symbolic-sourcemapcache"
-homepage.workspace = true
 repository.workspace = true
 description = """
 A fast lookup cache for JavaScript Source Maps.

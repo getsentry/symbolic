@@ -6,7 +6,6 @@ members = ["symbolic*", "examples/*"]
 version = "14.0.0-alpha.5"
 authors = ["Sentry <hello@sentry.io>"]
 license = "MIT"
-homepage = "https://github.com/getsentry/symbolic"
 repository = "https://github.com/getsentry/symbolic"
 edition = "2024"
 rust-version = "1.85"
