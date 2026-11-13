@@ -407,7 +407,7 @@ impl str::FromStr for Arch {
     }
 }
 
-/// An error returned for an invalid [`Language`](enum.Language.html).
+/// An error returned for an invalid [`Language`].
 #[derive(Debug)]
 pub struct UnknownLanguageError;
 
