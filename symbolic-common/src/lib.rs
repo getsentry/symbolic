@@ -14,11 +14,6 @@
 //!   In the `symbolic` crate, this feature is exposed via `common-serde`.
 //!
 //! This module is part of the `symbolic` crate.
-//!
-//! [`Name`]: struct.Name.html
-//! [`ByteView`]: struct.ByteView.html
-//! [`InstructionInfo`]: struct.InstructionInfo.html
-//! [`SelfCell`]: struct.SelfCell.html
 
 #![warn(missing_docs)]
 

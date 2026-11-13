@@ -11,7 +11,7 @@ use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 
 mod parser;
 
-/// An error when dealing with [`WasmObject`](struct.WasmObject.html).
+/// An error when dealing with [`WasmObject`].
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum WasmError {
@@ -268,7 +268,7 @@ impl<'data> Dwarf<'data> for WasmObject<'data> {
 
 /// An iterator over symbols in the WASM file.
 ///
-/// Returned by [`WasmObject::symbols`](struct.WasmObject.html#method.symbols).
+/// Returned by [`WasmObject::symbols`].
 pub struct WasmSymbolIterator<'data, 'object> {
     funcs: std::vec::IntoIter<Symbol<'data>>,
     _marker: std::marker::PhantomData<&'object u8>,

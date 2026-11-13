@@ -4,7 +4,6 @@ version.workspace = true
 license.workspace = true
 authors.workspace = true
 documentation = "https://docs.rs/symbolic-ppdb"
-homepage.workspace = true
 repository.workspace = true
 description = """
 A library for parsing and performing lookups on Portable PDB files.
@@ -30,3 +29,6 @@ watto = { workspace = true }
 [dev-dependencies]
 symbolic-debuginfo = { path = "../symbolic-debuginfo" }
 symbolic-testutils = { path = "../symbolic-testutils" }
+
+[lints]
+workspace = true

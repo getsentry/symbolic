@@ -9,3 +9,6 @@ publish = false
 all-features = true
 
 [dependencies]
+
+[lints]
+workspace = true

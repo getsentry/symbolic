@@ -1,8 +1,6 @@
 //! A wrapper type providing direct memory access to binary data.
 //!
 //! See the [`ByteView`] struct for more documentation.
-//!
-//! [`ByteView`]: struct.ByteView.html
 
 use std::borrow::Cow;
 use std::fs::File;
@@ -181,7 +179,8 @@ impl<'a> ByteView<'a> {
     /// Constructs a `ByteView` from any `std::io::Reader`.
     ///
     /// **Note**: This currently consumes the entire reader and stores its data in an internal
-    /// buffer. Prefer [`open`] when reading from the file system or [`from_slice`] / [`from_vec`]
+    /// buffer. Prefer [`open`](Self::open) when reading from the file system or
+    /// [`from_slice`](Self::from_slice) / [`from_vec`](Self::from_vec)
     /// for in-memory operations. This behavior might change in the future.
     ///
     /// # Example
@@ -196,10 +195,6 @@ impl<'a> ByteView<'a> {
     ///     Ok(())
     /// }
     /// ```
-    ///
-    /// [`open`]: struct.ByteView.html#method.open
-    /// [`from_slice`]: struct.ByteView.html#method.from_slice
-    /// [`from_vec`]: struct.ByteView.html#method.from_vec
     pub fn read<R: io::Read>(mut reader: R) -> Result<Self, io::Error> {
         let mut buffer = vec![];
         reader.read_to_end(&mut buffer)?;

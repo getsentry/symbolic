@@ -3,7 +3,6 @@ name = "symbolic-wasm"
 version.workspace = true
 license.workspace = true
 authors.workspace = true
-homepage.workspace = true
 repository.workspace = true
 description = """
 WebAssembly bindings for symbolic, published to npm as @sentry/symbolic.
@@ -31,7 +30,6 @@ symbolic-debuginfo = { version = "14.0.0-alpha.5", path = "../symbolic-debuginfo
 symbolic-il2cpp = { version = "14.0.0-alpha.5", path = "../symbolic-il2cpp" }
 
 serde = { workspace = true }
-serde-wasm-bindgen = { workspace = true }
 js-sys = { workspace = true }
 thiserror = { workspace = true }
 wasm-bindgen = { workspace = true }
@@ -42,3 +40,6 @@ wasm-bindgen = { workspace = true }
 
 [dev-dependencies]
 wasm-bindgen-test = { workspace = true }
+
+[lints]
+workspace = true

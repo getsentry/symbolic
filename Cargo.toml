@@ -6,7 +6,6 @@ members = ["symbolic*", "examples/*"]
 version = "14.0.0-alpha.5"
 authors = ["Sentry <hello@sentry.io>"]
 license = "MIT"
-homepage = "https://github.com/getsentry/symbolic"
 repository = "https://github.com/getsentry/symbolic"
 edition = "2024"
 rust-version = "1.85"
@@ -57,7 +56,6 @@ rustc-demangle = "0.1.21"
 # keep this in sync with whatever version `goblin` uses
 scroll = "0.13.0"
 serde = { version = "1.0.171", features = ["derive"] }
-serde-wasm-bindgen = "0.6"
 serde_json = "1.0.102"
 wasm-bindgen = "0.2"
 similar-asserts = "1.4.2"
@@ -78,10 +76,7 @@ watto = { version = "0.2.0", features = ["writer", "strings"] }
 zip = { version = "9.0.0", default-features = false, features = ["deflate"] }
 zstd = { version = "0.14.3" }
 
-[workspace.lints.clippy]
-# fix(SYMBOL-37): This is a false positive triggered in derive macros.
-# See https://linear.app/getsentry/issue/SYMBOL-37 and https://github.com/rust-lang/rust-clippy/issues/17525.
-redundant_field_names = "allow"
+[workspace.lints]
 
 [profile.release]
 debug = true

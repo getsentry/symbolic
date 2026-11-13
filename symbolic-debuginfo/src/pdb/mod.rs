@@ -62,7 +62,7 @@ impl fmt::Display for PdbErrorKind {
     }
 }
 
-/// An error when dealing with [`PdbObject`](struct.PdbObject.html).
+/// An error when dealing with [`PdbObject`].
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct PdbError {
@@ -118,7 +118,7 @@ impl From<pdb_addr2line::Error> for PdbError {
 
 /// Program Database, the debug companion format on Windows.
 ///
-/// This object is a sole debug companion to [`PeObject`](../pdb/struct.PdbObject.html).
+/// This object is a sole debug companion to [`PeObject`](crate::pe::PeObject).
 pub struct PdbObject<'data> {
     pdb: Arc<Mutex<Pdb<'data>>>,
     debug_info: Arc<pdb::DebugInformation<'data>>,
@@ -226,10 +226,8 @@ impl<'data> PdbObject<'data> {
     ///
     /// The PDB only stores relative addresses, and more importantly, does not provide sufficient
     /// information to compute the original PE's load address. The according PE, however does
-    /// feature a load address (called `image_base`). See [`PeObject::load_address`] for more
-    /// information.
-    ///
-    /// [`PeObject::load_address`]: ../pe/struct.PeObject.html#method.load_address
+    /// feature a load address (called `image_base`).
+    /// See [`PeObject::load_address`](crate::pe::PeObject::load_address) for more information.
     pub fn load_address(&self) -> u64 {
         0
     }
@@ -444,7 +442,7 @@ impl ExecutableSections {
 
 /// An iterator over symbols in the PDB file.
 ///
-/// Returned by [`PdbObject::symbols`](struct.PdbObject.html#method.symbols).
+/// Returned by [`PdbObject::symbols`].
 pub struct PdbSymbolIterator<'data, 'object> {
     symbols: pdb::SymbolIter<'object>,
     address_map: Option<AddressMap<'data>>,
