@@ -531,11 +531,11 @@ impl<'a> SymCacheConverter<'a> {
                         _reserved: [0; _],
                     }
                     .into(),
-                    di::VariableLocation::FrameOffset { offset } => {
+                    di::VariableLocation::CfaOffset { offset } => {
                         let Ok(offset) = i32::try_from(offset) else {
                             continue;
                         };
-                        v9::raw::FrameOffsetLocation {
+                        v9::raw::CfaOffsetLocation {
                             offset,
                             _reserved: [0; _],
                         }

@@ -132,9 +132,9 @@ impl fmt::Debug for FunctionsDebug<'_, '_> {
                             location.address.saturating_add(location.size),
                             indent = self.depth * 2
                         )?,
-                        VariableLocation::FrameOffset { offset } => writeln!(
+                        VariableLocation::CfaOffset { offset } => writeln!(
                             f,
-                            "{:indent$}      {:#x}..{:#x}: frame base {offset:+}",
+                            "{:indent$}      {:#x}..{:#x}: cfa {offset:+}",
                             "",
                             location.address,
                             location.address.saturating_add(location.size),

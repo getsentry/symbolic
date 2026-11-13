@@ -203,7 +203,7 @@ pub struct RegisterLocation {
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 #[repr(C)]
-pub struct FrameOffsetLocation {
+pub struct CfaOffsetLocation {
     pub offset: i32,
     pub _reserved: [u8; 4],
 }
@@ -221,7 +221,7 @@ pub mod location {
 
     crate::utils::tagged_union! {
         register: RegisterLocation,
-        frame_offset: FrameOffsetLocation,
+        cfa_offset: CfaOffsetLocation,
         register_offset: RegisterOffsetLocation,
     }
 }
@@ -410,7 +410,7 @@ unsafe impl Pod for SourceLocation {}
 unsafe impl Pod for Range {}
 unsafe impl Pod for Variable {}
 unsafe impl Pod for RegisterLocation {}
-unsafe impl Pod for FrameOffsetLocation {}
+unsafe impl Pod for CfaOffsetLocation {}
 unsafe impl Pod for RegisterOffsetLocation {}
 unsafe impl Pod for VariableLocationInfo {}
 unsafe impl Pod for Type {}
