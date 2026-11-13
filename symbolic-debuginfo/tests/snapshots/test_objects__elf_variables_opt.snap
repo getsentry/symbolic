@@ -43,7 +43,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
               > Primitive: int (SignedInt, 4 bytes)
             > Member: y (offset 4 bytes)
               > Primitive: int (SignedInt, 4 bytes)
-      0x1040..0x10d2: frame base -24
+      0x1040..0x10d2: cfa -24
 
 > 0x12c0: through_pointer (0x14)
   0x12c0: variables.c:230 (/fixture)
@@ -106,7 +106,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
     slot (local)
       type:
         > Unknown
-      0x1270..0x127c: frame base -12
+      0x1270..0x127c: cfa -12
 
 > 0x1260: optimized_out (0x4)
   0x1260: variables.c:191 (/fixture)

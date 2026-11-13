@@ -249,9 +249,10 @@ pub enum VariableLocation {
         /// The register.
         register: Register,
     },
-    /// The variable can be found at an offset relative to the function's frame base.
-    FrameOffset {
-        /// The signed offset from the frame base.
+    /// The variable can be found in memory at an offset relative to the Canonical Frame Address
+    /// (CFA).
+    CfaOffset {
+        /// The signed offset from the CFA.
         offset: i64,
     },
     /// The variable can be found in memory at an offset relative to the contents of a register.

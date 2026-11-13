@@ -2,13 +2,17 @@
 
 ## Unreleased
 
+**Breaking Changes**
+
+- Rename `VariableLocation::FrameOffset` to `VariableLocation::CfaOffset`. It now only describes variables at an offset from the CFA. ([#PR](https://github.com/getsentry/symbolic/pull/PR))
+
 **Features**
 
 - Represent variable register locations as named registers instead of raw DWARF register numbers. ([#1117](https://github.com/getsentry/symbolic/pull/1117), [#1115](https://github.com/getsentry/symbolic/pull/1115), [#1146](https://github.com/getsentry/symbolic/pull/1146), [#1147](https://github.com/getsentry/symbolic/pull/1147))
 - Add support for `typedef` and `struct` types. ([#1137](https://github.com/getsentry/symbolic/pull/1137), [#1138](https://github.com/getsentry/symbolic/pull/1138))
 - Add `VariableLocation::RegisterOffset` for variables in memory at an offset from a register's contents. ([#1160](https://github.com/getsentry/symbolic/pull/1160))
 - Parse `DW_OP_breg<n>` and `DW_OP_bregx` locations from DWARF into `VariableLocation::RegisterOffset`. ([#1151](https://github.com/getsentry/symbolic/pull/1151), [#1155](https://github.com/getsentry/symbolic/pull/1155))
-- Resolve DWARF `DW_OP_fbreg` variable locations against the function's `DW_AT_frame_base`. A register frame base gives `VariableLocation::RegisterOffset`, the CFA gives `VariableLocation::FrameOffset`, and locations with any other frame base are dropped. ([#1152](https://github.com/getsentry/symbolic/pull/1152))
+- Resolve DWARF `DW_OP_fbreg` variable locations against the function's `DW_AT_frame_base`. A register frame base gives `VariableLocation::RegisterOffset`, the CFA gives `VariableLocation::CfaOffset`, and locations with any other frame base are dropped. ([#1152](https://github.com/getsentry/symbolic/pull/1152))
 
 **Fixes**
 

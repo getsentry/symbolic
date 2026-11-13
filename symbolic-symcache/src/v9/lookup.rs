@@ -441,8 +441,8 @@ impl<'data> Iterator for VariableLocations<'data> {
                         };
                         VariableLocation::Register { register }
                     }
-                    Some(raw::location::Enum::frame_offset(fo)) => VariableLocation::FrameOffset {
-                        offset: fo.offset.into(),
+                    Some(raw::location::Enum::cfa_offset(co)) => VariableLocation::CfaOffset {
+                        offset: co.offset.into(),
                     },
                     Some(raw::location::Enum::register_offset(ro)) => {
                         let Some(register) = convert::u16_to_register(self.cpu_family, ro.id)

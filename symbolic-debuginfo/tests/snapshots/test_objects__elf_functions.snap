@@ -115,11 +115,11 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     descriptor (local)
       type:
         > Unknown
-      0x1c70..0x1dbc: frame base -416
+      0x1c70..0x1dbc: cfa -416
     eh (local)
       type:
         > Unknown
-      0x1c70..0x1dbc: frame base -272
+      0x1c70..0x1dbc: cfa -272
 
   > 0x1c89: _ZN15google_breakpad18MinidumpDescriptorC4ERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE (0x7)
     0x1c89: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
@@ -903,9 +903,9 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x2557..0x255a: register rbp
       0x257f..0x2595: register rsi
       0x2595..0x2655: register rbp
-      0x2655..0x2661: frame base -88
+      0x2655..0x2661: cfa -88
       0x27c6..0x27dd: register rbp
-      0x27e2..0x27f6: frame base -88
+      0x27e2..0x27f6: cfa -88
       0x2996..0x2998: register rbp
     stack (local)
       type:
@@ -937,16 +937,16 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
           > Member: context_size (offset 32 bytes)
             > TypeDef: size_t
               > Primitive: long unsigned int (UnsignedInt, 8 bytes)
-      0x2520..0x29e6: frame base -112
+      0x2520..0x29e6: cfa -112
     status (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x2520..0x29e6: frame base -116
+      0x2520..0x29e6: cfa -116
     r (local)
       type:
         > Unknown
       0x28cd..0x28f1: register rsi
-      0x28f1..0x28f7: frame base -144
+      0x28f1..0x28f7: cfa -144
       0x28f7..0x291d: register rsi
       0x293f..0x294b: register rsi
     success (local)
@@ -1227,7 +1227,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
           > Member: sa_restorer (offset 144 bytes)
             > Pointer (8 bytes)
               > Unknown
-      0x2bd0..0x2dbf: frame base -208
+      0x2bd0..0x2dbf: cfa -208
     handled (local)
       type:
         > Primitive: bool (Boolean, 1 byte)

@@ -60,8 +60,8 @@ impl fmt::Debug for VariablesDebug<'_, '_> {
                     VariableLocation::Register { register } => {
                         write!(f, "{:#x}..{end:#x} register {register}", location.address)?;
                     }
-                    VariableLocation::FrameOffset { offset } => {
-                        write!(f, "{:#x}..{end:#x} frame {offset}", location.address)?;
+                    VariableLocation::CfaOffset { offset } => {
+                        write!(f, "{:#x}..{end:#x} cfa {offset}", location.address)?;
                     }
                     VariableLocation::RegisterOffset { register, offset } => {
                         write!(
@@ -200,7 +200,7 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
     length (parameter, unsigned int): 0xfe50..0xfe86 register rdx
     mdstring (parameter, <unknown>*): 0xfe50..0xfe86 register rcx
     result (local, bool): <unavailable>
-    out (local, <unknown>): 0xfe50..0xff4c frame -80
+    out (local, <unknown>): 0xfe50..0xff4c cfa -80
     out_idx (local, int): <unavailable>
     out_count (local, int): <unavailable>
     ");
@@ -212,7 +212,7 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
     length (parameter, unsigned int): 0xfe86..0xff02 register rbx
     mdstring (parameter, <unknown>*): 0xfe86..0xff02 register r13
     result (local, bool): <unavailable>
-    out (local, <unknown>): 0xfe50..0xff4c frame -80
+    out (local, <unknown>): 0xfe50..0xff4c cfa -80
     out_idx (local, int): 0xfe86..0xfed9 register r12
     out_count (local, int): <unavailable>
     ");
@@ -224,7 +224,7 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
     length (parameter, unsigned int): 0xfe86..0xff02 register rbx
     mdstring (parameter, <unknown>*): 0xfe86..0xff02 register r13
     result (local, bool): <unavailable>
-    out (local, <unknown>): 0xfe50..0xff4c frame -80
+    out (local, <unknown>): 0xfe50..0xff4c cfa -80
     out_idx (local, int): 0xfe86..0xfed9 register r12
     out_count (local, int): 0xfecb..0xfeee register r15
     ");
@@ -269,11 +269,11 @@ fn test_lookup_variables_void_pointer() -> Result<(), Error> {
     // `pointers(int *num, int **num_ptr, const char *str, void *any, ...)`
     let source_location = symcache.lookup(0x1193).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
-    num (parameter, int*): 0x1193..0x11ae frame -24
-    num_ptr (parameter, int**): 0x1193..0x11ae frame -32
-    str (parameter, <unknown>*): 0x1193..0x11ae frame -40
-    any (parameter, void*): 0x1193..0x11ae frame -48
-    fn (parameter, <unknown>*): 0x1193..0x11ae frame -56
+    num (parameter, int*): 0x1193..0x11ae cfa -24
+    num_ptr (parameter, int**): 0x1193..0x11ae cfa -32
+    str (parameter, <unknown>*): 0x1193..0x11ae cfa -40
+    any (parameter, void*): 0x1193..0x11ae cfa -48
+    fn (parameter, <unknown>*): 0x1193..0x11ae cfa -56
     ");
 
     Ok(())
@@ -289,7 +289,7 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     this (parameter, <unknown>*): 0xea0..0xed2 register rdi
     str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
     mdstring (parameter, <unknown>*): 0xea0..0xeb1 register rcx
-    out (local, <unknown>): 0xea0..0xfe7 frame 16
+    out (local, <unknown>): 0xea0..0xfe7 cfa 16
     out_size (local, <unknown>): <unavailable>
     ");
 
@@ -298,7 +298,7 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     this (parameter, <unknown>*): 0xea0..0xed2 register rdi
     str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
     mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
-    out (local, <unknown>): 0xea0..0xfe7 frame 16
+    out (local, <unknown>): 0xea0..0xfe7 cfa 16
     out_size (local, <unknown>): <unavailable>
     ");
 
@@ -307,7 +307,7 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     this (parameter, <unknown>*): <unavailable>
     str (parameter, <unknown>*): 0xeb6..0xf23 register rbx
     mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
-    out (local, <unknown>): 0xea0..0xfe7 frame 16
+    out (local, <unknown>): 0xea0..0xfe7 cfa 16
     out_size (local, <unknown>): <unavailable>
     ");
 

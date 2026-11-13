@@ -1519,7 +1519,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 FrameBase::Register(register) => {
                     Some(VariableLocation::RegisterOffset { register, offset })
                 }
-                FrameBase::Cfa => Some(VariableLocation::FrameOffset { offset }),
+                FrameBase::Cfa => Some(VariableLocation::CfaOffset { offset }),
             },
             Operation::RegisterOffset {
                 register, offset, ..

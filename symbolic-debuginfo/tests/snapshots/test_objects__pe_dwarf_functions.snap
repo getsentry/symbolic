@@ -179,7 +179,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
                 > TypeDef: HANDLE
                   > Pointer (8 bytes)
                     > Void
-      0x1180..0x14a6: frame base -176
+      0x1180..0x14a6: cfa -176
     inDoubleQuote (local)
       type:
         > TypeDef: WINBOOL
@@ -344,7 +344,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       type:
         > TypeDef: uintptr_t
           > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
-      0x1000..0x1001: frame base +32
+      0x1000..0x1001: cfa +32
 
 > 0x1572: main (0x1f)
   0x1572: hello.c:3 (/src)
@@ -385,7 +385,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       type:
         > Pointer (8 bytes)
           > Primitive: char (SignedChar, 1 byte)
-      0x1530..0x1572: frame base -40
+      0x1530..0x1572: cfa -40
 
 > 0x1650: __main (0x1f)
   0x1650: gccmain.c:55 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)

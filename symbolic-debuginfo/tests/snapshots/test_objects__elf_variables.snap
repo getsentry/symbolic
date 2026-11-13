@@ -30,7 +30,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
     result (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x13ca..0x14ba: frame base -36
+      0x13ca..0x14ba: cfa -36
     stored (local)
       type:
         > TypeDef: Point
@@ -39,7 +39,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
               > Primitive: int (SignedInt, 4 bytes)
             > Member: y (offset 4 bytes)
               > Primitive: int (SignedInt, 4 bytes)
-      0x13ca..0x14ba: frame base -44
+      0x13ca..0x14ba: cfa -44
 
 > 0x1395: through_pointer (0x35)
   0x1395: variables.c:228 (/fixture)
@@ -59,11 +59,11 @@ expression: "FunctionsDebug::new(&session, &functions)"
                 > Primitive: int (SignedInt, 4 bytes)
               > Member: y (offset 4 bytes)
                 > Primitive: int (SignedInt, 4 bytes)
-      0x1395..0x13ca: frame base -24
+      0x1395..0x13ca: cfa -24
     value (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1395..0x13ca: frame base -28
+      0x1395..0x13ca: cfa -28
 
 > 0x130f: vla (0x86)
   0x130f: variables.c:213 (/fixture)
@@ -80,7 +80,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
     n (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x130f..0x1395: frame base -36
+      0x130f..0x1395: cfa -36
 
 > 0x12fa: stack_home (0x15)
   0x12fa: variables.c:201 (/fixture)
@@ -91,11 +91,11 @@ expression: "FunctionsDebug::new(&session, &functions)"
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x12fa..0x130f: frame base -36
+      0x12fa..0x130f: cfa -36
     slot (local)
       type:
         > Unknown
-      0x12fa..0x130f: frame base -20
+      0x12fa..0x130f: cfa -20
 
 > 0x12e2: optimized_out (0x18)
   0x12e2: variables.c:189 (/fixture)
@@ -106,11 +106,11 @@ expression: "FunctionsDebug::new(&session, &functions)"
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x12e2..0x12fa: frame base -36
+      0x12e2..0x12fa: cfa -36
     gone (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x12e2..0x12fa: frame base -20
+      0x12e2..0x12fa: cfa -20
 
 > 0x12af: external_call (0x33)
   0x12af: variables.c:175 (/fixture)
@@ -125,15 +125,15 @@ expression: "FunctionsDebug::new(&session, &functions)"
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x12af..0x12e2: frame base -36
+      0x12af..0x12e2: cfa -36
     kept (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x12af..0x12e2: frame base -20
+      0x12af..0x12e2: cfa -20
     r (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x12af..0x12e2: frame base -24
+      0x12af..0x12e2: cfa -24
 
 > 0x127d: across_call (0x32)
   0x127d: variables.c:161 (/fixture)
@@ -146,15 +146,15 @@ expression: "FunctionsDebug::new(&session, &functions)"
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x127d..0x12af: frame base -36
+      0x127d..0x12af: cfa -36
     doubled (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x127d..0x12af: frame base -20
+      0x127d..0x12af: cfa -20
     other (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x127d..0x12af: frame base -24
+      0x127d..0x12af: cfa -24
 
 > 0x123b: float_registers (0x42)
   0x123b: variables.c:146 (/fixture)
@@ -168,19 +168,19 @@ expression: "FunctionsDebug::new(&session, &functions)"
     a (parameter)
       type:
         > Primitive: float (Float, 4 bytes)
-      0x123b..0x127d: frame base -36
+      0x123b..0x127d: cfa -36
     b (parameter)
       type:
         > Primitive: float (Float, 4 bytes)
-      0x123b..0x127d: frame base -40
+      0x123b..0x127d: cfa -40
     sum (local)
       type:
         > Primitive: float (Float, 4 bytes)
-      0x123b..0x127d: frame base -20
+      0x123b..0x127d: cfa -20
     scaled (local)
       type:
         > Primitive: float (Float, 4 bytes)
-      0x123b..0x127d: frame base -24
+      0x123b..0x127d: cfa -24
 
 > 0x120e: registers (0x2d)
   0x120e: variables.c:133 (/fixture)
@@ -194,19 +194,19 @@ expression: "FunctionsDebug::new(&session, &functions)"
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x120e..0x123b: frame base -36
+      0x120e..0x123b: cfa -36
     b (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x120e..0x123b: frame base -40
+      0x120e..0x123b: cfa -40
     sum (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x120e..0x123b: frame base -20
+      0x120e..0x123b: cfa -20
     product (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x120e..0x123b: frame base -24
+      0x120e..0x123b: cfa -24
 
 > 0x11ed: inlining (0x21)
   0x11ed: variables.c:119 (/fixture)
@@ -217,11 +217,11 @@ expression: "FunctionsDebug::new(&session, &functions)"
     outer (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x11ed..0x120e: frame base -36
+      0x11ed..0x120e: cfa -36
     result (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x11ed..0x120e: frame base -20
+      0x11ed..0x120e: cfa -20
 
   > 0x11fa: inlined (0xe)
     0x11fa: variables.c:114 (/fixture)
@@ -244,23 +244,23 @@ expression: "FunctionsDebug::new(&session, &functions)"
               > Primitive: int (SignedInt, 4 bytes)
             > Member: y (offset 4 bytes)
               > Primitive: int (SignedInt, 4 bytes)
-      0x11ae..0x11ed: frame base -32
+      0x11ae..0x11ed: cfa -32
     array (local)
       type:
         > Unknown
-      0x11ae..0x11ed: frame base -44
+      0x11ae..0x11ed: cfa -44
     color (local)
       type:
         > Unknown
-      0x11ae..0x11ed: frame base -20
+      0x11ae..0x11ed: cfa -20
     value (local)
       type:
         > Unknown
-      0x11ae..0x11ed: frame base -48
+      0x11ae..0x11ed: cfa -48
     constant (local)
       type:
         > Unknown
-      0x11ae..0x11ed: frame base -24
+      0x11ae..0x11ed: cfa -24
 
 > 0x1193: pointers (0x1b)
   0x1193: variables.c:78 (/fixture)
@@ -270,28 +270,28 @@ expression: "FunctionsDebug::new(&session, &functions)"
       type:
         > Pointer (8 bytes)
           > Primitive: int (SignedInt, 4 bytes)
-      0x1193..0x11ae: frame base -24
+      0x1193..0x11ae: cfa -24
     num_ptr (parameter)
       type:
         > Pointer (8 bytes)
           > Pointer (8 bytes)
             > Primitive: int (SignedInt, 4 bytes)
-      0x1193..0x11ae: frame base -32
+      0x1193..0x11ae: cfa -32
     str (parameter)
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x1193..0x11ae: frame base -40
+      0x1193..0x11ae: cfa -40
     any (parameter)
       type:
         > Pointer (8 bytes)
           > Void
-      0x1193..0x11ae: frame base -48
+      0x1193..0x11ae: cfa -48
     fn (parameter)
       type:
         > Pointer (8 bytes)
           > Unknown
-      0x1193..0x11ae: frame base -56
+      0x1193..0x11ae: cfa -56
 
 > 0x1126: primitives (0x6d)
   0x1126: variables.c:55 (/fixture)
@@ -312,48 +312,48 @@ expression: "FunctionsDebug::new(&session, &functions)"
     sc (local)
       type:
         > Primitive: signed char (SignedChar, 1 byte)
-      0x1126..0x1193: frame base -17
+      0x1126..0x1193: cfa -17
     uc (local)
       type:
         > Primitive: unsigned char (UnsignedChar, 1 byte)
-      0x1126..0x1193: frame base -18
+      0x1126..0x1193: cfa -18
     s (local)
       type:
         > Primitive: short int (SignedInt, 2 bytes)
-      0x1126..0x1193: frame base -20
+      0x1126..0x1193: cfa -20
     us (local)
       type:
         > Primitive: short unsigned int (UnsignedInt, 2 bytes)
-      0x1126..0x1193: frame base -22
+      0x1126..0x1193: cfa -22
     i (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1126..0x1193: frame base -28
+      0x1126..0x1193: cfa -28
     u (local)
       type:
         > Primitive: unsigned int (UnsignedInt, 4 bytes)
-      0x1126..0x1193: frame base -32
+      0x1126..0x1193: cfa -32
     ll (local)
       type:
         > Primitive: long long int (SignedInt, 8 bytes)
-      0x1126..0x1193: frame base -40
+      0x1126..0x1193: cfa -40
     ull (local)
       type:
         > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
-      0x1126..0x1193: frame base -48
+      0x1126..0x1193: cfa -48
     f (local)
       type:
         > Primitive: float (Float, 4 bytes)
-      0x1126..0x1193: frame base -52
+      0x1126..0x1193: cfa -52
     d (local)
       type:
         > Primitive: double (Float, 8 bytes)
-      0x1126..0x1193: frame base -64
+      0x1126..0x1193: cfa -64
     b (local)
       type:
         > Primitive: _Bool (Boolean, 1 byte)
-      0x1126..0x1193: frame base -65
+      0x1126..0x1193: cfa -65
     fc (local)
       type:
         > Primitive: complex float (ComplexFloat, 8 bytes)
-      0x1126..0x1193: frame base -76
+      0x1126..0x1193: cfa -76
