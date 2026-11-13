@@ -94,16 +94,17 @@ impl<'d> Parse<'d> for WasmObject<'d> {
                 // later referenced by the function section.
                 Payload::TypeSection(tsr) => {
                     validator.type_section(&tsr)?;
-                    func_sigs.resize(tsr.count() as usize, false);
 
-                    for (i, ty) in tsr.into_iter().enumerate() {
-                        let mut types = ty?.into_types();
-                        let ty_is_func = matches!(
-                            types.next().map(|s| s.composite_type.inner),
-                            Some(CompositeInnerType::Func(_))
-                        );
-                        if types.next().is_none() && ty_is_func {
-                            func_sigs.set(i, true);
+                    // Function signatures are referenced by type index, which counts every type
+                    // of every recursion group, so keep one bit per type rather than per group.
+                    let mut type_index = 0;
+                    for group in tsr {
+                        for ty in group?.into_types() {
+                            func_sigs.resize(type_index + 1, false);
+                            let ty_is_func =
+                                matches!(ty.composite_type.inner, CompositeInnerType::Func(_));
+                            func_sigs.set(type_index, ty_is_func);
+                            type_index += 1;
                         }
                     }
                 }
@@ -280,4 +281,29 @@ fn get_function_info(
         function_address,
         operators_reader.original_position() - function_address,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A module whose type section holds a single recursion group of two types (a struct and a
+    /// function), with one function using the function type. Function types are referenced by
+    /// type index, which counts every type of every group.
+    #[test]
+    fn parse_module_with_multi_type_rec_group() {
+        #[rustfmt::skip]
+        let data: &[u8] = &[
+            0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, // magic + version
+            // type section: one rec group { struct (field i32), func (i32) -> i32 }
+            0x01, 0x0c, 0x01, 0x4e, 0x02, 0x5f, 0x01, 0x7f, 0x00, 0x60, 0x01, 0x7f, 0x01, 0x7f,
+            // function section: one function of type index 1
+            0x03, 0x02, 0x01, 0x01,
+            // code section: `local.get 0`
+            0x0a, 0x06, 0x01, 0x04, 0x00, 0x20, 0x00, 0x0b,
+        ];
+
+        let object = WasmObject::parse(data).expect("module with a rec group should parse");
+        assert_eq!(object.kind(), ObjectKind::Library);
+    }
 }

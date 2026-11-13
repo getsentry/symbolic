@@ -12,6 +12,7 @@
 **Fixes**
 
 - Resolve percent-encoded source paths in source bundles. [#1111](https://github.com/getsentry/symbolic/pull/1111)
+- Fix `WasmObject` rejecting valid WebAssembly modules whose type section contains a recursion group of more than one type, such as Kotlin/Wasm modules.
 
 ## 14.0.0-alpha.5
 
