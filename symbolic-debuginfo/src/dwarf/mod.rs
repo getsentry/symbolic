@@ -641,6 +641,7 @@ struct RegularSubProgram<'a> {
     builders: Vec<(Range, FunctionBuilder<'a>)>,
     variables: Vec<ParsedVariable<'a>>,
     language: Language,
+    frame_base: Option<FrameBase>,
 }
 
 struct InlinedSubProgram<'a> {
@@ -680,6 +681,16 @@ impl<'a> InProgressSubProgram<'a> {
             InProgressSubProgram::Inlined(_) => None,
             InProgressSubProgram::Deadcode(_) => None,
         }
+    }
+
+    /// The frame base that `DW_OP_fbreg` locations in this subprogram are relative to.
+    fn frame_base(&self, function_stack: &[InProgressSubProgram<'a>]) -> Option<FrameBase> {
+        let InProgressSubProgram::Regular(owner) = &function_stack[self.owning_function_idx()]
+        else {
+            debug_assert!(false, "the owning function is always a regular subprogram");
+            return None;
+        };
+        owner.frame_base
     }
 
     fn owning_function_idx(&self) -> usize {
@@ -1167,6 +1178,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             builders,
             variables: vec![],
             language,
+            frame_base: self.parse_frame_base(&entry),
         }))
     }
 
@@ -1306,7 +1318,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     function_stack.push(program);
                 }
                 constants::DW_TAG_variable | constants::DW_TAG_formal_parameter => {
-                    if let Some(variable) = self.parse_variable(entries, abbrev)? {
+                    let frame_base = function_stack
+                        .last()
+                        .and_then(|f| f.frame_base(&function_stack));
+                    if let Some(variable) = self.parse_variable(entries, abbrev, frame_base)? {
                         if let Some(last_function) = function_stack.last_mut() {
                             last_function.push_variable(variable);
                         }
@@ -1329,6 +1344,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         &self,
         entries: &mut EntriesRaw<'d, '_>,
         abbrev: &gimli::Abbreviation,
+        frame_base: Option<FrameBase>,
     ) -> Result<Option<ParsedVariable<'d>>, DwarfError> {
         let mut ty = None;
         let mut name = None;
@@ -1349,7 +1365,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     is_declaration = true;
                 }
                 constants::DW_AT_location => {
-                    locations = self.parse_locations(attr.value())?;
+                    locations = self.parse_locations(attr.value(), frame_base)?;
                 }
                 constants::DW_AT_type => {
                     ty = self.inner.to_type_ref(attr).map(TypeRef::from);
@@ -1425,9 +1441,12 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     fn parse_locations(
         &self,
         value: AttributeValue<Slice<'d>>,
+        frame_base: Option<FrameBase>,
     ) -> Result<Option<Locations>, DwarfError> {
         if let AttributeValue::Exprloc(expr) = value {
-            return Ok(self.parse_location_expression(expr).map(Locations::Single));
+            return Ok(self
+                .parse_location_expression(expr, frame_base)
+                .map(Locations::Single));
         }
 
         let mut result = Vec::new();
@@ -1445,7 +1464,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let location = VariableLocationInfo {
                 address,
                 size,
-                location: match self.parse_location_expression(location.data) {
+                location: match self.parse_location_expression(location.data, frame_base) {
                     Some(location) => location,
                     None => continue,
                 },
@@ -1466,14 +1485,42 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         operations.next().ok()?.is_none().then_some(op)
     }
 
-    fn parse_location_expression(&self, expr: Expression<Slice<'d>>) -> Option<VariableLocation> {
+    /// Parses the `DW_AT_frame_base` of a subprogram.
+    ///
+    /// Only a register and the CFA are supported, as these are what most compilers emit.
+    fn parse_frame_base(&self, entry: &Die<'d>) -> Option<FrameBase> {
+        let AttributeValue::Exprloc(expr) = entry.attr_value(constants::DW_AT_frame_base)? else {
+            return None;
+        };
+
+        match self.single_operation(expr)? {
+            Operation::Register { register } => {
+                Register::from_dwarf(self.inner.info.cpu_family, register.0)
+                    .map(FrameBase::Register)
+            }
+            Operation::CallFrameCFA => Some(FrameBase::Cfa),
+            _ => None,
+        }
+    }
+
+    fn parse_location_expression(
+        &self,
+        expr: Expression<Slice<'d>>,
+        frame_base: Option<FrameBase>,
+    ) -> Option<VariableLocation> {
         // Currently we only support location expressions with a single op.
         match self.single_operation(expr)? {
             Operation::Register { register } => {
                 Register::from_dwarf(self.inner.info.cpu_family, register.0)
                     .map(|register| VariableLocation::Register { register })
             }
-            Operation::FrameOffset { offset } => Some(VariableLocation::FrameOffset { offset }),
+            // Locations relative to an unknown or unsupported frame base are dropped.
+            Operation::FrameOffset { offset } => match frame_base? {
+                FrameBase::Register(register) => {
+                    Some(VariableLocation::RegisterOffset { register, offset })
+                }
+                FrameBase::Cfa => Some(VariableLocation::FrameOffset { offset }),
+            },
             Operation::RegisterOffset {
                 register, offset, ..
             } => Register::from_dwarf(self.inner.info.cpu_family, register.0)
@@ -1493,6 +1540,15 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         self.parse_functions(&mut entries, &mut output)?;
         Ok(output.functions)
     }
+}
+
+/// The frame base of a subprogram, from its `DW_AT_frame_base`.
+#[derive(Clone, Copy)]
+enum FrameBase {
+    /// The frame base is the value of a register.
+    Register(Register),
+    /// The frame base is the canonical frame address (CFA).
+    Cfa,
 }
 
 /// A variable before its locations are restricted to a concrete range.
