@@ -95,8 +95,6 @@ impl<'d> Parse<'d> for WasmObject<'d> {
                 Payload::TypeSection(tsr) => {
                     validator.type_section(&tsr)?;
 
-                    // Function signatures are referenced by type index, which counts every type
-                    // of every recursion group, so keep one bit per type rather than per group.
                     let mut type_index = 0;
                     for group in tsr {
                         for ty in group?.into_types() {
@@ -305,5 +303,18 @@ mod tests {
 
         let object = WasmObject::parse(data).expect("module with a rec group should parse");
         assert_eq!(object.kind(), ObjectKind::Library);
+    }
+
+    /// Prefix of the Kotlin/Wasm module attached to issue #1090. The type section is the
+    /// compiler's own bytes: four recursion groups, 17 types, and a function of type index 4.
+    #[test]
+    fn parse_kotlin_wasm_rec_group_fixture() {
+        let data = std::fs::read(symbolic_testutils::fixture(
+            "wasm/kotlin-rec-group/module.wasm",
+        ))
+        .unwrap();
+        let object = WasmObject::parse(&data).expect("kotlin/wasm rec group fixture should parse");
+        assert_eq!(object.kind(), ObjectKind::Library);
+        assert_eq!(object.symbols().count(), 1);
     }
 }
