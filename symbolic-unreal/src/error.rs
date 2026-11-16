@@ -3,6 +3,8 @@ use std::fmt;
 
 use thiserror::Error;
 
+use crate::xml::ParseValueError;
+
 /// The error type for [`Unreal4Error`].
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -75,9 +77,15 @@ impl From<Unreal4ErrorKind> for Unreal4Error {
     }
 }
 
-impl From<quick_xml::Error> for Unreal4Error {
-    fn from(source: quick_xml::Error) -> Self {
-        Self::new(Unreal4ErrorKind::InvalidXml, source)
+impl From<ParseValueError> for Unreal4Error {
+    fn from(source: ParseValueError) -> Self {
+        match source {
+            ParseValueError::QuickXmlError(inner) => Self::new(Unreal4ErrorKind::InvalidXml, inner),
+            ParseValueError::ValueTooLarge => Self {
+                kind: Unreal4ErrorKind::TooLarge,
+                source: None,
+            },
+        }
     }
 }
 

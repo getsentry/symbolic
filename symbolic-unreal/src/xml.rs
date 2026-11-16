@@ -1,4 +1,5 @@
 use quick_xml::{escape::resolve_xml_entity, events::BytesStart};
+use thiserror::Error;
 
 enum NodeState {
     None,
@@ -6,10 +7,26 @@ enum NodeState {
     Empty,
 }
 
+#[derive(Debug, Error)]
+pub enum ParseValueError {
+    #[error("{0}")]
+    QuickXmlError(quick_xml::Error),
+
+    #[error("XML value was too large")]
+    ValueTooLarge,
+}
+
+impl From<quick_xml::Error> for ParseValueError {
+    fn from(value: quick_xml::Error) -> Self {
+        ParseValueError::QuickXmlError(value)
+    }
+}
+
 // A helper to keep track of reader state as we move through the XML.
 pub struct XMLReader<'a> {
     reader: quick_xml::Reader<&'a [u8]>,
     node_state: NodeState,
+    max_len_bytes: usize,
 }
 
 // Contains the starting tag of the child node, and accesors for interacting with
@@ -23,7 +40,7 @@ pub struct ChildNode<'a, 'b> {
 impl<'a, 'b> ChildNode<'a, 'b> {
     /// Returns the text value, parsed, from the node at which the reader is
     /// located.
-    pub fn value<T: std::str::FromStr>(&mut self) -> Result<Option<T>, quick_xml::Error> {
+    pub fn value<T: std::str::FromStr>(&mut self) -> Result<Option<T>, ParseValueError> {
         if self.is_empty {
             return Ok(None);
         }
@@ -39,10 +56,11 @@ impl<'a, 'b> ChildNode<'a, 'b> {
 }
 
 impl<'a> XMLReader<'a> {
-    pub fn new(reader: quick_xml::Reader<&'a [u8]>) -> Self {
+    pub fn new(reader: quick_xml::Reader<&'a [u8]>, max_len_bytes: usize) -> Self {
         Self {
             reader,
             node_state: NodeState::None,
+            max_len_bytes,
         }
     }
 
@@ -50,7 +68,7 @@ impl<'a> XMLReader<'a> {
     /// located.  If there is no such node or value, this will return None.
     /// A best-effort is made to deal with text spread between xml nodes.
     /// XML entities are resolved (so '&qout;' is resolved to '"', and the like.)
-    fn value<T: std::str::FromStr>(&mut self) -> Result<Option<T>, quick_xml::Error> {
+    fn value<T: std::str::FromStr>(&mut self) -> Result<Option<T>, ParseValueError> {
         let NodeState::Opened {
             node_depth,
             consumed,
@@ -126,6 +144,10 @@ impl<'a> XMLReader<'a> {
 
             if *node_depth < start_depth {
                 break;
+            }
+
+            if val.len() >= self.max_len_bytes {
+                return Err(ParseValueError::ValueTooLarge);
             }
         }
 
@@ -254,7 +276,7 @@ mod tests {
     fn test_empty_tag() {
         let data = r#"<t1><t2></t2><t3></t3></t1>"#;
         let r = quick_xml::Reader::from_reader(data.as_bytes());
-        let mut x = XMLReader::new(r);
+        let mut x = XMLReader::new(r, usize::MAX);
         x.next_instance_of_tag("t3").unwrap();
         assert_eq!(x.value::<String>().unwrap(), None);
     }
@@ -263,7 +285,7 @@ mod tests {
     fn test_get_value_twice() {
         let data = r#"<t1><t2></t2><t3>hello</t3></t1>"#;
         let r = quick_xml::Reader::from_reader(data.as_bytes());
-        let mut x = XMLReader::new(r);
+        let mut x = XMLReader::new(r, usize::MAX);
         x.next_instance_of_tag("t3").unwrap();
 
         assert_eq!(x.value::<String>().unwrap(), Some("hello".to_owned()));
@@ -274,7 +296,7 @@ mod tests {
     fn test_missing_close() {
         let data = r#"<t1><t2></t2><t3></t1>"#;
         let r = quick_xml::Reader::from_reader(data.as_bytes());
-        let mut x = XMLReader::new(r);
+        let mut x = XMLReader::new(r, usize::MAX);
         x.next_instance_of_tag("t3").unwrap();
         assert_matches!(x.value::<String>(), Err(_));
     }
@@ -283,7 +305,7 @@ mod tests {
     fn test_cdata() {
         let data = r#"<t1><![CDATA[some text]]></t1>"#;
         let r = quick_xml::Reader::from_reader(data.as_bytes());
-        let mut x = XMLReader::new(r);
+        let mut x = XMLReader::new(r, usize::MAX);
         x.next_instance_of_tag("t1").unwrap();
         assert_eq!(
             x.value::<String>().unwrap().unwrap(),
