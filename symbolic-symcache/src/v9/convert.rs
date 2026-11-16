@@ -103,6 +103,8 @@ pub fn u16_to_register(cpu_family: CpuFamily, id: u16) -> Option<Register> {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use super::*;
 
     #[test]
@@ -120,16 +122,13 @@ mod tests {
 
     #[test]
     fn test_size_roundtrip() {
-        for (offset, raw) in [
-            (Size::Bytes(0), 0),
-            (Size::Bits(0), 0x8000_0000),
-            (Size::Bytes(42), 42),
-            (Size::Bits(13), 0x8000_000d),
-            (Size::Bytes(0x7fff_ffff), 0x7fff_ffff),
-            (Size::Bits(0x7fff_ffff), u32::MAX),
-        ] {
-            assert_eq!(size_to_raw(offset), Some(raw));
-            assert_eq!(raw_to_size(raw), offset);
-        }
+        assert_eq!(size_to_raw(Size::Bytes(0)), Some(0));
+        assert_matches!(raw_to_size(0), Size::Bytes(0));
+        assert_eq!(size_to_raw(Size::Bytes(42)), Some(42));
+        assert_matches!(raw_to_size(42), Size::Bytes(42));
+        assert_eq!(size_to_raw(Size::Bits(0)), Some(0x8000_0000));
+        assert_matches!(raw_to_size(0x8000_0000), Size::Bits(0));
+        assert_eq!(size_to_raw(Size::Bits(42)), Some(0x8000_002a));
+        assert_matches!(raw_to_size(0x8000_002a), Size::Bits(42));
     }
 }

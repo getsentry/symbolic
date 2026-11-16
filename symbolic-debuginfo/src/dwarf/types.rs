@@ -69,7 +69,7 @@ fn parse_base_type<'d>(
         }
     }
 
-    let (size, value_size) = match (byte_size, bit_size) {
+    let (size, value_bits) = match (byte_size, bit_size) {
         (Some(byte_size), Some(bit_size)) => (
             Size::Bytes(byte_size),
             Some(ValueBits {
@@ -92,7 +92,7 @@ fn parse_base_type<'d>(
         name,
         encoding,
         size,
-        value_bits: value_size,
+        value_bits,
     })
 }
 
@@ -216,7 +216,7 @@ fn parse_structure_type<'d>(
 
         let offset = match offset {
             Some(Some(offset)) => Some(offset),
-            // DWARF 5 §5.7.6 - Offset zero is implied when both attributes are absent.
+            // DWARF 5 §5.7.6 - Offset zero is implied when both offset attributes are absent.
             None => Some(Size::Bytes(0)),
             // `DW_AT_data_member_location` can possibly be an expression which is currently not
             // supported, hence we do store and allow `None`. Practically in DWARF an offset is

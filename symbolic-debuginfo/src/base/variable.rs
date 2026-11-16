@@ -184,7 +184,7 @@ pub struct StructureMember<'data> {
 }
 
 /// A size represented in bits or bytes.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone)]
 pub enum Size {
     /// The value is given in bytes.
     Bytes(u64),

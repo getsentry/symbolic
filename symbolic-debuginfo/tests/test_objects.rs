@@ -223,13 +223,13 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                         indent = self.depth * 2
                     ),
                 };
-                if let Some(value_size) = ty.value_bits {
+                if let Some(value_bits) = ty.value_bits {
                     writeln!(
                         f,
                         "{:indent$}  (value: size {}, offset {})",
                         "",
-                        value_size.size,
-                        value_size.offset,
+                        value_bits.size,
+                        value_bits.offset,
                         indent = self.depth * 2
                     )?;
                 }
