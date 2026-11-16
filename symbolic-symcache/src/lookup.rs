@@ -5,8 +5,7 @@ use symbolic_common::{Language, Name, NameMangling};
 use crate::SymCache;
 
 pub use symbolic_debuginfo::{
-    MemberOffset, PrimitiveTypeEncoding, TypeSize, VariableKind, VariableLocation,
-    VariableLocationInfo,
+    PrimitiveTypeEncoding, Size, VariableKind, VariableLocation, VariableLocationInfo,
 };
 
 /// A source File included in the SymCache.
@@ -127,7 +126,7 @@ pub enum Type<'data> {
 #[derive(Clone, Debug)]
 pub struct PrimitiveType<'data> {
     pub(crate) name: Option<&'data str>,
-    pub(crate) size: TypeSize,
+    pub(crate) size: Size,
     pub(crate) encoding: Option<PrimitiveTypeEncoding>,
 }
 
@@ -140,7 +139,7 @@ impl<'data> PrimitiveType<'data> {
     }
 
     /// The size of this primitive type in memory.
-    pub fn size(&self) -> TypeSize {
+    pub fn size(&self) -> Size {
         self.size
     }
 
@@ -153,13 +152,13 @@ impl<'data> PrimitiveType<'data> {
 /// A pointer type contained in the SymCache.
 #[derive(Clone, Debug)]
 pub struct PointerType {
-    pub(crate) size: TypeSize,
+    pub(crate) size: Size,
     pub(crate) pointee: Option<TypeId>,
 }
 
 impl PointerType {
     /// The size of this pointer type in bytes.
-    pub fn size(&self) -> TypeSize {
+    pub fn size(&self) -> Size {
         self.size
     }
 
@@ -200,7 +199,7 @@ impl<'data> TypeDefType<'data> {
 #[derive(Clone, Debug)]
 pub struct StructureType<'data> {
     pub(crate) name: Option<&'data str>,
-    pub(crate) size: Option<TypeSize>,
+    pub(crate) size: Option<Size>,
     pub(crate) members: StructureMembers<'data>,
 }
 
@@ -213,7 +212,7 @@ impl<'data> StructureType<'data> {
     }
 
     /// The size of the structure in memory, if known.
-    pub fn size(&self) -> Option<TypeSize> {
+    pub fn size(&self) -> Option<Size> {
         self.size
     }
 
@@ -228,7 +227,7 @@ impl<'data> StructureType<'data> {
 pub struct StructureMember<'data> {
     pub(crate) name: Option<&'data str>,
     pub(crate) ty: TypeId,
-    pub(crate) offset: MemberOffset,
+    pub(crate) offset: Option<Size>,
 }
 
 impl<'data> StructureMember<'data> {
@@ -243,7 +242,7 @@ impl<'data> StructureMember<'data> {
     }
 
     /// The offset from the beginning of the structure.
-    pub fn offset(&self) -> MemberOffset {
+    pub fn offset(&self) -> Option<Size> {
         self.offset
     }
 }

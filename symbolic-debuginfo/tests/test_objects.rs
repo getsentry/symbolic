@@ -8,8 +8,8 @@ use symbolic_debuginfo::ObjectDebugSession;
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
 use symbolic_debuginfo::{
-    FileEntry, Function, LineInfo, MemberOffset, Object, ObjectKind, ParseObjectOptions, SymbolMap,
-    Type, TypeRef, TypeSize, VariableLocation, pe::PeObject,
+    FileEntry, Function, LineInfo, Object, ObjectKind, ParseObjectOptions, SymbolMap, Type,
+    TypeRef, VariableLocation, pe::PeObject,
 };
 use symbolic_testutils::fixture;
 
@@ -205,33 +205,42 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
 
         match ty {
             Type::Primitive(ty) => {
-                let TypeSize::Bytes(size) = ty.size;
-                let unit = if size == 1 { "byte" } else { "bytes" };
                 let name = ty.name.as_deref().unwrap_or("<unknown>");
 
-                match ty.encoding {
+                let result = match ty.encoding {
                     Some(encoding) => writeln!(
                         f,
-                        "{:indent$}> Primitive: {name} ({encoding:?}, {size} {unit})",
+                        "{:indent$}> Primitive: {name} ({encoding:?}, {size})",
                         "",
+                        size = ty.size,
                         indent = self.depth * 2
                     ),
                     None => writeln!(
                         f,
-                        "{:indent$}> Primitive: {name} (<unknown encoding>, {size} {unit})",
+                        "{:indent$}> Primitive: {name} (<unknown encoding>, {size})",
                         "",
+                        size = ty.size,
                         indent = self.depth * 2
                     ),
+                };
+                if let Some(value_size) = ty.value_bits {
+                    writeln!(
+                        f,
+                        "{:indent$}  (value: size {}, offset {})",
+                        "",
+                        value_size.size,
+                        value_size.offset,
+                        indent = self.depth * 2
+                    )?;
                 }
+                result
             }
             Type::Pointer(ty) => {
-                let TypeSize::Bytes(size) = ty.size;
-                let unit = if size == 1 { "byte" } else { "bytes" };
-
                 writeln!(
                     f,
-                    "{:indent$}> Pointer ({size} {unit})",
+                    "{:indent$}> Pointer ({size})",
                     "",
+                    size = ty.size,
                     indent = self.depth * 2
                 )?;
                 write!(
@@ -274,12 +283,9 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                     indent = self.depth * 2
                 )?;
                 match ty.size {
-                    Some(TypeSize::Bytes(size)) => {
-                        let unit = if size == 1 { "byte" } else { "bytes" };
-                        writeln!(f, " ({size} {unit})")?;
-                    }
-                    None => writeln!(f, " (<unknown size>)")?,
-                }
+                    Some(size) => writeln!(f, " ({size})"),
+                    None => writeln!(f, " (<unknown size>)"),
+                }?;
 
                 for member in &ty.members {
                     let name = member.name.as_deref().unwrap_or("<anonymous>");
@@ -290,16 +296,12 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                         "",
                         indent = (self.depth + 1) * 2
                     )?;
-                    match member.offset {
-                        MemberOffset::Bytes(offset) => {
-                            let unit = if offset == 1 { "byte" } else { "bytes" };
-                            writeln!(f, " (offset {offset} {unit})")?;
-                        }
-                        MemberOffset::Bits(offset) => {
-                            let unit = if offset == 1 { "bit" } else { "bits" };
-                            writeln!(f, " (offset {offset} {unit})")?;
-                        }
-                    }
+                    match (member.offset, member.size) {
+                        (Some(off), Some(size)) => writeln!(f, " (offset {off}, size {size})"),
+                        (Some(off), None) => writeln!(f, " (offset {off})"),
+                        (None, Some(size)) => writeln!(f, " (size {size})"),
+                        (None, None) => writeln!(f),
+                    }?;
                     write!(
                         f,
                         "{:?}",

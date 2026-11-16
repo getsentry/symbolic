@@ -3,33 +3,33 @@ source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug::new(&session, &functions)"
 ---
 > 0x1040: main (0x97)
-  0x1040: variables.cpp:248 (/fixture)
-  0x1045: variables.cpp:254 (/fixture)
-  0x1050: variables.cpp:254 (/fixture)
-  0x1056: variables.cpp:254 (/fixture)
-  0x1058: variables.cpp:254 (/fixture)
-  0x105d: variables.cpp:254 (/fixture)
-  0x1063: variables.cpp:254 (/fixture)
-  0x1065: variables.cpp:254 (/fixture)
-  0x106a: variables.cpp:255 (/fixture)
-  0x1070: variables.cpp:260 (/fixture)
-  0x1078: variables.cpp:254 (/fixture)
-  0x107a: variables.cpp:255 (/fixture)
-  0x107f: variables.cpp:256 (/fixture)
-  0x1085: variables.cpp:255 (/fixture)
-  0x1087: variables.cpp:256 (/fixture)
-  0x108f: variables.cpp:258 (/fixture)
-  0x109a: variables.cpp:256 (/fixture)
-  0x109c: variables.cpp:258 (/fixture)
-  0x10a1: variables.cpp:260 (/fixture)
-  0x10a7: variables.cpp:259 (/fixture)
-  0x10ab: variables.cpp:260 (/fixture)
-  0x10be: variables.cpp:260 (/fixture)
-  0x10c2: variables.cpp:260 (/fixture)
-  0x10c4: variables.cpp:261 (/fixture)
-  0x10ca: variables.cpp:262 (/fixture)
-  0x10cf: variables.cpp:264 (/fixture)
-  0x10d6: variables.cpp:264 (/fixture)
+  0x1040: variables.cpp:256 (/fixture)
+  0x1045: variables.cpp:262 (/fixture)
+  0x1050: variables.cpp:262 (/fixture)
+  0x1056: variables.cpp:262 (/fixture)
+  0x1058: variables.cpp:262 (/fixture)
+  0x105d: variables.cpp:262 (/fixture)
+  0x1063: variables.cpp:262 (/fixture)
+  0x1065: variables.cpp:262 (/fixture)
+  0x106a: variables.cpp:263 (/fixture)
+  0x1070: variables.cpp:268 (/fixture)
+  0x1078: variables.cpp:262 (/fixture)
+  0x107a: variables.cpp:263 (/fixture)
+  0x107f: variables.cpp:264 (/fixture)
+  0x1085: variables.cpp:263 (/fixture)
+  0x1087: variables.cpp:264 (/fixture)
+  0x108f: variables.cpp:266 (/fixture)
+  0x109a: variables.cpp:264 (/fixture)
+  0x109c: variables.cpp:266 (/fixture)
+  0x10a1: variables.cpp:268 (/fixture)
+  0x10a7: variables.cpp:267 (/fixture)
+  0x10ab: variables.cpp:268 (/fixture)
+  0x10be: variables.cpp:268 (/fixture)
+  0x10c2: variables.cpp:268 (/fixture)
+  0x10c4: variables.cpp:269 (/fixture)
+  0x10ca: variables.cpp:270 (/fixture)
+  0x10cf: variables.cpp:272 (/fixture)
+  0x10d6: variables.cpp:272 (/fixture)
   variables:
     result (local)
       type:
@@ -47,8 +47,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x1040..0x10d7: cfa -24
 
 > 0x12e0: _Z13class_membersv (0x15)
-  0x12e0: variables.cpp:243 (/fixture)
-  0x12f4: variables.cpp:245 (/fixture)
+  0x12e0: variables.cpp:251 (/fixture)
+  0x12f4: variables.cpp:253 (/fixture)
   variables:
     instance (local)
       type:
@@ -60,12 +60,12 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x12e0..0x12f5: cfa -32
 
 > 0x12c0: _Z15through_pointerP5Pointi (0x14)
-  0x12c0: variables.cpp:230 (/fixture)
-  0x12c6: variables.cpp:229 (/fixture)
-  0x12c9: variables.cpp:230 (/fixture)
-  0x12cb: variables.cpp:230 (/fixture)
-  0x12cd: variables.cpp:231 (/fixture)
-  0x12d3: variables.cpp:232 (/fixture)
+  0x12c0: variables.cpp:238 (/fixture)
+  0x12c6: variables.cpp:237 (/fixture)
+  0x12c9: variables.cpp:238 (/fixture)
+  0x12cb: variables.cpp:238 (/fixture)
+  0x12cd: variables.cpp:239 (/fixture)
+  0x12d3: variables.cpp:240 (/fixture)
   variables:
     out (parameter)
       type:
@@ -84,20 +84,20 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x12cb..0x12d4: memory at rdi +4
 
 > 0x1280: _Z3vlai (0x3e)
-  0x1280: variables.cpp:213 (/fixture)
-  0x1281: variables.cpp:214 (/fixture)
-  0x1284: variables.cpp:214 (/fixture)
-  0x128c: variables.cpp:214 (/fixture)
-  0x1290: variables.cpp:213 (/fixture)
-  0x1293: variables.cpp:214 (/fixture)
-  0x1296: variables.cpp:216 (/fixture)
-  0x129c: variables.cpp:214 (/fixture)
-  0x12a8: variables.cpp:214 (/fixture)
-  0x12ac: variables.cpp:215 (/fixture)
-  0x12b3: variables.cpp:217 (/fixture)
-  0x12b6: variables.cpp:217 (/fixture)
-  0x12bc: variables.cpp:218 (/fixture)
-  0x12bd: variables.cpp:218 (/fixture)
+  0x1280: variables.cpp:221 (/fixture)
+  0x1281: variables.cpp:222 (/fixture)
+  0x1284: variables.cpp:222 (/fixture)
+  0x128c: variables.cpp:222 (/fixture)
+  0x1290: variables.cpp:221 (/fixture)
+  0x1293: variables.cpp:222 (/fixture)
+  0x1296: variables.cpp:224 (/fixture)
+  0x129c: variables.cpp:222 (/fixture)
+  0x12a8: variables.cpp:222 (/fixture)
+  0x12ac: variables.cpp:223 (/fixture)
+  0x12b3: variables.cpp:225 (/fixture)
+  0x12b6: variables.cpp:225 (/fixture)
+  0x12bc: variables.cpp:226 (/fixture)
+  0x12bd: variables.cpp:226 (/fixture)
   variables:
     n (parameter)
       type:
@@ -109,10 +109,10 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x12a8..0x12bc: memory at rax +0
 
 > 0x1270: _Z10stack_homei (0xc)
-  0x1270: variables.cpp:202 (/fixture)
-  0x1274: variables.cpp:203 (/fixture)
-  0x1278: variables.cpp:203 (/fixture)
-  0x127b: variables.cpp:204 (/fixture)
+  0x1270: variables.cpp:210 (/fixture)
+  0x1274: variables.cpp:211 (/fixture)
+  0x1278: variables.cpp:211 (/fixture)
+  0x127b: variables.cpp:212 (/fixture)
   variables:
     a (parameter)
       type:
@@ -124,8 +124,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x1270..0x127c: cfa -12
 
 > 0x1260: _Z13optimized_outi (0x4)
-  0x1260: variables.cpp:191 (/fixture)
-  0x1263: variables.cpp:192 (/fixture)
+  0x1260: variables.cpp:199 (/fixture)
+  0x1263: variables.cpp:200 (/fixture)
   variables:
     a (parameter)
       type:
@@ -133,15 +133,15 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x1260..0x1264: register rdi
 
 > 0x1240: _Z13external_calli (0x20)
-  0x1240: variables.cpp:175 (/fixture)
-  0x1248: variables.cpp:176 (/fixture)
-  0x1250: variables.cpp:178 (/fixture)
-  0x1255: variables.cpp:180 (/fixture)
-  0x1259: variables.cpp:179 (/fixture)
-  0x125b: variables.cpp:180 (/fixture)
-  0x125c: variables.cpp:179 (/fixture)
-  0x125e: variables.cpp:180 (/fixture)
-  0x125f: variables.cpp:180 (/fixture)
+  0x1240: variables.cpp:183 (/fixture)
+  0x1248: variables.cpp:184 (/fixture)
+  0x1250: variables.cpp:186 (/fixture)
+  0x1255: variables.cpp:188 (/fixture)
+  0x1259: variables.cpp:187 (/fixture)
+  0x125b: variables.cpp:188 (/fixture)
+  0x125c: variables.cpp:187 (/fixture)
+  0x125e: variables.cpp:188 (/fixture)
+  0x125f: variables.cpp:188 (/fixture)
   variables:
     a (parameter)
       type:
@@ -158,10 +158,10 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x1255..0x125b: register rax
 
 > 0x1230: _Z11across_calli (0xd)
-  0x1230: variables.cpp:162 (/fixture)
-  0x1233: variables.cpp:164 (/fixture)
-  0x123a: variables.cpp:165 (/fixture)
-  0x123c: variables.cpp:166 (/fixture)
+  0x1230: variables.cpp:170 (/fixture)
+  0x1233: variables.cpp:172 (/fixture)
+  0x123a: variables.cpp:173 (/fixture)
+  0x123c: variables.cpp:174 (/fixture)
   variables:
     a (parameter)
       type:
@@ -177,11 +177,11 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x123a..0x123c: register rax
 
 > 0x1220: _Z15float_registersff (0x10)
-  0x1220: variables.cpp:147 (/fixture)
-  0x1224: variables.cpp:149 (/fixture)
-  0x1228: variables.cpp:151 (/fixture)
-  0x122c: variables.cpp:152 (/fixture)
-  0x122f: variables.cpp:152 (/fixture)
+  0x1220: variables.cpp:155 (/fixture)
+  0x1224: variables.cpp:157 (/fixture)
+  0x1228: variables.cpp:159 (/fixture)
+  0x122c: variables.cpp:160 (/fixture)
+  0x122f: variables.cpp:160 (/fixture)
   variables:
     a (parameter)
       type:
@@ -201,10 +201,10 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x1228..0x122c: register xmm1
 
 > 0x1210: _Z9registersii (0x9)
-  0x1210: variables.cpp:134 (/fixture)
-  0x1213: variables.cpp:136 (/fixture)
-  0x1216: variables.cpp:138 (/fixture)
-  0x1218: variables.cpp:139 (/fixture)
+  0x1210: variables.cpp:142 (/fixture)
+  0x1213: variables.cpp:144 (/fixture)
+  0x1216: variables.cpp:146 (/fixture)
+  0x1218: variables.cpp:147 (/fixture)
   variables:
     a (parameter)
       type:
@@ -224,7 +224,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x1216..0x1219: register rsi
 
 > 0x1200: _Z8inliningi (0x1)
-  0x1200: variables.cpp:121 (/fixture)
+  0x1200: variables.cpp:129 (/fixture)
   variables:
     outer (parameter)
       type:
@@ -232,7 +232,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x1200..0x1201: register rdi
 
 > 0x11f0: _Z10aggregatesv (0x1)
-  0x11f0: variables.cpp:106 (/fixture)
+  0x11f0: variables.cpp:114 (/fixture)
 
 > 0x11e0: _Z8pointersPiPS_PKcPvPFiiE (0x1)
   0x11e0: variables.cpp:79 (/fixture)

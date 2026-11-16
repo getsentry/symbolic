@@ -96,12 +96,20 @@ union Value {
     float as_float;
 };
 
+typedef struct {
+    int j : 5;
+    int k : 6;
+    int m : 5;
+    int n : 8;
+} BitFields;
+
 NOINLINE void aggregates(void)
 {
     Point point = {1, 2};
     int array[3] = {1, 2, 3};
     enum Color color = GREEN;
     union Value value = {.as_int = 7};
+    BitFields bitfields = {1, 2, 3, 4};
     const int constant = 42;
 }
 

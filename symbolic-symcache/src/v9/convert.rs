@@ -1,29 +1,29 @@
 use symbolic_common::CpuFamily;
 use symbolic_common::register::Register;
-use symbolic_debuginfo::{MemberOffset, PrimitiveTypeEncoding, VariableKind};
+use symbolic_debuginfo::{PrimitiveTypeEncoding, Size, VariableKind};
 
-const MEMBER_OFFSET_BITS_FLAG: u32 = 1 << 31;
+const SIZE_BITS_FLAG: u32 = 1 << 31;
 
-/// Converts a [`MemberOffset`] to its packed representation, with the top bit set for bit offsets.
+/// Converts a [`Size`] to its packed representation, with the top bit set for bit offsets.
 ///
 /// Returns `None` if the offset does not fit in 31 bits.
-pub fn member_offset_to_raw(offset: MemberOffset) -> Option<u32> {
+pub fn size_to_raw(offset: Size) -> Option<u32> {
     let (offset, flag) = match offset {
-        MemberOffset::Bytes(offset) => (offset, 0),
-        MemberOffset::Bits(offset) => (offset, MEMBER_OFFSET_BITS_FLAG),
+        Size::Bytes(offset) => (offset, 0),
+        Size::Bits(offset) => (offset, SIZE_BITS_FLAG),
     };
 
     let offset = u32::try_from(offset).ok()?;
-    (offset < MEMBER_OFFSET_BITS_FLAG).then_some(offset | flag)
+    (offset < SIZE_BITS_FLAG).then_some(offset | flag)
 }
 
-/// Converts a packed offset to a [`MemberOffset`], using the top bit as the unit flag.
-pub fn raw_to_member_offset(offset: u32) -> MemberOffset {
-    let value = (offset & !MEMBER_OFFSET_BITS_FLAG).into();
-    if offset & MEMBER_OFFSET_BITS_FLAG == 0 {
-        MemberOffset::Bytes(value)
+/// Converts a packed offset to a [`Size`], using the top bit as the unit flag.
+pub fn raw_to_size(offset: u32) -> Size {
+    let value = (offset & !SIZE_BITS_FLAG).into();
+    if offset & SIZE_BITS_FLAG == 0 {
+        Size::Bytes(value)
     } else {
-        MemberOffset::Bits(value)
+        Size::Bits(value)
     }
 }
 
@@ -106,30 +106,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_member_offset_out_of_range() {
+    fn test_size_out_of_range() {
         for offset in [
             1 << 31,
             u64::from(u32::MAX),
             u64::from(u32::MAX) + 1,
             u64::MAX,
         ] {
-            assert_eq!(member_offset_to_raw(MemberOffset::Bytes(offset)), None);
-            assert_eq!(member_offset_to_raw(MemberOffset::Bits(offset)), None);
+            assert_eq!(size_to_raw(Size::Bytes(offset)), None);
+            assert_eq!(size_to_raw(Size::Bits(offset)), None);
         }
     }
 
     #[test]
-    fn test_member_offset_roundtrip() {
+    fn test_size_roundtrip() {
         for (offset, raw) in [
-            (MemberOffset::Bytes(0), 0),
-            (MemberOffset::Bits(0), 0x8000_0000),
-            (MemberOffset::Bytes(42), 42),
-            (MemberOffset::Bits(13), 0x8000_000d),
-            (MemberOffset::Bytes(0x7fff_ffff), 0x7fff_ffff),
-            (MemberOffset::Bits(0x7fff_ffff), u32::MAX),
+            (Size::Bytes(0), 0),
+            (Size::Bits(0), 0x8000_0000),
+            (Size::Bytes(42), 42),
+            (Size::Bits(13), 0x8000_000d),
+            (Size::Bytes(0x7fff_ffff), 0x7fff_ffff),
+            (Size::Bits(0x7fff_ffff), u32::MAX),
         ] {
-            assert_eq!(member_offset_to_raw(offset), Some(raw));
-            assert_eq!(raw_to_member_offset(raw), offset);
+            assert_eq!(size_to_raw(offset), Some(raw));
+            assert_eq!(raw_to_size(raw), offset);
         }
     }
 }
