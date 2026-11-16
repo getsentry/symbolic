@@ -846,6 +846,34 @@ fn test_mach_files() -> Result<(), Error> {
     Ok(())
 }
 
+/// The linker folds functions with identical code into one body, which leaves several symbols at
+/// the same address. The function name must then come from the DWARF of the kept body, so that it
+/// matches the line records, rather than from whichever symbol the symbol table lists first.
+#[test]
+fn test_mach_folded_functions() -> Result<(), Error> {
+    let view = ByteView::open(fixture(
+        "macos/folded_functions/folded_functions.dSYM/Contents/Resources/DWARF/folded_functions",
+    ))?;
+    let object = Object::parse(&view)?;
+
+    // The symbol table alone names the folded body after the other function.
+    let symbol_map = object.symbol_map();
+    let first_symbol = symbol_map.lookup_exact(0x340).expect("folded symbol");
+    assert_eq!(first_symbol.name(), Some("folded_second"));
+
+    let session = object.debug_session()?;
+    let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
+    let folded = functions
+        .iter()
+        .find(|function| function.address == 0x340)
+        .expect("folded function");
+
+    assert_eq!(folded.name.as_str(), "folded_first");
+    assert_eq!(folded.lines[0].line, 5);
+
+    Ok(())
+}
+
 #[test]
 fn test_mach_functions() -> Result<(), Error> {
     let view = ByteView::open(fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash"))?;

@@ -305,6 +305,9 @@ pub type SymbolMapIter<'data> = std::vec::IntoIter<Symbol<'data>>;
 #[derive(Clone, Debug, Default)]
 pub struct SymbolMap<'data> {
     symbols: Vec<Symbol<'data>>,
+    /// Symbols dropped from `symbols` because they share their address with a differently named
+    /// symbol, sorted by address.
+    folded: Vec<Symbol<'data>>,
 }
 
 impl<'data> SymbolMap<'data> {
@@ -312,6 +315,7 @@ impl<'data> SymbolMap<'data> {
     pub fn new() -> Self {
         SymbolMap {
             symbols: Vec::new(),
+            folded: Vec::new(),
         }
     }
 
@@ -338,6 +342,21 @@ impl<'data> SymbolMap<'data> {
             .binary_search_by_key(&address, Self::key)
             .ok()?;
         self.symbols.get(idx)
+    }
+
+    /// Returns the other symbols starting at the given address, besides the one returned by
+    /// [`lookup_exact`](Self::lookup_exact).
+    ///
+    /// Linkers fold functions with identical code into one body, which leaves the symbols of all
+    /// those functions at the same address.
+    pub(crate) fn folded(&self, address: u64) -> &[Symbol<'data>] {
+        let start = self
+            .folded
+            .partition_point(|symbol| symbol.address < address);
+        let end = self
+            .folded
+            .partition_point(|symbol| symbol.address <= address);
+        &self.folded[start..end]
     }
 
     /// Looks up a symbol covering an entire range.
@@ -410,14 +429,13 @@ impl<'d> AsRef<[Symbol<'d>]> for SymbolMap<'d> {
 
 impl<'d> From<Vec<Symbol<'d>>> for SymbolMap<'d> {
     fn from(mut symbols: Vec<Symbol<'d>>) -> Self {
+        let mut folded = Vec::new();
         if !symbols.is_empty() {
-            // NB: This might require stable sorting to ensure determinism if multiple symbols point
-            // at the same location. However, this only seems to happen for equivalent variants of
-            // the same function.
-            //
-            // An example would be destructors where D2 (base object destructor) and D1 (complete
-            // object destructor) might share the same code. Since those always demangle to the same
-            // name, we do not care which function to keep in this case.
+            // NB: Multiple symbols may point at the same location. This happens for equivalent
+            // variants of the same function, such as destructors where D2 (base object destructor)
+            // and D1 (complete object destructor) share the same code. It also happens when the
+            // linker folds unrelated functions with identical code into one body. Only the first
+            // symbol is kept here, the differently named others are kept aside in `folded`.
             //
             // Inlined functions will generally not appear in this list, unless they _also_ have an
             // explicit function body, in which case they will have a unique address, again.
@@ -431,11 +449,15 @@ impl<'d> From<Vec<Symbol<'d>>> for SymbolMap<'d> {
                 if symbol.size == 0 {
                     symbol.size = next.address - symbol.address;
                 }
-                symbol.address == next.address
+                let duplicate = symbol.address == next.address;
+                if duplicate && symbol.name != next.name {
+                    folded.push(next.clone());
+                }
+                duplicate
             })
         }
 
-        SymbolMap { symbols }
+        SymbolMap { symbols, folded }
     }
 }
 

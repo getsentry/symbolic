@@ -1063,8 +1063,43 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Resolves the name of a function from the symbol table.
-    fn resolve_symbol_name(&self, address: u64, language: Language) -> Option<Name<'d>> {
-        let symbol = self.inner.info.symbol_map.lookup_exact(address)?;
+    ///
+    /// If the linker folded several functions into the one at this address, the symbol table has
+    /// a symbol for each of them there. The one named like the function in the debug information
+    /// is then picked, falling back to the first symbol if none matches.
+    fn resolve_symbol_name(
+        &self,
+        address: u64,
+        entry: &Die<'d>,
+        language: Language,
+    ) -> Option<Name<'d>> {
+        let symbol_map = &self.inner.info.symbol_map;
+        let mut symbol = symbol_map.lookup_exact(address)?;
+
+        let folded = symbol_map.folded(address);
+        if !folded.is_empty() {
+            let dwarf_name = self
+                .inner
+                .resolve_function_name(
+                    entry,
+                    language,
+                    self.bcsymbolmap,
+                    DwarfUnit::MAX_RESOLVE_FUNCTION_DEPTH,
+                )
+                .ok()
+                .flatten();
+            if let Some(dwarf_name) = dwarf_name {
+                let matches_dwarf = |candidate: &&Symbol<'d>| {
+                    candidate.name.as_ref().is_some_and(|name| {
+                        resolve_cow_name(self.bcsymbolmap, name.clone()) == dwarf_name.as_str()
+                    })
+                };
+                if let Some(matching) = std::iter::once(symbol).chain(folded).find(matches_dwarf) {
+                    symbol = matching;
+                }
+            }
+        }
+
         let name = resolve_cow_name(self.bcsymbolmap, symbol.name.clone()?);
         Some(Name::new(name, NameMangling::Mangled, language))
     }
@@ -1141,7 +1176,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         } else {
             let first_range_begin = ranges.iter().map(|range| range.begin).min().unwrap();
             let function_address = offset(first_range_begin, self.inner.info.address_offset);
-            self.resolve_symbol_name(function_address, language)
+            self.resolve_symbol_name(function_address, &entry, language)
         };
 
         let name = symbol_name
