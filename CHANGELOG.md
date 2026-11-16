@@ -17,7 +17,7 @@
 **Fixes**
 
 - Resolve percent-encoded source paths in source bundles. [#1111](https://github.com/getsentry/symbolic/pull/1111)
-- Name DWARF functions after the symbol matching their debug information when the linker folded several functions into one body, instead of an unrelated symbol at the same address. Equivalent variants sharing one body, such as `C1`/`C2` constructors and `D1`/`D2` destructors, are now also named after the variant the debug information describes.
+- Name DWARF functions after the symbol matching their debug information when the linker folded several functions into one body, instead of an unrelated symbol at the same address. Equivalent variants sharing one body, such as `C1`/`C2` constructors and `D1`/`D2` destructors, are now also named after the variant the debug information describes. ([#1170](https://github.com/getsentry/symbolic/pull/1170))
 
 ## 14.0.0-alpha.5
 
