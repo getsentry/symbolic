@@ -120,7 +120,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x1270..0x127c: register rdi
     slot (local)
       type:
-        > Unknown
+        > Primitive: int (SignedInt, 4 bytes) Qualifiers(VOLATILE)
       0x1270..0x127c: cfa -12
 
 > 0x1260: _Z13optimized_outi (0x4)
@@ -251,7 +251,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
     str (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
       0x11e0..0x11e1: register rdx
     any (parameter)
       type:

@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt};
+use std::{borrow::Cow, fmt, ops};
 
 use symbolic_common::register::Register;
 
@@ -61,6 +61,96 @@ pub enum Type<'data> {
     StructureType(StructureType<'data>),
 }
 
+impl Type<'_> {
+    /// Returns the [`Qualifiers`] applied to this type.
+    pub fn qualifiers(&self) -> Qualifiers {
+        match self {
+            Self::Primitive(ty) => ty.qualifiers,
+            Self::Pointer(ty) => ty.qualifiers,
+            Self::TypeDef(ty) => ty.qualifiers,
+            Self::StructureType(ty) => ty.qualifiers,
+        }
+    }
+
+    /// Returns a mutable reference to the [`Qualifiers`] applied to this type.
+    pub(crate) fn qualifiers_mut(&mut self) -> &mut Qualifiers {
+        match self {
+            Self::Primitive(ty) => &mut ty.qualifiers,
+            Self::Pointer(ty) => &mut ty.qualifiers,
+            Self::TypeDef(ty) => &mut ty.qualifiers,
+            Self::StructureType(ty) => &mut ty.qualifiers,
+        }
+    }
+}
+
+/// Type qualifiers, such as `const` or `volatile`, applied to a type.
+///
+/// Qualifiers are a set of flags. Combine them with `|`, for example
+/// `Qualifiers::CONST | Qualifiers::VOLATILE`.
+#[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct Qualifiers(u8);
+
+impl Qualifiers {
+    /// The `const` qualifier.
+    pub const CONST: Self = Self(1 << 0);
+    /// The `volatile` qualifier.
+    pub const VOLATILE: Self = Self(1 << 1);
+    /// The `restrict` qualifier.
+    pub const RESTRICT: Self = Self(1 << 2);
+
+    /// Returns a set without any qualifiers.
+    pub const fn empty() -> Self {
+        Self(0)
+    }
+
+    /// Returns `true` if no qualifier is set.
+    pub const fn is_empty(self) -> bool {
+        self.0 == 0
+    }
+
+    /// Returns `true` if all qualifiers in `other` are also set in `self`.
+    pub const fn contains(self, other: Self) -> bool {
+        self.0 & other.0 == other.0
+    }
+}
+
+impl ops::BitOr for Qualifiers {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self {
+        Self(self.0 | rhs.0)
+    }
+}
+
+impl ops::BitOrAssign for Qualifiers {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl fmt::Debug for Qualifiers {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let names = [
+            (Self::CONST, "CONST"),
+            (Self::VOLATILE, "VOLATILE"),
+            (Self::RESTRICT, "RESTRICT"),
+        ];
+
+        f.write_str("Qualifiers(")?;
+        let mut first = true;
+        for (flag, name) in names {
+            if self.contains(flag) {
+                if !first {
+                    f.write_str(" | ")?;
+                }
+                f.write_str(name)?;
+                first = false;
+            }
+        }
+        f.write_str(")")
+    }
+}
+
 impl<'data> From<PrimitiveType<'data>> for Type<'data> {
     fn from(value: PrimitiveType<'data>) -> Self {
         Self::Primitive(value)
@@ -103,6 +193,8 @@ pub struct PrimitiveType<'data> {
     pub size: Size,
     /// The meaningful value range within the primitive type's storage.
     pub value_bits: Option<ValueBits>,
+    /// The qualifiers applied to the type.
+    pub qualifiers: Qualifiers,
 }
 
 /// An encoding for a [`PrimitiveType`].
@@ -146,6 +238,8 @@ pub struct PointerType {
     pub pointee: Option<TypeRef>,
     /// The size of a pointer.
     pub size: Size,
+    /// The qualifiers applied to the pointer itself, for example `const` in `int *const`.
+    pub qualifiers: Qualifiers,
 }
 
 /// A type that is defined in the terms of another type.
@@ -158,6 +252,8 @@ pub struct TypeDefType<'data> {
     /// This may be `None` if the debug information provides no underlying type reference,
     /// for example an alias to `void` or a type declaration without a definition.
     pub ty: Option<TypeRef>,
+    /// The qualifiers applied to the `typedef`.
+    pub qualifiers: Qualifiers,
 }
 
 /// A structure type.
@@ -171,6 +267,8 @@ pub struct StructureType<'data> {
     pub size: Option<Size>,
     /// All members of the structure in declaration order.
     pub members: Vec<StructureMember<'data>>,
+    /// The qualifiers applied to the structure.
+    pub qualifiers: Qualifiers,
 }
 
 /// A member of a [structure](StructureType).

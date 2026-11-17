@@ -5,6 +5,7 @@
 **Breaking Changes**
 
 - Rename `VariableLocation::FrameOffset` to `VariableLocation::CfaOffset`. It now only describes variables at an offset from the CFA. ([#1168](https://github.com/getsentry/symbolic/pull/1168))
+- Add a `qualifiers` field to `PrimitiveType`, `PointerType`, `TypeDefType` and `StructureType`. ([#1176](https://github.com/getsentry/symbolic/pull/1176))
 
 **Features**
 
@@ -13,6 +14,7 @@
 - Add `VariableLocation::RegisterOffset` for variables in memory at an offset from a register's contents. ([#1160](https://github.com/getsentry/symbolic/pull/1160))
 - Parse `DW_OP_breg<n>` and `DW_OP_bregx` locations from DWARF into `VariableLocation::RegisterOffset`. ([#1151](https://github.com/getsentry/symbolic/pull/1151), [#1155](https://github.com/getsentry/symbolic/pull/1155))
 - Resolve DWARF `DW_OP_fbreg` variable locations against the function's `DW_AT_frame_base`. A register frame base gives `VariableLocation::RegisterOffset`, the CFA gives `VariableLocation::CfaOffset`, and locations with any other frame base are dropped. ([#1152](https://github.com/getsentry/symbolic/pull/1152))
+- Resolve DWARF `const`, `volatile` and `restrict` type qualifiers by folding them into the qualified type. ([#1176](https://github.com/getsentry/symbolic/pull/1176))
 
 **Fixes**
 

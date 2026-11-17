@@ -472,6 +472,7 @@ mod tests {
             encoding: None,
             size: di::Size::Bytes(1),
             value_bits: None,
+            qualifiers: di::Qualifiers::empty(),
         }
     }
 
@@ -481,6 +482,7 @@ mod tests {
             encoding: None,
             size: di::Size::Bytes(2),
             value_bits: None,
+            qualifiers: di::Qualifiers::empty(),
         }
     }
 
@@ -490,6 +492,7 @@ mod tests {
             encoding: None,
             size: di::Size::Bytes(4),
             value_bits: None,
+            qualifiers: di::Qualifiers::empty(),
         }
     }
 
@@ -497,6 +500,7 @@ mod tests {
         di::PointerType {
             pointee: Some(pointee),
             size: di::Size::Bytes(8),
+            qualifiers: di::Qualifiers::empty(),
         }
     }
 
@@ -504,6 +508,7 @@ mod tests {
         di::TypeDefType {
             name: name.into(),
             ty: ty.into(),
+            qualifiers: di::Qualifiers::empty(),
         }
     }
 
@@ -667,6 +672,7 @@ mod tests {
             di::PointerType {
                 pointee: None,
                 size: di::Size::Bytes(8),
+                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(3), tydef("Missing", TypeRef::generic(100)));
@@ -690,6 +696,7 @@ mod tests {
                         size: None,
                     },
                 ],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(6), ty_u32());
@@ -768,6 +775,7 @@ mod tests {
                         size: None,
                     },
                 ],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(2), ptr(TypeRef::generic(3)));
@@ -861,6 +869,7 @@ mod tests {
                     offset: Some(di::Size::Bytes(0)),
                     size: None,
                 }],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(2), ptr(TypeRef::generic(100)));
@@ -883,6 +892,7 @@ mod tests {
                         size: None,
                     },
                 ],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
 
@@ -946,6 +956,7 @@ mod tests {
                         size: None,
                     },
                 ],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(11), ty_u32());
@@ -1007,6 +1018,7 @@ mod tests {
                         size: None,
                     },
                 ],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(
@@ -1034,6 +1046,7 @@ mod tests {
                         size: None,
                     },
                 ],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
 
@@ -1142,6 +1155,7 @@ mod tests {
                         size: None,
                     },
                 ],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(2), ptr(TypeRef::generic(1)));
