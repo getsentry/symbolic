@@ -1,12 +1,12 @@
 # Variables fixture
 
-`variables.c` builds two ELF/DWARF 5, x86-64 fixtures in this directory, asserted by
+`variables.cpp` builds two ELF/DWARF 5, x86-64 fixtures in this directory, asserted by
 `test_elf_variables` and `test_elf_variables_opt` in `symbolic-debuginfo/tests/test_objects.rs`:
 
 - `variables` (`-O0`): types and variable kinds with whole-function stack locations.
 - `variables_opt` (`-O2`): registers, sub-function ranges, and multi-range location lists.
 
-`variables.c` is meant to grow along with symbolic's variable support.
+`variables.cpp` is meant to grow along with symbolic's variable support.
 
 Run both tests without rebuilding:
 
@@ -16,7 +16,7 @@ cargo test -p symbolic-debuginfo --test test_objects test_elf_variables
 
 ## Rebuilding
 
-If you change `variables.c`, rebuild from *this* directory — it rewrites both binaries next to
+If you change `variables.cpp`, rebuild from *this* directory — it rewrites both binaries next to
 the source:
 
 ```sh
@@ -33,7 +33,7 @@ cargo insta test -p symbolic-debuginfo --test test_objects --accept -- test_elf_
 
 ## The -O2 build
 
-The optimized fixture relies on the scaffolding in `variables.c`: `NOINLINE` keeps functions from
+The optimized fixture relies on the scaffolding in `variables.cpp`: `NOINLINE` keeps functions from
 disappearing into their callers, the `volatile` global provides opaque inputs, and `USE(x)` pins
 values to general-purpose registers rather than allowing GCC to describe them as computed
 expressions (`DW_OP_stack_value`), which symbolic currently drops. `USE_F(x)` does the same for
@@ -48,7 +48,7 @@ from `opaque` to prevent the optimizer from specializing callees with constant i
 
 ## Adding coverage
 
-Add whatever exercises the new support to `variables.c`, rebuild, and refresh the snapshot. Since
+Add whatever exercises the new support to `variables.cpp`, rebuild, and refresh the snapshot. Since
 addresses are absolute, the diff usually also shifts every function placed after the one you
 touched; that churn is expected. What to review is that the variables you added show up the way
 you expect.

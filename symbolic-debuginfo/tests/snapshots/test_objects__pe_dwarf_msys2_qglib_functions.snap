@@ -346,7 +346,20 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     this (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Structure: QGlibNetworkInformationBackend (64 bytes)
+            > Member: networkMonitor (offset 40 bytes)
+              > Pointer (8 bytes)
+                > TypeDef: GNetworkMonitor
+                  > Structure: _GNetworkMonitor (<unknown size>)
+            > Member: connectivityHandlerId (offset 48 bytes)
+              > TypeDef: gulong
+                > Primitive: unsigned long (UnsignedInt, 4 bytes)
+            > Member: networkHandlerId (offset 52 bytes)
+              > TypeDef: gulong
+                > Primitive: unsigned long (UnsignedInt, 4 bytes)
+            > Member: meteredHandlerId (offset 56 bytes)
+              > TypeDef: gulong
+                > Primitive: unsigned long (UnsignedInt, 4 bytes)
       0x13e4..0x13f8: register rcx
       0x13f8..0x14cc: register rsi
 
@@ -372,7 +385,20 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     backend (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Structure: QGlibNetworkInformationBackend (64 bytes)
+            > Member: networkMonitor (offset 40 bytes)
+              > Pointer (8 bytes)
+                > TypeDef: GNetworkMonitor
+                  > Structure: _GNetworkMonitor (<unknown size>)
+            > Member: connectivityHandlerId (offset 48 bytes)
+              > TypeDef: gulong
+                > Primitive: unsigned long (UnsignedInt, 4 bytes)
+            > Member: networkHandlerId (offset 52 bytes)
+              > TypeDef: gulong
+                > Primitive: unsigned long (UnsignedInt, 4 bytes)
+            > Member: meteredHandlerId (offset 56 bytes)
+              > TypeDef: gulong
+                > Primitive: unsigned long (UnsignedInt, 4 bytes)
       0x14d4..0x14fd: register rcx
       0x14fd..0x15f2: register rsi
       0x15fb..0x1601: register rsi
@@ -472,7 +498,20 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     backend (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Structure: QGlibNetworkInformationBackend (64 bytes)
+            > Member: networkMonitor (offset 40 bytes)
+              > Pointer (8 bytes)
+                > TypeDef: GNetworkMonitor
+                  > Structure: _GNetworkMonitor (<unknown size>)
+            > Member: connectivityHandlerId (offset 48 bytes)
+              > TypeDef: gulong
+                > Primitive: unsigned long (UnsignedInt, 4 bytes)
+            > Member: networkHandlerId (offset 52 bytes)
+              > TypeDef: gulong
+                > Primitive: unsigned long (UnsignedInt, 4 bytes)
+            > Member: meteredHandlerId (offset 56 bytes)
+              > TypeDef: gulong
+                > Primitive: unsigned long (UnsignedInt, 4 bytes)
       0x1614..0x1637: register rcx
       0x1637..0x167f: register rsi
       0x1687..0x16a7: register rsi
