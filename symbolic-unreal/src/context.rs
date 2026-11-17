@@ -6,13 +6,20 @@ use std::collections::BTreeMap;
 #[cfg(test)]
 use similar_asserts::assert_eq;
 
-use crate::{error::Unreal4Error, xml::XMLReader};
+use crate::{
+    error::Unreal4Error,
+    xml::{ParseValueError, XMLReader},
+};
 
 /// Bounds for custom/unknown child nodes within the RuntimeProperties tag.
 const MAX_CUSTOM_NODES: usize = 100_000;
 
 /// Bounds for all child nodes loaded with `load_databag`.
 const MAX_DATA_BAG_NODES: usize = 100_000;
+
+/// Bounds for the size of an individual XML node.  We want this to prevent expansions of
+/// single-byte unrepresentable characters in a string converted into larger utf-8 escape sequences.
+const MAX_XML_VALUE_BYTES: usize = 10_000_000;
 
 /// RuntimeProperties context element.
 ///
@@ -165,9 +172,9 @@ pub struct Unreal4ContextRuntimeProperties {
 }
 
 impl Unreal4ContextRuntimeProperties {
-    fn from_xml(root: &[u8]) -> Result<Option<Self>, quick_xml::Error> {
+    fn from_xml(root: &[u8]) -> Result<Option<Self>, ParseValueError> {
         let r = quick_xml::Reader::from_reader(root);
-        let mut r = XMLReader::new(r);
+        let mut r = XMLReader::new(r, MAX_XML_VALUE_BYTES);
 
         let mut rv = Unreal4ContextRuntimeProperties::default();
 
@@ -260,9 +267,9 @@ pub struct Unreal4ContextPlatformProperties {
 }
 
 impl Unreal4ContextPlatformProperties {
-    fn from_xml(root: &[u8]) -> Result<Option<Self>, quick_xml::Error> {
+    fn from_xml(root: &[u8]) -> Result<Option<Self>, ParseValueError> {
         let r = quick_xml::Reader::from_reader(root);
-        let mut r = XMLReader::new(r);
+        let mut r = XMLReader::new(r, MAX_XML_VALUE_BYTES);
 
         let mut rv = Unreal4ContextPlatformProperties::default();
 
@@ -325,9 +332,9 @@ fn load_data_bag(
     data: &[u8],
     tag: &str,
     dest_data: &mut BTreeMap<String, String>,
-) -> Result<(), quick_xml::Error> {
+) -> Result<(), ParseValueError> {
     let r = quick_xml::Reader::from_reader(data);
-    let mut r = XMLReader::new(r);
+    let mut r = XMLReader::new(r, MAX_XML_VALUE_BYTES);
 
     if r.next_instance_of_tag(tag)? {
         while let Some(mut child) = r.next_child()? {
