@@ -79,7 +79,7 @@ NOINLINE void pointers(int *num, int **num_ptr, const char *str, void *any, int 
 }
 
 /*
- * Aggregate types. Not supported yet -- all of these resolve to `Unknown`.
+ * Aggregate types.
  */
 typedef struct {
     int x;
@@ -231,6 +231,19 @@ NOINLINE void through_pointer(Point *out, int value)
     opaque = out->x;
 }
 
+class Example {
+public:
+    static int shared;
+    int value;
+    double weight;
+};
+
+NOINLINE void class_members(void)
+{
+    Example instance = {42, 2.5};
+    __asm__ volatile("" : : "m"(instance));
+}
+
 int main(void)
 {
     primitives();
@@ -246,5 +259,6 @@ int main(void)
     result += stored.y;
     result += (int)float_registers((float)opaque, (float)opaque);
     opaque = result;
+    class_members();
     return 0;
 }

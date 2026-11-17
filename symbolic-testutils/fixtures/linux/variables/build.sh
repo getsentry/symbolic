@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds the ELF/DWARF variable fixture from variables.c.
+# Builds the ELF/DWARF variable fixture from variables.cpp.
 #
 # Run this via Docker so the output does not depend on your machine:
 #
@@ -12,5 +12,5 @@ set -eu
 cd "$(dirname "$0")"
 
 file_prefix_map="-ffile-prefix-map=$(pwd -P)=/fixture"
-gcc "$file_prefix_map" -g -gdwarf-5 -O0 -o variables variables.c
-gcc "$file_prefix_map" -g -gdwarf-5 -O2 -o variables_opt variables.c
+g++ "$file_prefix_map" -g -gdwarf-5 -O0 -o variables variables.cpp
+g++ "$file_prefix_map" -g -gdwarf-5 -O2 -o variables_opt variables.cpp
