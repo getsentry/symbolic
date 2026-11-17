@@ -324,17 +324,20 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     expression (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > TypeDef: wchar_t Qualifiers(CONST)
+            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
       0x1000..0x1001: register rcx
     function (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > TypeDef: wchar_t Qualifiers(CONST)
+            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
       0x1000..0x1001: register rdx
     file (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > TypeDef: wchar_t Qualifiers(CONST)
+            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
       0x1000..0x1001: register r8
     line (parameter)
       type:
@@ -374,7 +377,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     __format (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
       0x1530..0x1557: register rcx
       0x1557..0x1570: register rbx
     __retval (local)

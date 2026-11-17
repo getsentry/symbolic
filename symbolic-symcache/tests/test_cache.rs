@@ -271,7 +271,7 @@ fn test_lookup_variables_void_pointer() -> Result<(), Error> {
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     num (parameter, int*): 0x1193..0x11ae cfa -24
     num_ptr (parameter, int**): 0x1193..0x11ae cfa -32
-    str (parameter, <unknown>*): 0x1193..0x11ae cfa -40
+    str (parameter, char*): 0x1193..0x11ae cfa -40
     any (parameter, void*): 0x1193..0x11ae cfa -48
     fn (parameter, <unknown>*): 0x1193..0x11ae cfa -56
     ");

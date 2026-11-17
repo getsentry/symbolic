@@ -203,6 +203,11 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
             );
         }
 
+        let qualifiers = match ty.qualifiers() {
+            qualifiers if qualifiers.is_empty() => String::new(),
+            qualifiers => format!(" {qualifiers:?}"),
+        };
+
         match ty {
             Type::Primitive(ty) => {
                 let name = ty.name.as_deref().unwrap_or("<unknown>");
@@ -210,14 +215,14 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                 let result = match ty.encoding {
                     Some(encoding) => writeln!(
                         f,
-                        "{:indent$}> Primitive: {name} ({encoding:?}, {size})",
+                        "{:indent$}> Primitive: {name} ({encoding:?}, {size}){qualifiers}",
                         "",
                         size = ty.size,
                         indent = self.depth * 2
                     ),
                     None => writeln!(
                         f,
-                        "{:indent$}> Primitive: {name} (<unknown encoding>, {size})",
+                        "{:indent$}> Primitive: {name} (<unknown encoding>, {size}){qualifiers}",
                         "",
                         size = ty.size,
                         indent = self.depth * 2
@@ -238,7 +243,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
             Type::Pointer(ty) => {
                 writeln!(
                     f,
-                    "{:indent$}> Pointer ({size})",
+                    "{:indent$}> Pointer ({size}){qualifiers}",
                     "",
                     size = ty.size,
                     indent = self.depth * 2
@@ -257,7 +262,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
             Type::TypeDef(ty) => {
                 writeln!(
                     f,
-                    "{:indent$}> TypeDef: {}",
+                    "{:indent$}> TypeDef: {}{qualifiers}",
                     "",
                     ty.name,
                     indent = self.depth * 2
@@ -283,8 +288,8 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                     indent = self.depth * 2
                 )?;
                 match ty.size {
-                    Some(size) => writeln!(f, " ({size})"),
-                    None => writeln!(f, " (<unknown size>)"),
+                    Some(size) => writeln!(f, " ({size}){qualifiers}"),
+                    None => writeln!(f, " (<unknown size>){qualifiers}"),
                 }?;
 
                 for member in &ty.members {
