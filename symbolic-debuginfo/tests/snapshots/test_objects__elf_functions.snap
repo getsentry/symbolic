@@ -743,7 +743,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   variables:
     this (parameter)
       type:
-        > Unknown
+        > Pointer (8 bytes) Qualifiers(CONST)
+          > Unknown
       0x2520..0x2538: register rdi
       0x2538..0x255a: register rbx
       0x257f..0x2777: register rbx
@@ -944,7 +945,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x2520..0x29e6: cfa -116
     r (local)
       type:
-        > Unknown
+        > Primitive: int (SignedInt, 4 bytes) Qualifiers(CONST)
       0x28cd..0x28f1: register rsi
       0x28f1..0x28f7: cfa -144
       0x28f7..0x291d: register rsi

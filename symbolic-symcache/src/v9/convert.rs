@@ -1,6 +1,6 @@
 use symbolic_common::CpuFamily;
 use symbolic_common::register::Register;
-use symbolic_debuginfo::{MemberOffset, PrimitiveTypeEncoding, VariableKind};
+use symbolic_debuginfo::{MemberOffset, PrimitiveTypeEncoding, Qualifiers, VariableKind};
 
 const MEMBER_OFFSET_BITS_FLAG: u32 = 1 << 31;
 
@@ -25,6 +25,33 @@ pub fn raw_to_member_offset(offset: u32) -> MemberOffset {
     } else {
         MemberOffset::Bits(value)
     }
+}
+
+/// Bit flags of [`Qualifiers`] in [`raw::Type::qualifiers`](super::raw::Type::qualifiers).
+const QUALIFIER_FLAGS: [(Qualifiers, u8); 3] = [
+    (Qualifiers::CONST, 1 << 0),
+    (Qualifiers::VOLATILE, 1 << 1),
+    (Qualifiers::RESTRICT, 1 << 2),
+];
+
+/// Converts [`Qualifiers`] into their bit flag representation.
+pub fn qualifiers_to_u8(qualifiers: Qualifiers) -> u8 {
+    QUALIFIER_FLAGS
+        .iter()
+        .filter(|(qualifier, _)| qualifiers.contains(*qualifier))
+        .fold(0, |bits, (_, flag)| bits | flag)
+}
+
+/// Converts bit flags back into [`Qualifiers`], ignoring unknown flags.
+///
+/// The inverse of [`qualifiers_to_u8`].
+pub fn u8_to_qualifiers(bits: u8) -> Qualifiers {
+    QUALIFIER_FLAGS
+        .iter()
+        .filter(|(_, flag)| bits & flag != 0)
+        .fold(Qualifiers::empty(), |qualifiers, (qualifier, _)| {
+            qualifiers | *qualifier
+        })
 }
 
 /// Converts a `u8` back into a [`PrimitiveTypeEncoding`].
@@ -131,5 +158,28 @@ mod tests {
             assert_eq!(member_offset_to_raw(offset), Some(raw));
             assert_eq!(raw_to_member_offset(raw), offset);
         }
+    }
+
+    #[test]
+    fn test_qualifiers_roundtrip() {
+        for (qualifiers, raw) in [
+            (Qualifiers::empty(), 0),
+            (Qualifiers::CONST, 0b001),
+            (Qualifiers::VOLATILE, 0b010),
+            (Qualifiers::RESTRICT, 0b100),
+            (Qualifiers::CONST | Qualifiers::VOLATILE, 0b011),
+            (
+                Qualifiers::CONST | Qualifiers::VOLATILE | Qualifiers::RESTRICT,
+                0b111,
+            ),
+        ] {
+            assert_eq!(qualifiers_to_u8(qualifiers), raw);
+            assert_eq!(u8_to_qualifiers(raw), qualifiers);
+        }
+    }
+
+    #[test]
+    fn test_qualifiers_unknown_flags() {
+        assert_eq!(u8_to_qualifiers(0b1111_1001), Qualifiers::CONST);
     }
 }

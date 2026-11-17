@@ -109,12 +109,14 @@ where
         type_writer: &mut TypeWriter,
         string_table: &mut StringTable,
     ) -> FwdResult {
-        match ty {
+        let mut raw = match ty {
             di::Type::Primitive(ty) => self.ser_primitive(ty, string_table),
             di::Type::Pointer(ty) => self.ser_pointer(ty),
             di::Type::TypeDef(ty) => self.ser_typedef(ty, string_table),
             di::Type::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
-        }
+        }?;
+        raw.qualifiers = v9::convert::qualifiers_to_u8(ty.qualifiers());
+        Ok(raw)
     }
 
     fn ser_primitive(&mut self, ty: &di::PrimitiveType<'_>, st: &mut StringTable) -> FwdResult {
@@ -478,6 +480,7 @@ mod tests {
             name: Some("u8".into()),
             encoding: None,
             size: di::TypeSize::Bytes(1),
+            qualifiers: di::Qualifiers::empty(),
         }
     }
 
@@ -486,6 +489,7 @@ mod tests {
             name: Some("u16".into()),
             encoding: None,
             size: di::TypeSize::Bytes(2),
+            qualifiers: di::Qualifiers::empty(),
         }
     }
 
@@ -494,6 +498,7 @@ mod tests {
             name: Some("u32".into()),
             encoding: None,
             size: di::TypeSize::Bytes(4),
+            qualifiers: di::Qualifiers::empty(),
         }
     }
 
@@ -501,6 +506,7 @@ mod tests {
         di::PointerType {
             pointee: Some(pointee),
             size: di::TypeSize::Bytes(8),
+            qualifiers: di::Qualifiers::empty(),
         }
     }
 
@@ -508,6 +514,7 @@ mod tests {
         di::TypeDefType {
             name: name.into(),
             ty: ty.into(),
+            qualifiers: di::Qualifiers::empty(),
         }
     }
 
@@ -634,6 +641,38 @@ mod tests {
     }
 
     #[test]
+    fn test_qualifiers() {
+        let const_u32 = di::PrimitiveType {
+            qualifiers: di::Qualifiers::CONST,
+            ..ty_u32()
+        };
+
+        let mut session = TestSession::default();
+        session.register(TypeRef::generic(1), ty_u32());
+        session.register(TypeRef::generic(2), const_u32.clone());
+        // A second reference to an identical qualified type.
+        session.register(TypeRef::generic(3), const_u32);
+        session.register(
+            TypeRef::generic(4),
+            di::PointerType {
+                qualifiers: di::Qualifiers::CONST | di::Qualifiers::VOLATILE,
+                ..ptr(TypeRef::generic(2))
+            },
+        );
+
+        let result = run_test(session);
+        assert_eq!(result.indices, [0, 1, 1, 2]);
+
+        let qualifiers = result
+            .types
+            .types
+            .iter()
+            .map(|ty| ty.qualifiers)
+            .collect::<Vec<_>>();
+        assert_eq!(qualifiers, [0b000, 0b001, 0b011]);
+    }
+
+    #[test]
     fn test_typedef_chain() {
         let mut session = TestSession::default();
         session.register(TypeRef::generic(1), tydef("Alias", TypeRef::generic(2)));
@@ -671,6 +710,7 @@ mod tests {
             di::PointerType {
                 pointee: None,
                 size: di::TypeSize::Bytes(8),
+                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(3), tydef("Missing", TypeRef::generic(100)));
@@ -692,6 +732,7 @@ mod tests {
                         offset: di::MemberOffset::Bytes(4),
                     },
                 ],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(6), ty_u32());
@@ -768,6 +809,7 @@ mod tests {
                         offset: di::MemberOffset::Bytes(8),
                     },
                 ],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(2), ptr(TypeRef::generic(3)));
@@ -860,6 +902,7 @@ mod tests {
                     ty: TypeRef::generic(1),
                     offset: di::MemberOffset::Bytes(0),
                 }],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(2), ptr(TypeRef::generic(100)));
@@ -880,6 +923,7 @@ mod tests {
                         offset: di::MemberOffset::Bytes(8),
                     },
                 ],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
 
@@ -941,6 +985,7 @@ mod tests {
                         offset: di::MemberOffset::Bytes(8),
                     },
                 ],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(11), ty_u32());
@@ -1000,6 +1045,7 @@ mod tests {
                         offset: di::MemberOffset::Bytes(8),
                     },
                 ],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(
@@ -1024,6 +1070,7 @@ mod tests {
                         offset: di::MemberOffset::Bytes(0),
                     },
                 ],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
 
@@ -1130,6 +1177,7 @@ mod tests {
                         offset: di::MemberOffset::Bytes(8),
                     },
                 ],
+                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(2), ptr(TypeRef::generic(1)));

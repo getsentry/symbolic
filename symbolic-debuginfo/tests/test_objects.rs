@@ -203,6 +203,11 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
             );
         }
 
+        let qualifiers = match ty.qualifiers() {
+            qualifiers if qualifiers.is_empty() => String::new(),
+            qualifiers => format!(" {qualifiers:?}"),
+        };
+
         match ty {
             Type::Primitive(ty) => {
                 let TypeSize::Bytes(size) = ty.size;
@@ -212,13 +217,13 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                 match ty.encoding {
                     Some(encoding) => writeln!(
                         f,
-                        "{:indent$}> Primitive: {name} ({encoding:?}, {size} {unit})",
+                        "{:indent$}> Primitive: {name} ({encoding:?}, {size} {unit}){qualifiers}",
                         "",
                         indent = self.depth * 2
                     ),
                     None => writeln!(
                         f,
-                        "{:indent$}> Primitive: {name} (<unknown encoding>, {size} {unit})",
+                        "{:indent$}> Primitive: {name} (<unknown encoding>, {size} {unit}){qualifiers}",
                         "",
                         indent = self.depth * 2
                     ),
@@ -230,7 +235,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
 
                 writeln!(
                     f,
-                    "{:indent$}> Pointer ({size} {unit})",
+                    "{:indent$}> Pointer ({size} {unit}){qualifiers}",
                     "",
                     indent = self.depth * 2
                 )?;
@@ -248,7 +253,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
             Type::TypeDef(ty) => {
                 writeln!(
                     f,
-                    "{:indent$}> TypeDef: {}",
+                    "{:indent$}> TypeDef: {}{qualifiers}",
                     "",
                     ty.name,
                     indent = self.depth * 2
@@ -276,9 +281,9 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                 match ty.size {
                     Some(TypeSize::Bytes(size)) => {
                         let unit = if size == 1 { "byte" } else { "bytes" };
-                        writeln!(f, " ({size} {unit})")?;
+                        writeln!(f, " ({size} {unit}){qualifiers}")?;
                     }
-                    None => writeln!(f, " (<unknown size>)")?,
+                    None => writeln!(f, " (<unknown size>){qualifiers}")?,
                 }
 
                 for member in &ty.members {

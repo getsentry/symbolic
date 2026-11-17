@@ -73,21 +73,25 @@ impl<'data> SymCache<'data> {
 
     pub fn get_type(&self, ty_idx: u32) -> Option<Type<'data>> {
         let raw_ty = self.types.get(ty_idx as usize)?;
+        let qualifiers = convert::u8_to_qualifiers(raw_ty.qualifiers);
 
         Some(match raw_ty.as_enum()? {
             raw::ty::Enum::primitive(primitive) => Type::Primitive(PrimitiveType {
                 name: self.get_string(primitive.name_offset),
                 size: TypeSize::Bytes(primitive.size.into()),
                 encoding: convert::u8_to_primitive_type_encoding(primitive.encoding),
+                qualifiers,
             }),
             raw::ty::Enum::pointer(pointer) => Type::Pointer(PointerType {
                 size: TypeSize::Bytes(pointer.size.into()),
                 pointee: (pointer.pointee_idx != raw::Type::VOID)
                     .then_some(TypeId(pointer.pointee_idx)),
+                qualifiers,
             }),
             raw::ty::Enum::typedef(td) => Type::TypeDef(TypeDefType {
                 name: self.get_string(td.name_offset).unwrap_or("?"),
                 ty: (td.ty_idx != raw::Type::VOID).then_some(TypeId(td.ty_idx)),
+                qualifiers,
             }),
             raw::ty::Enum::structure(structure) => {
                 let start = structure.member_idx as usize;
@@ -103,6 +107,7 @@ impl<'data> SymCache<'data> {
                         members: members.iter(),
                     }
                     .into(),
+                    qualifiers,
                 })
             }
         })

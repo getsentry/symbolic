@@ -11,7 +11,7 @@ use symbolic_common::DebugId;
 /// The current [`Header::variable_header`] version.
 ///
 /// On a version mismatch, the sections referenced in the [`VariableHeader`] must not be parsed.
-pub const VARIABLE_HEADER_VERSION: u16 = 4;
+pub const VARIABLE_HEADER_VERSION: u16 = 5;
 
 /// This [`FunctionVariables`] is a sentinel for functions without variables.
 pub const NO_VARIABLES: FunctionVariables = FunctionVariables {
@@ -349,7 +349,9 @@ pub struct Type {
     pub ty: ty::Impl,
     /// Discriminator for [`Self::ty`].
     pub kind: u8,
-    pub _reserved: [u8; 3],
+    /// The type qualifiers (`const`, `volatile`, ...) applied to the type, as bit flags.
+    pub qualifiers: u8,
+    pub _reserved: [u8; 2],
 }
 
 impl Type {
@@ -370,6 +372,7 @@ impl<T: Into<ty::Enum>> From<T> for Type {
         Self {
             kind,
             ty,
+            qualifiers: 0,
             _reserved: [0; _],
         }
     }
@@ -377,7 +380,10 @@ impl<T: Into<ty::Enum>> From<T> for Type {
 
 impl fmt::Debug for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.ty.tagged(self.kind).fmt(f)
+        f.debug_struct("Type")
+            .field("ty", &self.ty.tagged(self.kind))
+            .field("qualifiers", &self.qualifiers)
+            .finish()
     }
 }
 
@@ -386,10 +392,13 @@ impl PartialEq for Type {
         let Self {
             kind,
             ty,
+            qualifiers,
             _reserved,
         } = other;
 
-        self.ty.tagged(self.kind) == ty.tagged(*kind) && self._reserved == *_reserved
+        self.ty.tagged(self.kind) == ty.tagged(*kind)
+            && self.qualifiers == *qualifiers
+            && self._reserved == *_reserved
     }
 }
 
@@ -397,7 +406,8 @@ impl Eq for Type {}
 
 impl std::hash::Hash for Type {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.ty.tagged(self.kind).hash(state)
+        self.ty.tagged(self.kind).hash(state);
+        self.qualifiers.hash(state);
     }
 }
 

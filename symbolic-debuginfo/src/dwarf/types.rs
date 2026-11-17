@@ -1,20 +1,33 @@
 use gimli::{AttributeValue, DebuggingInformationEntry, UnitOffset, constants};
 
-use crate::dwarf::{DwarfError, Slice, UnitRef};
+use crate::dwarf::{DwarfError, DwarfTypeRef, Slice, UnitRef};
 use crate::{
-    MemberOffset, PointerType, PrimitiveType, PrimitiveTypeEncoding, StructureMember,
+    MemberOffset, PointerType, PrimitiveType, PrimitiveTypeEncoding, Qualifiers, StructureMember,
     StructureType, Type, TypeDefType, TypeSize,
 };
+
+/// A type entry parsed from DWARF.
+pub enum ParsedType<'d> {
+    /// A concrete type.
+    Type(Type<'d>),
+    /// A type modifier entry (DWARF 5 §5.3), such as `DW_TAG_const_type`, which applies
+    /// `qualifiers` to the type referenced by `ty`.
+    ///
+    /// `ty` is `None` if the modifier has no `DW_AT_type`, which qualifies `void`.
+    Qualified {
+        qualifiers: Qualifiers,
+        ty: Option<DwarfTypeRef>,
+    },
+}
 
 pub fn parse_type<'d>(
     unit: UnitRef<'d, '_>,
     offset: UnitOffset,
-) -> Result<Option<Type<'d>>, DwarfError> {
+) -> Result<Option<ParsedType<'d>>, DwarfError> {
     let entry = unit.unit.entry(offset)?;
 
-    Ok(match entry.tag {
+    let ty = match entry.tag {
         constants::DW_TAG_base_type => parse_base_type(unit, entry).map(Type::Primitive),
-        // Pointers may be nested within `DW_TAG_restrict_type`, `DW_TAG_const_type` etc.
         constants::DW_TAG_pointer_type
         | constants::DW_TAG_reference_type
         | constants::DW_TAG_rvalue_reference_type => {
@@ -24,8 +37,37 @@ pub fn parse_type<'d>(
         constants::DW_TAG_structure_type => {
             parse_structure_type(unit, entry)?.map(Type::StructureType)
         }
+        constants::DW_TAG_const_type => {
+            return Ok(parse_modifier(unit, entry, Qualifiers::CONST));
+        }
+        constants::DW_TAG_volatile_type => {
+            return Ok(parse_modifier(unit, entry, Qualifiers::VOLATILE));
+        }
+        constants::DW_TAG_restrict_type => {
+            return Ok(parse_modifier(unit, entry, Qualifiers::RESTRICT));
+        }
         _ => None,
-    })
+    };
+
+    Ok(ty.map(ParsedType::Type))
+}
+
+fn parse_modifier<'d>(
+    unit: UnitRef<'d, '_>,
+    entry: DebuggingInformationEntry<Slice<'d>>,
+    qualifiers: Qualifiers,
+) -> Option<ParsedType<'d>> {
+    let mut ty = None;
+
+    for attr in entry.attrs {
+        if attr.name() == constants::DW_AT_type {
+            // Return `None` if `DW_AT_type` is present but cannot be resolved, rather than
+            // treating the modifier as qualifying `void`.
+            ty = Some(unit.to_type_ref(attr)?);
+        }
+    }
+
+    Some(ParsedType::Qualified { qualifiers, ty })
 }
 
 fn parse_base_type<'d>(
@@ -70,6 +112,7 @@ fn parse_base_type<'d>(
         name,
         encoding,
         size: TypeSize::Bytes(size?),
+        qualifiers: Qualifiers::empty(),
     })
 }
 
@@ -93,6 +136,7 @@ fn parse_pointer_type<'d>(
     Some(PointerType {
         pointee: pointee.map(Into::into),
         size: TypeSize::Bytes(size.unwrap_or_else(|| unit.unit.encoding().address_size.into())),
+        qualifiers: Qualifiers::empty(),
     })
 }
 
@@ -116,6 +160,7 @@ fn parse_typedef<'d>(
     Some(TypeDefType {
         name: name?,
         ty: ty.map(Into::into),
+        qualifiers: Qualifiers::empty(),
     })
 }
 
@@ -191,5 +236,6 @@ fn parse_structure_type<'d>(
         name: name,
         size: size.map(TypeSize::Bytes),
         members,
+        qualifiers: Qualifiers::empty(),
     }))
 }

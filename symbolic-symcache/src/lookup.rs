@@ -5,7 +5,7 @@ use symbolic_common::{Language, Name, NameMangling};
 use crate::SymCache;
 
 pub use symbolic_debuginfo::{
-    MemberOffset, PrimitiveTypeEncoding, TypeSize, VariableKind, VariableLocation,
+    MemberOffset, PrimitiveTypeEncoding, Qualifiers, TypeSize, VariableKind, VariableLocation,
     VariableLocationInfo,
 };
 
@@ -129,6 +129,7 @@ pub struct PrimitiveType<'data> {
     pub(crate) name: Option<&'data str>,
     pub(crate) size: TypeSize,
     pub(crate) encoding: Option<PrimitiveTypeEncoding>,
+    pub(crate) qualifiers: Qualifiers,
 }
 
 impl<'data> PrimitiveType<'data> {
@@ -148,6 +149,11 @@ impl<'data> PrimitiveType<'data> {
     pub fn encoding(&self) -> Option<PrimitiveTypeEncoding> {
         self.encoding
     }
+
+    /// The qualifiers applied to this type, for example `const`.
+    pub fn qualifiers(&self) -> Qualifiers {
+        self.qualifiers
+    }
 }
 
 /// A pointer type contained in the SymCache.
@@ -155,6 +161,7 @@ impl<'data> PrimitiveType<'data> {
 pub struct PointerType {
     pub(crate) size: TypeSize,
     pub(crate) pointee: Option<TypeId>,
+    pub(crate) qualifiers: Qualifiers,
 }
 
 impl PointerType {
@@ -171,6 +178,11 @@ impl PointerType {
     pub fn pointee(&self) -> Option<TypeId> {
         self.pointee
     }
+
+    /// The qualifiers applied to the pointer itself, for example `const` in `int *const`.
+    pub fn qualifiers(&self) -> Qualifiers {
+        self.qualifiers
+    }
 }
 
 /// A `typedef` contained in the SymCache.
@@ -178,6 +190,7 @@ impl PointerType {
 pub struct TypeDefType<'data> {
     pub(crate) name: &'data str,
     pub(crate) ty: Option<TypeId>,
+    pub(crate) qualifiers: Qualifiers,
 }
 
 impl<'data> TypeDefType<'data> {
@@ -194,6 +207,11 @@ impl<'data> TypeDefType<'data> {
     pub fn ty(&self) -> Option<TypeId> {
         self.ty
     }
+
+    /// The qualifiers applied to this type, for example `const`.
+    pub fn qualifiers(&self) -> Qualifiers {
+        self.qualifiers
+    }
 }
 
 /// A structure type contained in the SymCache.
@@ -202,6 +220,7 @@ pub struct StructureType<'data> {
     pub(crate) name: Option<&'data str>,
     pub(crate) size: Option<TypeSize>,
     pub(crate) members: StructureMembers<'data>,
+    pub(crate) qualifiers: Qualifiers,
 }
 
 impl<'data> StructureType<'data> {
@@ -220,6 +239,11 @@ impl<'data> StructureType<'data> {
     /// The members of this structure in declaration order.
     pub fn members(&self) -> StructureMembers<'data> {
         self.members.clone()
+    }
+
+    /// The qualifiers applied to this type, for example `const`.
+    pub fn qualifiers(&self) -> Qualifiers {
+        self.qualifiers
     }
 }
 

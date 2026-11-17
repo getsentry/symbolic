@@ -94,7 +94,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x12fa..0x130f: cfa -36
     slot (local)
       type:
-        > Unknown
+        > Primitive: int (SignedInt, 4 bytes) Qualifiers(VOLATILE)
       0x12fa..0x130f: cfa -20
 
 > 0x12e2: optimized_out (0x18)
@@ -259,7 +259,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x11ae..0x11ed: cfa -48
     constant (local)
       type:
-        > Unknown
+        > Primitive: int (SignedInt, 4 bytes) Qualifiers(CONST)
       0x11ae..0x11ed: cfa -24
 
 > 0x1193: pointers (0x1b)
@@ -280,7 +280,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
     str (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
       0x1193..0x11ae: cfa -40
     any (parameter)
       type:
