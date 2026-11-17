@@ -57,14 +57,17 @@ The snapshot deliberately includes types symbolic cannot resolve yet, which show
 That is what makes it useful: adding support for a type turns into a visible snapshot diff instead
 of requiring someone to remember to write a new test.
 
-The same applies to inlined variables, which currently render as nothing at all rather than as
-`Unknown`. `inlined()` is always inlined, so its call in `inlining()` becomes a
+Inlined variables come from `inlined()`. It is always inlined, so its call in `inlining()` becomes a
 `DW_TAG_inlined_subroutine` whose variable DIEs carry only a location plus a `DW_AT_abstract_origin`
 reference. Its address is also taken, so GCC emits a standalone copy as well: a concrete out-of-line
-`DW_TAG_subprogram` whose variables reference the same abstract instance. Symbolic does not yet
-follow the origin to the abstract DIE that holds the name and type, so both the inlined and the
-standalone `inlined` entries are empty in both snapshots. That is the record of the gap;
-implementing origin-following will make `param` and `doubled` appear as a snapshot diff.
+`DW_TAG_subprogram` whose variables reference the same abstract instance. Symbolic follows the origin
+to the abstract DIE that holds the name and type, so `param` and `doubled` show up by name under both
+the inlined and the standalone `inlined` entries. At `-O2` the inlined copy only resolves `param`:
+GCC describes `doubled` there as a computed expression, which symbolic does not evaluate yet.
+
+`DW_AT_specification` on variables is handled by the same code path but is not in the fixture: in
+C it never occurs on variables, and in C++ it only appears on static data members and
+namespace-scope definitions, which are not function-scoped.
 
 Currently not covered, worth adding when the surrounding support lands:
 

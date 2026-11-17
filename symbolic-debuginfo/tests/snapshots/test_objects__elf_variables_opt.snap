@@ -237,6 +237,11 @@ expression: "FunctionsDebug::new(&session, &functions)"
 
   > 0x1210: _Z7inlinedi (0x2)
     0x1210: variables.cpp:127 (/fixture)
+    variables:
+      param (parameter)
+        type:
+          > Primitive: int (SignedInt, 4 bytes)
+        0x1210..0x1212: register rdi
 
 > 0x1200: _Z10aggregatesv (0x1)
   0x1200: variables.cpp:114 (/fixture)
@@ -278,3 +283,12 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x1310: variables.cpp:127 (/fixture)
   0x1313: variables.cpp:129 (/fixture)
   0x1316: variables.cpp:130 (/fixture)
+  variables:
+    param (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x1310..0x1317: register rdi
+    doubled (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x1313..0x1316: register rax

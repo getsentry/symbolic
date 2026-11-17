@@ -255,6 +255,42 @@ fn test_lookup_variables_register_offset() -> Result<(), Error> {
 }
 
 #[test]
+fn test_lookup_variables_inlined() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("linux/variables/variables"))?;
+    let object = Object::parse(&buffer)?;
+
+    let mut converter = SymCacheConverter::new();
+    converter.set_collect_variables(true);
+    converter.process_object(&object)?;
+    let mut data = Vec::new();
+    converter.serialize(&mut Cursor::new(&mut data))?;
+    let symcache = SymCache::parse(&data)?;
+
+    // `inlined(int param)` inlined into `inlining(int outer)`. The variable DIEs of the inlined
+    // instance carry only a location plus a `DW_AT_abstract_origin` reference to the abstract
+    // instance, which holds their names and types.
+    let mut source_locations = symcache.lookup(0x1227);
+
+    let inlined = source_locations.next().unwrap();
+    assert_eq!(inlined.function().name(), "_Z7inlinedi");
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, inlined.variables()), @"
+    param (parameter, int): 0x1227..0x1238 cfa -24
+    doubled (local, int): 0x1227..0x1238 cfa -28
+    ");
+
+    let inlining = source_locations.next().unwrap();
+    assert_eq!(inlining.function().name(), "_Z8inliningi");
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, inlining.variables()), @"
+    outer (parameter, int): 0x121a..0x123e cfa -36
+    result (local, int): 0x121a..0x123e cfa -20
+    ");
+
+    assert!(source_locations.next().is_none());
+
+    Ok(())
+}
+
+#[test]
 fn test_lookup_variables_void_pointer() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("linux/variables/variables"))?;
     let object = Object::parse(&buffer)?;

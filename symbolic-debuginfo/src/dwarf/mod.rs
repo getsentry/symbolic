@@ -564,6 +564,57 @@ impl<'d> UnitRef<'d, '_> {
         Ok(None)
     }
 
+    /// Fills in the name and type of a variable from the DIE referenced by its
+    /// `DW_AT_abstract_origin` or `DW_AT_specification` attribute.
+    ///
+    /// A concrete inlined or out-of-line instance of a variable only carries what is specific to
+    /// that instance, typically its location, and references the abstract instance for everything
+    /// else (DWARF 5, section 3.3.8.2). Likewise, a definition completing an earlier declaration
+    /// does not need to repeat the declaration's attributes (section 2.13.2). The referenced DIE
+    /// may itself defer to yet another DIE, so chains are followed up to `depth` levels.
+    ///
+    /// Attributes already present in `variable` take precedence over those found on referenced
+    /// DIEs, and lookup stops as soon as both name and type are known.
+    fn resolve_variable_origin(
+        &self,
+        attr: Attribute<'d>,
+        variable: &mut VariableOrigin<'d>,
+        depth: u8,
+    ) -> Result<(), DwarfError> {
+        if depth == 0 {
+            return Ok(());
+        }
+
+        self.resolve_reference(attr, |ref_unit, ref_entry| {
+            let mut reference = None;
+
+            for attr in ref_entry.attrs() {
+                match attr.name() {
+                    constants::DW_AT_name if variable.name.is_none() => {
+                        variable.name = ref_unit.string_value(attr.value());
+                    }
+                    constants::DW_AT_type if variable.ty.is_none() => {
+                        variable.ty = ref_unit.to_type_ref(*attr).map(TypeRef::from);
+                    }
+                    constants::DW_AT_abstract_origin | constants::DW_AT_specification => {
+                        reference = Some(attr);
+                    }
+                    _ => {}
+                }
+            }
+
+            if let Some(attr) = reference {
+                if variable.name.is_none() || variable.ty.is_none() {
+                    ref_unit.resolve_variable_origin(*attr, variable, depth - 1)?;
+                }
+            }
+
+            Ok(Some(()))
+        })?;
+
+        Ok(())
+    }
+
     /// Resolves the function name of a debug entry.
     fn resolve_function_name(
         &self,
@@ -1381,8 +1432,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         abbrev: &gimli::Abbreviation,
         frame_base: Option<FrameBase>,
     ) -> Result<Option<ParsedVariable<'d>>, DwarfError> {
-        let mut ty = None;
-        let mut name = None;
+        let mut variable = VariableOrigin::default();
+        let mut origin = None;
         let mut locations = None;
         let mut is_declaration = false;
 
@@ -1390,7 +1441,12 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let attr = entries.read_attribute(spec)?;
             match attr.name() {
                 constants::DW_AT_name => {
-                    name = self.inner.string_value(attr.value());
+                    variable.name = self.inner.string_value(attr.value());
+                }
+                constants::DW_AT_abstract_origin | constants::DW_AT_specification => {
+                    // Concrete instances of inlined variables and definitions completing a
+                    // declaration carry their name and type on the referenced DIE instead.
+                    origin = Some(attr);
                 }
                 constants::DW_AT_declaration if attr.value() == AttributeValue::Flag(true) => {
                     // We don't care about declarations, we only care about actual definitions of
@@ -1403,7 +1459,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     locations = self.parse_locations(attr.value(), frame_base)?;
                 }
                 constants::DW_AT_type => {
-                    ty = self.inner.to_type_ref(attr).map(TypeRef::from);
+                    variable.ty = self.inner.to_type_ref(attr).map(TypeRef::from);
                 }
                 // No location means optimized out, so we do not store the variable for now.
                 _ => {}
@@ -1414,9 +1470,24 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             return Ok(None);
         }
 
-        let (Some(name), Some(locations)) = (name, locations) else {
+        if let Some(attr) = origin {
+            if variable.name.is_none() || variable.ty.is_none() {
+                // A reference that cannot be followed only costs us this variable's name or
+                // type, like a missing attribute would; it should not fail the whole unit.
+                self.inner
+                    .resolve_variable_origin(
+                        attr,
+                        &mut variable,
+                        UnitRef::MAX_ABSTRACT_ORIGIN_DEPTH,
+                    )
+                    .ok();
+            }
+        }
+
+        let (Some(name), Some(locations)) = (variable.name, locations) else {
             return Ok(None);
         };
+        let ty = variable.ty;
 
         let kind = match abbrev.tag() {
             constants::DW_TAG_formal_parameter => VariableKind::Parameter,
@@ -1592,6 +1663,14 @@ struct ParsedVariable<'data> {
     ty: Option<TypeRef>,
     kind: VariableKind,
     locations: Locations,
+}
+
+/// The name and type of a variable, collected across the DIE and its abstract origin or
+/// specification. See [`UnitRef::resolve_variable_origin`].
+#[derive(Default)]
+struct VariableOrigin<'data> {
+    name: Option<Cow<'data, str>>,
+    ty: Option<TypeRef>,
 }
 
 /// Return value of [`DwarfUnit::parse_locations`].

@@ -244,6 +244,15 @@ expression: "FunctionsDebug::new(&session, &functions)"
     0x1227: variables.cpp:127 (/fixture)
     0x122f: variables.cpp:128 (/fixture)
     0x1232: variables.cpp:129 (/fixture)
+    variables:
+      param (parameter)
+        type:
+          > Primitive: int (SignedInt, 4 bytes)
+        0x1227..0x1238: cfa -24
+      doubled (local)
+        type:
+          > Primitive: int (SignedInt, 4 bytes)
+        0x1227..0x1238: cfa -28
 
 > 0x11ae: _Z10aggregatesv (0x6c)
   0x11ae: variables.cpp:107 (/fixture)
@@ -396,3 +405,12 @@ expression: "FunctionsDebug::new(&session, &functions)"
   0x1519: variables.cpp:128 (/fixture)
   0x151c: variables.cpp:129 (/fixture)
   0x1522: variables.cpp:130 (/fixture)
+  variables:
+    param (parameter)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x150a..0x1524: cfa -36
+    doubled (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x150a..0x1524: cfa -20
