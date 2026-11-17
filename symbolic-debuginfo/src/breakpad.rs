@@ -166,7 +166,7 @@ impl fmt::Display for BreakpadErrorKind {
     }
 }
 
-/// An error when dealing with [`BreakpadObject`](struct.BreakpadObject.html).
+/// An error when dealing with [`BreakpadObject`].
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct BreakpadError {
@@ -324,7 +324,6 @@ impl<'d> Iterator for BreakpadInfoRecords<'d> {
 /// Example: `FILE 2 /home/jimb/mc/in/browser/app/nsBrowserApp.cpp`
 ///
 /// [file record]: https://github.com/google/breakpad/blob/master/docs/symbol_files.md#file-records
-/// [`LineRecord`]: struct.BreakpadLineRecord.html
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct BreakpadFileRecord<'d> {
     /// Breakpad-internal identifier of the file.
@@ -387,7 +386,6 @@ pub type BreakpadFileMap<'d> = BTreeMap<u64, &'d str>;
 /// Example: `INLINE_ORIGIN 1305 SharedLibraryInfo::Initialize()`
 ///
 /// [inline origin record]: https://github.com/google/breakpad/blob/main/docs/symbol_files.md#inline_origin-records
-/// [`BreakpadInlineRecord`]: struct.BreakpadInlineRecord.html
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct BreakpadInlineOriginRecord<'d> {
     /// Breakpad-internal identifier of the function.
@@ -581,7 +579,6 @@ impl<'d> Iterator for BreakpadFuncRecords<'d> {
 /// Example: `c184 7 59 4`
 ///
 /// [line record]: https://github.com/google/breakpad/blob/master/docs/symbol_files.md#line-records
-/// [`BreakpadFuncRecord`]: struct.BreakpadFuncRecord.html
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct BreakpadLineRecord {
     /// The start address for this line relative to the image base (load address).
@@ -668,7 +665,6 @@ impl Iterator for BreakpadLineRecords<'_> {
 /// Example: `INLINE 1 61 1 2 7b60 3b4`
 ///
 /// [inline record]: https://github.com/google/breakpad/blob/main/docs/symbol_files.md#inline-records
-/// [`BreakpadFuncRecord`]: struct.BreakpadFuncRecord.html
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct BreakpadInlineRecord {
     /// The depth of nested inline calls.
@@ -1086,7 +1082,7 @@ impl<'data> BreakpadObject<'data> {
     ///
     /// Constructing this session will also work if the object does not contain debugging
     /// information, in which case the session will be a no-op. This can be checked via
-    /// [`has_debug_info`](struct.BreakpadObject.html#method.has_debug_info).
+    /// [`has_debug_info`](Self::has_debug_info).
     pub fn debug_session(&self) -> Result<BreakpadDebugSession<'data>, BreakpadError> {
         Ok(BreakpadDebugSession {
             file_map: self.file_map(),
@@ -1262,7 +1258,7 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for BreakpadObject<'dat
 
 /// An iterator over symbols in the Breakpad object.
 ///
-/// Returned by [`BreakpadObject::symbols`](struct.BreakpadObject.html#method.symbols).
+/// Returned by [`BreakpadObject::symbols`].
 pub struct BreakpadSymbolIterator<'data> {
     records: BreakpadPublicRecords<'data>,
 }

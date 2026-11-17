@@ -12,3 +12,6 @@ symbolic = { version = "14.0.0-alpha.5", path = "../../symbolic", features = [
     "sourcemapcache",
 ] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+[lints]
+workspace = true

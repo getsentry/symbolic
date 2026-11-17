@@ -8,8 +8,8 @@ use symbolic_debuginfo::ObjectDebugSession;
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
 use symbolic_debuginfo::{
-    FileEntry, Function, LineInfo, MemberOffset, Object, ObjectKind, ParseObjectOptions, SymbolMap,
-    Type, TypeRef, TypeSize, VariableLocation, pe::PeObject,
+    FileEntry, Function, LineInfo, Object, ObjectKind, ParseObjectOptions, SymbolMap, Type,
+    TypeRef, VariableLocation, pe::PeObject,
 };
 use symbolic_testutils::fixture;
 
@@ -132,9 +132,9 @@ impl fmt::Debug for FunctionsDebug<'_, '_> {
                             location.address.saturating_add(location.size),
                             indent = self.depth * 2
                         )?,
-                        VariableLocation::FrameOffset { offset } => writeln!(
+                        VariableLocation::CfaOffset { offset } => writeln!(
                             f,
-                            "{:indent$}      {:#x}..{:#x}: frame base {offset:+}",
+                            "{:indent$}      {:#x}..{:#x}: cfa {offset:+}",
                             "",
                             location.address,
                             location.address.saturating_add(location.size),
@@ -205,33 +205,42 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
 
         match ty {
             Type::Primitive(ty) => {
-                let TypeSize::Bytes(size) = ty.size;
-                let unit = if size == 1 { "byte" } else { "bytes" };
                 let name = ty.name.as_deref().unwrap_or("<unknown>");
 
-                match ty.encoding {
+                let result = match ty.encoding {
                     Some(encoding) => writeln!(
                         f,
-                        "{:indent$}> Primitive: {name} ({encoding:?}, {size} {unit})",
+                        "{:indent$}> Primitive: {name} ({encoding:?}, {size})",
                         "",
+                        size = ty.size,
                         indent = self.depth * 2
                     ),
                     None => writeln!(
                         f,
-                        "{:indent$}> Primitive: {name} (<unknown encoding>, {size} {unit})",
+                        "{:indent$}> Primitive: {name} (<unknown encoding>, {size})",
                         "",
+                        size = ty.size,
                         indent = self.depth * 2
                     ),
+                };
+                if let Some(value_bits) = ty.value_bits {
+                    writeln!(
+                        f,
+                        "{:indent$}  (value: size {}, offset {})",
+                        "",
+                        value_bits.size,
+                        value_bits.offset,
+                        indent = self.depth * 2
+                    )?;
                 }
+                result
             }
             Type::Pointer(ty) => {
-                let TypeSize::Bytes(size) = ty.size;
-                let unit = if size == 1 { "byte" } else { "bytes" };
-
                 writeln!(
                     f,
-                    "{:indent$}> Pointer ({size} {unit})",
+                    "{:indent$}> Pointer ({size})",
                     "",
+                    size = ty.size,
                     indent = self.depth * 2
                 )?;
                 write!(
@@ -274,12 +283,9 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                     indent = self.depth * 2
                 )?;
                 match ty.size {
-                    Some(TypeSize::Bytes(size)) => {
-                        let unit = if size == 1 { "byte" } else { "bytes" };
-                        writeln!(f, " ({size} {unit})")?;
-                    }
-                    None => writeln!(f, " (<unknown size>)")?,
-                }
+                    Some(size) => writeln!(f, " ({size})"),
+                    None => writeln!(f, " (<unknown size>)"),
+                }?;
 
                 for member in &ty.members {
                     let name = member.name.as_deref().unwrap_or("<anonymous>");
@@ -290,16 +296,12 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                         "",
                         indent = (self.depth + 1) * 2
                     )?;
-                    match member.offset {
-                        MemberOffset::Bytes(offset) => {
-                            let unit = if offset == 1 { "byte" } else { "bytes" };
-                            writeln!(f, " (offset {offset} {unit})")?;
-                        }
-                        MemberOffset::Bits(offset) => {
-                            let unit = if offset == 1 { "bit" } else { "bits" };
-                            writeln!(f, " (offset {offset} {unit})")?;
-                        }
-                    }
+                    match (member.offset, member.size) {
+                        (Some(off), Some(size)) => writeln!(f, " (offset {off}, size {size})"),
+                        (Some(off), None) => writeln!(f, " (offset {off})"),
+                        (None, Some(size)) => writeln!(f, " (size {size})"),
+                        (None, None) => writeln!(f),
+                    }?;
                     write!(
                         f,
                         "{:?}",
@@ -842,6 +844,34 @@ fn test_mach_files() -> Result<(), Error> {
     let files = session.files().collect::<Result<Vec<_>, _>>()?;
     assert_eq!(files.len(), 554);
     insta::assert_debug_snapshot!("mach_files", FilesDebug(&files[..10]));
+
+    Ok(())
+}
+
+/// The linker folds functions with identical code into one body, which leaves several symbols at
+/// the same address. The function name must then come from the DWARF of the kept body, so that it
+/// matches the line records, rather than from whichever symbol the symbol table lists first.
+#[test]
+fn test_mach_folded_functions() -> Result<(), Error> {
+    let view = ByteView::open(fixture(
+        "macos/folded_functions/folded_functions.dSYM/Contents/Resources/DWARF/folded_functions",
+    ))?;
+    let object = Object::parse(&view)?;
+
+    // The symbol table alone names the folded body after the other function.
+    let symbol_map = object.symbol_map();
+    let first_symbol = symbol_map.lookup_exact(0x340).expect("folded symbol");
+    assert_eq!(first_symbol.name(), Some("folded_second"));
+
+    let session = object.debug_session()?;
+    let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
+    let folded = functions
+        .iter()
+        .find(|function| function.address == 0x340)
+        .expect("folded function");
+
+    assert_eq!(folded.name.as_str(), "folded_first");
+    assert_eq!(folded.lines[0].line, 5);
 
     Ok(())
 }

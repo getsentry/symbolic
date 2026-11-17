@@ -145,7 +145,7 @@ fn resolve(
                 print!("      location: ");
                 match location.location {
                     VariableLocation::Register { register } => print!("reg:{register}"),
-                    VariableLocation::FrameOffset { offset } => print!("fbreg:{offset}"),
+                    VariableLocation::CfaOffset { offset } => print!("cfa:{offset}"),
                     VariableLocation::RegisterOffset { register, offset } => {
                         print!("breg:{register}{offset:+}")
                     }

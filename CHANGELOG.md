@@ -2,17 +2,23 @@
 
 ## Unreleased
 
+**Breaking Changes**
+
+- Rename `VariableLocation::FrameOffset` to `VariableLocation::CfaOffset`. It now only describes variables at an offset from the CFA. ([#1168](https://github.com/getsentry/symbolic/pull/1168))
+
 **Features**
 
 - Represent variable register locations as named registers instead of raw DWARF register numbers. ([#1117](https://github.com/getsentry/symbolic/pull/1117), [#1115](https://github.com/getsentry/symbolic/pull/1115), [#1146](https://github.com/getsentry/symbolic/pull/1146), [#1147](https://github.com/getsentry/symbolic/pull/1147))
 - Add support for `typedef` and `struct` types. ([#1137](https://github.com/getsentry/symbolic/pull/1137), [#1138](https://github.com/getsentry/symbolic/pull/1138))
 - Add `VariableLocation::RegisterOffset` for variables in memory at an offset from a register's contents. ([#1160](https://github.com/getsentry/symbolic/pull/1160))
 - Parse `DW_OP_breg<n>` and `DW_OP_bregx` locations from DWARF into `VariableLocation::RegisterOffset`. ([#1151](https://github.com/getsentry/symbolic/pull/1151), [#1155](https://github.com/getsentry/symbolic/pull/1155))
+- Resolve DWARF `DW_OP_fbreg` variable locations against the function's `DW_AT_frame_base`. A register frame base gives `VariableLocation::RegisterOffset`, the CFA gives `VariableLocation::CfaOffset`, and locations with any other frame base are dropped. ([#1152](https://github.com/getsentry/symbolic/pull/1152))
 
 **Fixes**
 
 - Resolve percent-encoded source paths in source bundles. [#1111](https://github.com/getsentry/symbolic/pull/1111)
 - Fix `WasmObject` rejecting valid WebAssembly modules whose type section contains a recursion group of more than one type, such as Kotlin/Wasm modules. ([#1163](https://github.com/getsentry/symbolic/pull/1163))
+- Name DWARF functions after the symbol matching their debug information when the linker folded several functions into one body, instead of an unrelated symbol at the same address. Equivalent variants sharing one body, such as `C1`/`C2` constructors and `D1`/`D2` destructors, are now also named after the variant the debug information describes. ([#1170](https://github.com/getsentry/symbolic/pull/1170))
 
 ## 14.0.0-alpha.5
 

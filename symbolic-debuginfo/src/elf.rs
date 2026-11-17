@@ -559,7 +559,7 @@ impl<'data> ElfObject<'data> {
     ///
     /// Constructing this session will also work if the object does not contain debugging
     /// information, in which case the session will be a no-op. This can be checked via
-    /// [`has_debug_info`](struct.ElfObject.html#method.has_debug_info).
+    /// [`has_debug_info`](Self::has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'data>, DwarfError> {
         let symbols = self.symbol_map();
         DwarfDebugSession::parse(
@@ -932,7 +932,7 @@ impl<'data> Dwarf<'data> for ElfObject<'data> {
 
 /// An iterator over symbols in the ELF file.
 ///
-/// Returned by [`ElfObject::symbols`](struct.ElfObject.html#method.symbols).
+/// Returned by [`ElfObject::symbols`].
 pub struct ElfSymbolIterator<'data, 'object> {
     symbols: elf::sym::SymIterator<'data>,
     strtab: &'object strtab::Strtab<'data>,

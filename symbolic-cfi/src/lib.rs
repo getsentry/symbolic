@@ -5,7 +5,7 @@
 //!
 //! # Background
 //!
-//! Call Frame Information (CFI) is used by the [processor] to improve the quality of stacktraces
+//! Call Frame Information (CFI) is used  to improve the quality of stacktraces
 //! during stackwalking. When the executable was compiled with frame pointer omission, the call
 //! stack does not contain sufficient information to resolve frames on its own. CFI contains
 //! programs that can calculate the base address of a frame based on register values of the current
@@ -13,9 +13,6 @@
 //!
 //! Without CFI, the stackwalker needs to scan the stack memory for values that look like valid base
 //! addresses. This frequently yields false-positives.
-//!
-//! [processor]: ../processor/index.html
-//! [`CfiCache`]: struct.CfiCache.html
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -178,7 +175,7 @@ impl fmt::Display for CfiErrorKind {
     }
 }
 
-/// An error returned by [`AsciiCfiWriter`](struct.AsciiCfiWriter.html).
+/// An error returned by [`AsciiCfiWriter`].
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct CfiError {

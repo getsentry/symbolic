@@ -1,13 +1,9 @@
 //! Support for DWARF debugging information, common to ELF and MachO.
 //! In rare cases, PE's may contain it as well.
 //!
-//! The central element of this module is the [`Dwarf`] trait, which is implemented by [`ElfObject`],
-//! [`MachObject`] and [`PeObject`]. The dwarf debug session object can be obtained via getters on those types.
-//!
-//! [`Dwarf`]: trait.Dwarf.html
-//! [`ElfObject`]: ../elf/struct.ElfObject.html
-//! [`MachObject`]: ../macho/struct.MachObject.html
-//! [`PeObject`]: ../pe/struct.PeObject.html
+//! The central element of this module is the [`Dwarf`] trait, which is implemented by [`ElfObject`](crate::elf::ElfObject),
+//! [`MachObject`](crate::macho::MachObject) and [`PeObject`](crate::pe::PeObject).
+//! The dwarf debug session object can be obtained via getters on those types.
 
 use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap};
@@ -122,7 +118,7 @@ impl fmt::Display for DwarfErrorKind {
     }
 }
 
-/// An error handling [`DWARF`](trait.Dwarf.html) debugging information.
+/// An error handling [`DWARF`](Dwarf) debugging information.
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct DwarfError {
@@ -193,8 +189,6 @@ enum DwarfTypeRefInner {
 /// DWARF section information including its data.
 ///
 /// This is returned from objects implementing the [`Dwarf`] trait.
-///
-/// [`Dwarf`]: trait.Dwarf.html
 #[derive(Clone)]
 pub struct DwarfSection<'data> {
     /// Memory address of this section in virtual memory.
@@ -647,6 +641,7 @@ struct RegularSubProgram<'a> {
     builders: Vec<(Range, FunctionBuilder<'a>)>,
     variables: Vec<ParsedVariable<'a>>,
     language: Language,
+    frame_base: Option<FrameBase>,
 }
 
 struct InlinedSubProgram<'a> {
@@ -686,6 +681,16 @@ impl<'a> InProgressSubProgram<'a> {
             InProgressSubProgram::Inlined(_) => None,
             InProgressSubProgram::Deadcode(_) => None,
         }
+    }
+
+    /// The frame base that `DW_OP_fbreg` locations in this subprogram are relative to.
+    fn frame_base(&self, function_stack: &[InProgressSubProgram<'a>]) -> Option<FrameBase> {
+        let InProgressSubProgram::Regular(owner) = &function_stack[self.owning_function_idx()]
+        else {
+            debug_assert!(false, "the owning function is always a regular subprogram");
+            return None;
+        };
+        owner.frame_base
     }
 
     fn owning_function_idx(&self) -> usize {
@@ -1058,8 +1063,43 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Resolves the name of a function from the symbol table.
-    fn resolve_symbol_name(&self, address: u64, language: Language) -> Option<Name<'d>> {
-        let symbol = self.inner.info.symbol_map.lookup_exact(address)?;
+    ///
+    /// If the linker folded several functions into the one at this address, the symbol table has
+    /// a symbol for each of them there. The one named like the function in the debug information
+    /// is then picked, falling back to the first symbol if none matches.
+    fn resolve_symbol_name(
+        &self,
+        address: u64,
+        entry: &Die<'d>,
+        language: Language,
+    ) -> Option<Name<'d>> {
+        let symbol_map = &self.inner.info.symbol_map;
+        let mut symbol = symbol_map.lookup_exact(address)?;
+
+        let folded = symbol_map.folded(address);
+        if !folded.is_empty() {
+            let dwarf_name = self
+                .inner
+                .resolve_function_name(
+                    entry,
+                    language,
+                    self.bcsymbolmap,
+                    DwarfUnit::MAX_RESOLVE_FUNCTION_DEPTH,
+                )
+                .ok()
+                .flatten();
+            if let Some(dwarf_name) = dwarf_name {
+                let matches_dwarf = |candidate: &&Symbol<'d>| {
+                    candidate.name.as_ref().is_some_and(|name| {
+                        resolve_cow_name(self.bcsymbolmap, name.clone()) == dwarf_name.as_str()
+                    })
+                };
+                if let Some(matching) = std::iter::once(symbol).chain(folded).find(matches_dwarf) {
+                    symbol = matching;
+                }
+            }
+        }
+
         let name = resolve_cow_name(self.bcsymbolmap, symbol.name.clone()?);
         Some(Name::new(name, NameMangling::Mangled, language))
     }
@@ -1136,7 +1176,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         } else {
             let first_range_begin = ranges.iter().map(|range| range.begin).min().unwrap();
             let function_address = offset(first_range_begin, self.inner.info.address_offset);
-            self.resolve_symbol_name(function_address, language)
+            self.resolve_symbol_name(function_address, &entry, language)
         };
 
         let name = symbol_name
@@ -1173,6 +1213,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             builders,
             variables: vec![],
             language,
+            frame_base: self.parse_frame_base(&entry),
         }))
     }
 
@@ -1312,7 +1353,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     function_stack.push(program);
                 }
                 constants::DW_TAG_variable | constants::DW_TAG_formal_parameter => {
-                    if let Some(variable) = self.parse_variable(entries, abbrev)? {
+                    let frame_base = function_stack
+                        .last()
+                        .and_then(|f| f.frame_base(&function_stack));
+                    if let Some(variable) = self.parse_variable(entries, abbrev, frame_base)? {
                         if let Some(last_function) = function_stack.last_mut() {
                             last_function.push_variable(variable);
                         }
@@ -1335,6 +1379,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         &self,
         entries: &mut EntriesRaw<'d, '_>,
         abbrev: &gimli::Abbreviation,
+        frame_base: Option<FrameBase>,
     ) -> Result<Option<ParsedVariable<'d>>, DwarfError> {
         let mut ty = None;
         let mut name = None;
@@ -1355,7 +1400,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     is_declaration = true;
                 }
                 constants::DW_AT_location => {
-                    locations = self.parse_locations(attr.value())?;
+                    locations = self.parse_locations(attr.value(), frame_base)?;
                 }
                 constants::DW_AT_type => {
                     ty = self.inner.to_type_ref(attr).map(TypeRef::from);
@@ -1431,9 +1476,12 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     fn parse_locations(
         &self,
         value: AttributeValue<Slice<'d>>,
+        frame_base: Option<FrameBase>,
     ) -> Result<Option<Locations>, DwarfError> {
         if let AttributeValue::Exprloc(expr) = value {
-            return Ok(self.parse_location_expression(expr).map(Locations::Single));
+            return Ok(self
+                .parse_location_expression(expr, frame_base)
+                .map(Locations::Single));
         }
 
         let mut result = Vec::new();
@@ -1451,7 +1499,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let location = VariableLocationInfo {
                 address,
                 size,
-                location: match self.parse_location_expression(location.data) {
+                location: match self.parse_location_expression(location.data, frame_base) {
                     Some(location) => location,
                     None => continue,
                 },
@@ -1472,14 +1520,42 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         operations.next().ok()?.is_none().then_some(op)
     }
 
-    fn parse_location_expression(&self, expr: Expression<Slice<'d>>) -> Option<VariableLocation> {
+    /// Parses the `DW_AT_frame_base` of a subprogram.
+    ///
+    /// Only a register and the CFA are supported, as these are what most compilers emit.
+    fn parse_frame_base(&self, entry: &Die<'d>) -> Option<FrameBase> {
+        let AttributeValue::Exprloc(expr) = entry.attr_value(constants::DW_AT_frame_base)? else {
+            return None;
+        };
+
+        match self.single_operation(expr)? {
+            Operation::Register { register } => {
+                Register::from_dwarf(self.inner.info.cpu_family, register.0)
+                    .map(FrameBase::Register)
+            }
+            Operation::CallFrameCFA => Some(FrameBase::Cfa),
+            _ => None,
+        }
+    }
+
+    fn parse_location_expression(
+        &self,
+        expr: Expression<Slice<'d>>,
+        frame_base: Option<FrameBase>,
+    ) -> Option<VariableLocation> {
         // Currently we only support location expressions with a single op.
         match self.single_operation(expr)? {
             Operation::Register { register } => {
                 Register::from_dwarf(self.inner.info.cpu_family, register.0)
                     .map(|register| VariableLocation::Register { register })
             }
-            Operation::FrameOffset { offset } => Some(VariableLocation::FrameOffset { offset }),
+            // Locations relative to an unknown or unsupported frame base are dropped.
+            Operation::FrameOffset { offset } => match frame_base? {
+                FrameBase::Register(register) => {
+                    Some(VariableLocation::RegisterOffset { register, offset })
+                }
+                FrameBase::Cfa => Some(VariableLocation::CfaOffset { offset }),
+            },
             Operation::RegisterOffset {
                 register, offset, ..
             } => Register::from_dwarf(self.inner.info.cpu_family, register.0)
@@ -1499,6 +1575,15 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         self.parse_functions(&mut entries, &mut output)?;
         Ok(output.functions)
     }
+}
+
+/// The frame base of a subprogram, from its `DW_AT_frame_base`.
+#[derive(Clone, Copy)]
+enum FrameBase {
+    /// The frame base is the value of a register.
+    Register(Register),
+    /// The frame base is the canonical frame address (CFA).
+    Cfa,
 }
 
 /// A variable before its locations are restricted to a concrete range.

@@ -18,7 +18,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   > 0x1ee0: printf (0x17)
     0x1ee0: stdio2.h:104 (/usr/include/x86_64-linux-gnu/bits)
 
-> 0x1f00: _ZN15google_breakpad18MinidumpDescriptorD1Ev (0x32)
+> 0x1f00: _ZN15google_breakpad18MinidumpDescriptorD2Ev (0x32)
   0x1f00: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
   0x1f01: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
   0x1f08: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
@@ -114,12 +114,179 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x1c70..0x1cc3: register rsi
     descriptor (local)
       type:
-        > Unknown
-      0x1c70..0x1dbc: frame base -416
+        > Structure: MinidumpDescriptor (136 bytes)
+          > Member: mode_ (offset 0 bytes)
+            > Unknown
+          > Member: fd_ (offset 4 bytes)
+            > Primitive: int (SignedInt, 4 bytes)
+          > Member: directory_ (offset 8 bytes)
+            > TypeDef: string
+              > Structure: basic_string<char, std::char_traits<char>, std::allocator<char> > (32 bytes)
+                > Member: _M_dataplus (offset 0 bytes)
+                  > Structure: _Alloc_hider (8 bytes)
+                    > Member: _M_p (offset 0 bytes)
+                      > TypeDef: pointer
+                        > TypeDef: pointer
+                          > TypeDef: pointer
+                            > Pointer (8 bytes)
+                              > Primitive: char (SignedChar, 1 byte)
+                > Member: _M_string_length (offset 8 bytes)
+                  > TypeDef: size_type
+                    > TypeDef: size_type
+                      > TypeDef: size_type
+                        > TypeDef: size_t
+                          > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+                > Member: <anonymous> (offset 16 bytes)
+                  > Unknown
+          > Member: path_ (offset 40 bytes)
+            > TypeDef: string
+              > Structure: basic_string<char, std::char_traits<char>, std::allocator<char> > (32 bytes)
+                > Member: _M_dataplus (offset 0 bytes)
+                  > Structure: _Alloc_hider (8 bytes)
+                    > Member: _M_p (offset 0 bytes)
+                      > TypeDef: pointer
+                        > TypeDef: pointer
+                          > TypeDef: pointer
+                            > Pointer (8 bytes)
+                              > Primitive: char (SignedChar, 1 byte)
+                > Member: _M_string_length (offset 8 bytes)
+                  > TypeDef: size_type
+                    > TypeDef: size_type
+                      > TypeDef: size_type
+                        > TypeDef: size_t
+                          > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+                > Member: <anonymous> (offset 16 bytes)
+                  > Unknown
+          > Member: c_path_ (offset 72 bytes)
+            > Pointer (8 bytes)
+              > Unknown
+          > Member: size_limit_ (offset 80 bytes)
+            > TypeDef: off_t
+              > TypeDef: __off_t
+                > Primitive: long int (SignedInt, 8 bytes)
+          > Member: address_within_principal_mapping_ (offset 88 bytes)
+            > TypeDef: uintptr_t
+              > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+          > Member: skip_dump_if_principal_mapping_not_referenced_ (offset 96 bytes)
+            > Primitive: bool (Boolean, 1 byte)
+          > Member: sanitize_stacks_ (offset 97 bytes)
+            > Primitive: bool (Boolean, 1 byte)
+          > Member: microdump_extra_info_ (offset 104 bytes)
+            > Structure: MicrodumpExtraInfo (32 bytes)
+              > Member: build_fingerprint (offset 0 bytes)
+                > Pointer (8 bytes)
+                  > Unknown
+              > Member: product_info (offset 8 bytes)
+                > Pointer (8 bytes)
+                  > Unknown
+              > Member: gpu_fingerprint (offset 16 bytes)
+                > Pointer (8 bytes)
+                  > Unknown
+              > Member: process_type (offset 24 bytes)
+                > Pointer (8 bytes)
+                  > Unknown
+      0x1c70..0x1dbc: cfa -416
     eh (local)
       type:
-        > Unknown
-      0x1c70..0x1dbc: frame base -272
+        > Structure: ExceptionHandler (232 bytes)
+          > Member: filter_ (offset 0 bytes)
+            > Unknown
+          > Member: callback_ (offset 8 bytes)
+            > Unknown
+          > Member: callback_context_ (offset 16 bytes)
+            > Unknown
+          > Member: crash_generation_client_ (offset 24 bytes)
+            > Structure: scoped_ptr<google_breakpad::CrashGenerationClient> (8 bytes)
+              > Member: ptr_ (offset 0 bytes)
+                > Pointer (8 bytes)
+                  > Structure: CrashGenerationClient (8 bytes)
+                    > Member: _vptr.CrashGenerationClient (offset 0 bytes)
+                      > Pointer (8 bytes)
+                        > Pointer (8 bytes)
+                          > Unknown
+          > Member: minidump_descriptor_ (offset 32 bytes)
+            > Structure: MinidumpDescriptor (136 bytes)
+              > Member: mode_ (offset 0 bytes)
+                > Unknown
+              > Member: fd_ (offset 4 bytes)
+                > Primitive: int (SignedInt, 4 bytes)
+              > Member: directory_ (offset 8 bytes)
+                > TypeDef: string
+                  > Structure: basic_string<char, std::char_traits<char>, std::allocator<char> > (32 bytes)
+                    > Member: _M_dataplus (offset 0 bytes)
+                      > Structure: _Alloc_hider (8 bytes)
+                        > Member: _M_p (offset 0 bytes)
+                          > TypeDef: pointer
+                            > TypeDef: pointer
+                              > TypeDef: pointer
+                                > Pointer (8 bytes)
+                                  > Primitive: char (SignedChar, 1 byte)
+                    > Member: _M_string_length (offset 8 bytes)
+                      > TypeDef: size_type
+                        > TypeDef: size_type
+                          > TypeDef: size_type
+                            > TypeDef: size_t
+                              > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+                    > Member: <anonymous> (offset 16 bytes)
+                      > Unknown
+              > Member: path_ (offset 40 bytes)
+                > TypeDef: string
+                  > Structure: basic_string<char, std::char_traits<char>, std::allocator<char> > (32 bytes)
+                    > Member: _M_dataplus (offset 0 bytes)
+                      > Structure: _Alloc_hider (8 bytes)
+                        > Member: _M_p (offset 0 bytes)
+                          > TypeDef: pointer
+                            > TypeDef: pointer
+                              > TypeDef: pointer
+                                > Pointer (8 bytes)
+                                  > Primitive: char (SignedChar, 1 byte)
+                    > Member: _M_string_length (offset 8 bytes)
+                      > TypeDef: size_type
+                        > TypeDef: size_type
+                          > TypeDef: size_type
+                            > TypeDef: size_t
+                              > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+                    > Member: <anonymous> (offset 16 bytes)
+                      > Unknown
+              > Member: c_path_ (offset 72 bytes)
+                > Pointer (8 bytes)
+                  > Unknown
+              > Member: size_limit_ (offset 80 bytes)
+                > TypeDef: off_t
+                  > TypeDef: __off_t
+                    > Primitive: long int (SignedInt, 8 bytes)
+              > Member: address_within_principal_mapping_ (offset 88 bytes)
+                > TypeDef: uintptr_t
+                  > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+              > Member: skip_dump_if_principal_mapping_not_referenced_ (offset 96 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+              > Member: sanitize_stacks_ (offset 97 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+              > Member: microdump_extra_info_ (offset 104 bytes)
+                > Structure: MicrodumpExtraInfo (32 bytes)
+                  > Member: build_fingerprint (offset 0 bytes)
+                    > Pointer (8 bytes)
+                      > Unknown
+                  > Member: product_info (offset 8 bytes)
+                    > Pointer (8 bytes)
+                      > Unknown
+                  > Member: gpu_fingerprint (offset 16 bytes)
+                    > Pointer (8 bytes)
+                      > Unknown
+                  > Member: process_type (offset 24 bytes)
+                    > Pointer (8 bytes)
+                      > Unknown
+          > Member: crash_handler_ (offset 168 bytes)
+            > Unknown
+          > Member: fdes (offset 176 bytes)
+            > Unknown
+          > Member: mapping_list_ (offset 184 bytes)
+            > TypeDef: MappingList
+              > Structure: list<google_breakpad::MappingEntry, std::allocator<google_breakpad::MappingEntry> > (24 bytes)
+          > Member: app_memory_list_ (offset 208 bytes)
+            > TypeDef: AppMemoryList
+              > Structure: list<google_breakpad::AppMemory, std::allocator<google_breakpad::AppMemory> > (24 bytes)
+      0x1c70..0x1dbc: cfa -272
 
   > 0x1c89: _ZN15google_breakpad18MinidumpDescriptorC4ERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE (0x7)
     0x1c89: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
@@ -282,7 +449,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   > 0x20e0: InstallDefaultHandler (0xc)
     0x20e0: exception_handler.cc:199 (../deps/breakpad/src/client/linux/handler)
 
-> 0x20f0: _ZN15google_breakpad16ExceptionHandlerD1Ev (0x341)
+> 0x20f0: _ZN15google_breakpad16ExceptionHandlerD2Ev (0x341)
   0x20f0: exception_handler.cc:259 (../deps/breakpad/src/client/linux/handler)
   0x20f7: exception_handler.cc:260 (../deps/breakpad/src/client/linux/handler)
   0x20fe: exception_handler.cc:259 (../deps/breakpad/src/client/linux/handler)
@@ -903,9 +1070,9 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x2557..0x255a: register rbp
       0x257f..0x2595: register rsi
       0x2595..0x2655: register rbp
-      0x2655..0x2661: frame base -88
+      0x2655..0x2661: cfa -88
       0x27c6..0x27dd: register rbp
-      0x27e2..0x27f6: frame base -88
+      0x27e2..0x27f6: cfa -88
       0x2996..0x2998: register rbp
     stack (local)
       type:
@@ -930,23 +1097,120 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
               > Unknown
           > Member: handler (offset 16 bytes)
             > Pointer (8 bytes)
-              > Unknown
+              > Structure: ExceptionHandler (232 bytes)
+                > Member: filter_ (offset 0 bytes)
+                  > Unknown
+                > Member: callback_ (offset 8 bytes)
+                  > Unknown
+                > Member: callback_context_ (offset 16 bytes)
+                  > Unknown
+                > Member: crash_generation_client_ (offset 24 bytes)
+                  > Structure: scoped_ptr<google_breakpad::CrashGenerationClient> (8 bytes)
+                    > Member: ptr_ (offset 0 bytes)
+                      > Pointer (8 bytes)
+                        > Structure: CrashGenerationClient (8 bytes)
+                          > Member: _vptr.CrashGenerationClient (offset 0 bytes)
+                            > Pointer (8 bytes)
+                              > Pointer (8 bytes)
+                                > Unknown
+                > Member: minidump_descriptor_ (offset 32 bytes)
+                  > Structure: MinidumpDescriptor (136 bytes)
+                    > Member: mode_ (offset 0 bytes)
+                      > Unknown
+                    > Member: fd_ (offset 4 bytes)
+                      > Primitive: int (SignedInt, 4 bytes)
+                    > Member: directory_ (offset 8 bytes)
+                      > TypeDef: string
+                        > Structure: basic_string<char, std::char_traits<char>, std::allocator<char> > (32 bytes)
+                          > Member: _M_dataplus (offset 0 bytes)
+                            > Structure: _Alloc_hider (8 bytes)
+                              > Member: _M_p (offset 0 bytes)
+                                > TypeDef: pointer
+                                  > TypeDef: pointer
+                                    > TypeDef: pointer
+                                      > Pointer (8 bytes)
+                                        > Primitive: char (SignedChar, 1 byte)
+                          > Member: _M_string_length (offset 8 bytes)
+                            > TypeDef: size_type
+                              > TypeDef: size_type
+                                > TypeDef: size_type
+                                  > TypeDef: size_t
+                                    > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+                          > Member: <anonymous> (offset 16 bytes)
+                            > Unknown
+                    > Member: path_ (offset 40 bytes)
+                      > TypeDef: string
+                        > Structure: basic_string<char, std::char_traits<char>, std::allocator<char> > (32 bytes)
+                          > Member: _M_dataplus (offset 0 bytes)
+                            > Structure: _Alloc_hider (8 bytes)
+                              > Member: _M_p (offset 0 bytes)
+                                > TypeDef: pointer
+                                  > TypeDef: pointer
+                                    > TypeDef: pointer
+                                      > Pointer (8 bytes)
+                                        > Primitive: char (SignedChar, 1 byte)
+                          > Member: _M_string_length (offset 8 bytes)
+                            > TypeDef: size_type
+                              > TypeDef: size_type
+                                > TypeDef: size_type
+                                  > TypeDef: size_t
+                                    > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+                          > Member: <anonymous> (offset 16 bytes)
+                            > Unknown
+                    > Member: c_path_ (offset 72 bytes)
+                      > Pointer (8 bytes)
+                        > Unknown
+                    > Member: size_limit_ (offset 80 bytes)
+                      > TypeDef: off_t
+                        > TypeDef: __off_t
+                          > Primitive: long int (SignedInt, 8 bytes)
+                    > Member: address_within_principal_mapping_ (offset 88 bytes)
+                      > TypeDef: uintptr_t
+                        > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+                    > Member: skip_dump_if_principal_mapping_not_referenced_ (offset 96 bytes)
+                      > Primitive: bool (Boolean, 1 byte)
+                    > Member: sanitize_stacks_ (offset 97 bytes)
+                      > Primitive: bool (Boolean, 1 byte)
+                    > Member: microdump_extra_info_ (offset 104 bytes)
+                      > Structure: MicrodumpExtraInfo (32 bytes)
+                        > Member: build_fingerprint (offset 0 bytes)
+                          > Pointer (8 bytes)
+                            > Unknown
+                        > Member: product_info (offset 8 bytes)
+                          > Pointer (8 bytes)
+                            > Unknown
+                        > Member: gpu_fingerprint (offset 16 bytes)
+                          > Pointer (8 bytes)
+                            > Unknown
+                        > Member: process_type (offset 24 bytes)
+                          > Pointer (8 bytes)
+                            > Unknown
+                > Member: crash_handler_ (offset 168 bytes)
+                  > Unknown
+                > Member: fdes (offset 176 bytes)
+                  > Unknown
+                > Member: mapping_list_ (offset 184 bytes)
+                  > TypeDef: MappingList
+                    > Structure: list<google_breakpad::MappingEntry, std::allocator<google_breakpad::MappingEntry> > (24 bytes)
+                > Member: app_memory_list_ (offset 208 bytes)
+                  > TypeDef: AppMemoryList
+                    > Structure: list<google_breakpad::AppMemory, std::allocator<google_breakpad::AppMemory> > (24 bytes)
           > Member: context (offset 24 bytes)
             > Pointer (8 bytes)
               > Unknown
           > Member: context_size (offset 32 bytes)
             > TypeDef: size_t
               > Primitive: long unsigned int (UnsignedInt, 8 bytes)
-      0x2520..0x29e6: frame base -112
+      0x2520..0x29e6: cfa -112
     status (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x2520..0x29e6: frame base -116
+      0x2520..0x29e6: cfa -116
     r (local)
       type:
         > Unknown
       0x28cd..0x28f1: register rsi
-      0x28f1..0x28f7: frame base -144
+      0x28f1..0x28f7: cfa -144
       0x28f7..0x291d: register rsi
       0x293f..0x294b: register rsi
     success (local)
@@ -1227,7 +1491,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
           > Member: sa_restorer (offset 144 bytes)
             > Pointer (8 bytes)
               > Unknown
-      0x2bd0..0x2dbf: frame base -208
+      0x2bd0..0x2dbf: cfa -208
     handled (local)
       type:
         > Primitive: bool (Boolean, 1 byte)

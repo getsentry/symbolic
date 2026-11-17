@@ -2,8 +2,8 @@ use gimli::{AttributeValue, DebuggingInformationEntry, UnitOffset, constants};
 
 use crate::dwarf::{DwarfError, Slice, UnitRef};
 use crate::{
-    MemberOffset, PointerType, PrimitiveType, PrimitiveTypeEncoding, StructureMember,
-    StructureType, Type, TypeDefType, TypeSize,
+    PointerType, PrimitiveType, PrimitiveTypeEncoding, Size, StructureMember, StructureType, Type,
+    TypeDefType, ValueBits,
 };
 
 pub fn parse_type<'d>(
@@ -21,7 +21,7 @@ pub fn parse_type<'d>(
             parse_pointer_type(unit, entry).map(Type::Pointer)
         }
         constants::DW_TAG_typedef => parse_typedef(unit, entry).map(Type::TypeDef),
-        constants::DW_TAG_structure_type => {
+        constants::DW_TAG_structure_type | constants::DW_TAG_class_type => {
             parse_structure_type(unit, entry)?.map(Type::StructureType)
         }
         _ => None,
@@ -34,7 +34,9 @@ fn parse_base_type<'d>(
 ) -> Option<PrimitiveType<'d>> {
     let mut name = None;
     let mut encoding = None;
-    let mut size = None;
+    let mut byte_size = None;
+    let mut bit_size = None;
+    let mut data_bit_offset = None;
 
     for attr in entry.attrs {
         match attr.name() {
@@ -42,8 +44,9 @@ fn parse_base_type<'d>(
                 // May also need to check `DW_AT_specification` and `DW_AT_abstract_origin` for the name.
                 name = unit.string_value(attr.value());
             }
-            // Need to handle `bit` sizes here eventually.
-            constants::DW_AT_byte_size => size = attr.udata_value(),
+            constants::DW_AT_byte_size => byte_size = attr.udata_value(),
+            constants::DW_AT_bit_size => bit_size = attr.udata_value(),
+            constants::DW_AT_data_bit_offset => data_bit_offset = attr.udata_value(),
             constants::DW_AT_encoding => {
                 use AttributeValue::Encoding;
                 encoding = Some(match attr.value() {
@@ -66,10 +69,30 @@ fn parse_base_type<'d>(
         }
     }
 
+    let (size, value_bits) = match (byte_size, bit_size) {
+        (Some(byte_size), Some(bit_size)) => (
+            Size::Bytes(byte_size),
+            Some(ValueBits {
+                size: bit_size,
+                offset: data_bit_offset.unwrap_or(0),
+            }),
+        ),
+        (Some(byte_size), None) => (Size::Bytes(byte_size), None),
+        (None, Some(bit_size)) => (
+            Size::Bits(bit_size),
+            data_bit_offset.map(|offset| ValueBits {
+                size: bit_size,
+                offset,
+            }),
+        ),
+        (None, None) => return None,
+    };
+
     Some(PrimitiveType {
         name,
         encoding,
-        size: TypeSize::Bytes(size?),
+        size,
+        value_bits,
     })
 }
 
@@ -85,14 +108,19 @@ fn parse_pointer_type<'d>(
             // Return `None` if `DW_AT_type` is present but cannot be resolved, rather than
             // treating the pointer as `void*`.
             constants::DW_AT_type => pointee = Some(unit.to_type_ref(attr)?),
-            constants::DW_AT_byte_size => size = attr.udata_value(),
+            constants::DW_AT_byte_size => {
+                size = attr.udata_value().map(Size::Bytes);
+            }
+            constants::DW_AT_bit_size => {
+                size = attr.udata_value().map(Size::Bits);
+            }
             _ => {}
         }
     }
 
     Some(PointerType {
         pointee: pointee.map(Into::into),
-        size: TypeSize::Bytes(size.unwrap_or_else(|| unit.unit.encoding().address_size.into())),
+        size: size.unwrap_or_else(|| Size::Bytes(unit.unit.encoding().address_size.into())),
     })
 }
 
@@ -134,7 +162,12 @@ fn parse_structure_type<'d>(
             constants::DW_AT_name => {
                 name = unit.string_value(attr.value());
             }
-            constants::DW_AT_byte_size => size = attr.udata_value(),
+            constants::DW_AT_byte_size => {
+                size = attr.udata_value().map(Size::Bytes);
+            }
+            constants::DW_AT_bit_size => {
+                size = attr.udata_value().map(Size::Bits);
+            }
             _ => {}
         }
     }
@@ -148,10 +181,14 @@ fn parse_structure_type<'d>(
         if member.tag != constants::DW_TAG_member {
             continue;
         }
+        if member.attr_value(constants::DW_AT_declaration) == Some(AttributeValue::Flag(true)) {
+            continue;
+        }
 
         let mut name = None;
         let mut ty = None;
         let mut offset = None;
+        let mut size = None;
 
         for &attr in &member.attrs {
             match attr.name() {
@@ -162,21 +199,29 @@ fn parse_structure_type<'d>(
                     ty = unit.to_type_ref(attr).map(Into::into);
                 }
                 constants::DW_AT_data_member_location => {
-                    offset = Some(attr.udata_value().map(MemberOffset::Bytes));
+                    offset = Some(attr.udata_value().map(Size::Bytes));
                 }
                 constants::DW_AT_data_bit_offset => {
-                    offset = Some(attr.udata_value().map(MemberOffset::Bits));
+                    offset = Some(attr.udata_value().map(Size::Bits));
+                }
+                constants::DW_AT_byte_size => {
+                    size = attr.udata_value().map(Size::Bytes);
+                }
+                constants::DW_AT_bit_size => {
+                    size = attr.udata_value().map(Size::Bits);
                 }
                 _ => {}
             }
         }
 
         let offset = match offset {
-            Some(Some(offset)) => offset,
-            // DWARF 5 §5.7.6 - The offset attributes may be missing if the member is at the beginning.
-            None => MemberOffset::Bytes(0),
-            // A valid member must also have a valid offset.
-            Some(None) => continue,
+            Some(Some(offset)) => Some(offset),
+            // DWARF 5 §5.7.6 - Offset zero is implied when both offset attributes are absent.
+            None => Some(Size::Bytes(0)),
+            // `DW_AT_data_member_location` can possibly be an expression which is currently not
+            // supported, hence we do store and allow `None`. Practically in DWARF an offset is
+            // always required.
+            Some(None) => None,
         };
 
         // A valid member must always have a type.
@@ -184,12 +229,17 @@ fn parse_structure_type<'d>(
             continue;
         };
 
-        members.push(StructureMember { name, ty, offset });
+        members.push(StructureMember {
+            name,
+            ty,
+            offset,
+            size,
+        });
     }
 
     Ok(Some(StructureType {
         name: name,
-        size: size.map(TypeSize::Bytes),
+        size,
         members,
     }))
 }

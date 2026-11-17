@@ -4,7 +4,6 @@ version.workspace = true
 license.workspace = true
 authors.workspace = true
 documentation = "https://docs.rs/symbolic"
-homepage.workspace = true
 repository.workspace = true
 readme = "README.md"
 description = """
@@ -41,3 +40,6 @@ symbolic-ppdb = { version = "14.0.0-alpha.5", path = "../symbolic-ppdb", optiona
 symbolic-sourcemapcache = { version = "14.0.0-alpha.5", path = "../symbolic-sourcemapcache", optional = true }
 symbolic-symcache = { version = "14.0.0-alpha.5", path = "../symbolic-symcache", optional = true }
 symbolic-unreal = { version = "14.0.0-alpha.5", path = "../symbolic-unreal", optional = true }
+
+[lints]
+workspace = true

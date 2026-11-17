@@ -12,7 +12,7 @@ const SIGSEGV: u32 = 11;
 /// return addresses point a few bytes past the original call site, which may place the address
 /// within a different symbol entirely.
 ///
-/// The most useful function is [`caller_address`], which applies some heuristics to determine the
+/// The most useful function is [`caller_address`](Self::caller_address), which applies some heuristics to determine the
 /// call site of a function call based on the return address.
 ///
 /// # Examples
@@ -100,7 +100,6 @@ const SIGSEGV: u32 = 11;
 /// An old copy can still be found in the [internet archive].
 ///
 /// [internet archive]: https://web.archive.org/web/20161012225323/https://opensource.plausible.coop/wiki/display/PLCR/Automated+Crash+Report+Analysis
-/// [`caller_address`]: struct.InstructionInfo.html#method.caller_address
 #[derive(Clone, Debug)]
 pub struct InstructionInfo {
     addr: u64,
@@ -138,11 +137,9 @@ impl InstructionInfo {
     ///
     /// The crashing frame is the first frame yielded by the stack walker. In such a frame, the
     /// instruction address is the location of the direct crash. This is used by
-    /// [`should_adjust_caller`] to determine which frames need caller address adjustment.
+    /// [`should_adjust_caller`](Self::should_adjust_caller) to determine which frames need caller address adjustment.
     ///
     /// Defaults to `false`.
-    ///
-    /// [`should_adjust_caller`]: struct.InstructionInfo.html#method.should_adjust_caller
     pub fn is_crashing_frame(&mut self, flag: bool) -> &mut Self {
         self.crashing_frame = flag;
         self
@@ -150,10 +147,8 @@ impl InstructionInfo {
 
     /// Sets a POSIX signal number.
     ///
-    /// The signal number is used by [`should_adjust_caller`] to determine which frames need caller
+    /// The signal number is used by [`should_adjust_caller`](Self::should_adjust_caller) to determine which frames need caller
     /// address adjustment.
-    ///
-    /// [`should_adjust_caller`]: struct.InstructionInfo.html#method.should_adjust_caller
     pub fn signal(&mut self, signal: Option<u32>) -> &mut Self {
         self.signal = signal;
         self
@@ -162,7 +157,7 @@ impl InstructionInfo {
     /// Sets the value of the instruction pointer register.
     ///
     /// This should be the original register value at the time of the crash, and not a restored
-    /// register value. This is used by [`should_adjust_caller`] to determine which frames need
+    /// register value. This is used by [`should_adjust_caller`](Self::should_adjust_caller) to determine which frames need
     /// caller address adjustment.
     ///
     /// [`should_adjust_caller`]: struct.InstructionInfo.html#method.should_adjust_caller

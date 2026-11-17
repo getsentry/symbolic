@@ -4,7 +4,6 @@ version.workspace = true
 license.workspace = true
 authors.workspace = true
 documentation = "https://docs.rs/symbolic-common"
-homepage.workspace = true
 repository.workspace = true
 readme = "README.md"
 description = """
@@ -35,3 +34,6 @@ minidump = { workspace = true }
 symbolic-testutils = { path = "../symbolic-testutils" }
 tempfile = { workspace = true }
 similar-asserts = { workspace = true }
+
+[lints]
+workspace = true

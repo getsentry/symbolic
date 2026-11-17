@@ -152,7 +152,7 @@ impl FromStr for ObjectKind {
     }
 }
 
-/// An error returned for unknown or invalid [`FileFormats`](enum.FileFormat.html).
+/// An error returned for unknown or invalid [`FileFormat`]s.
 #[derive(Debug)]
 pub struct UnknownFileFormatError;
 
@@ -244,8 +244,6 @@ pub struct Symbol<'data> {
     ///
     /// When loading symbols from an object file, the size will generally not be known. Instead,
     /// construct a [`SymbolMap`] from the object, which also fills in sizes.
-    ///
-    /// [`SymbolMap`]: struct.SymbolMap.html
     pub size: u64,
 }
 
@@ -275,7 +273,7 @@ impl fmt::Debug for Symbol<'_> {
     }
 }
 
-/// IntoIterator type for [`SymbolMap`](struct.SymbolMap.html).
+/// IntoIterator type for [`SymbolMap`].
 pub type SymbolMapIter<'data> = std::vec::IntoIter<Symbol<'data>>;
 
 /// A sorted list of symbols, suitable for quick lookups.
@@ -304,11 +302,12 @@ pub type SymbolMapIter<'data> = std::vec::IntoIter<Symbol<'data>>;
 ///     size: 0x200,
 /// });
 /// ```
-///
-/// [`ObjectLike::symbol_map`]: trait.ObjectLike.html#tymethod.symbol_map
 #[derive(Clone, Debug, Default)]
 pub struct SymbolMap<'data> {
     symbols: Vec<Symbol<'data>>,
+    /// Symbols dropped from `symbols` because they share their address with a differently named
+    /// symbol, sorted by address.
+    folded: Vec<Symbol<'data>>,
 }
 
 impl<'data> SymbolMap<'data> {
@@ -316,6 +315,7 @@ impl<'data> SymbolMap<'data> {
     pub fn new() -> Self {
         SymbolMap {
             symbols: Vec::new(),
+            folded: Vec::new(),
         }
     }
 
@@ -344,12 +344,25 @@ impl<'data> SymbolMap<'data> {
         self.symbols.get(idx)
     }
 
+    /// Returns the other symbols starting at the given address, besides the one returned by
+    /// [`lookup_exact`](Self::lookup_exact).
+    ///
+    /// Linkers fold functions with identical code into one body, which leaves the symbols of all
+    /// those functions at the same address.
+    pub(crate) fn folded(&self, address: u64) -> &[Symbol<'data>] {
+        let start = self
+            .folded
+            .partition_point(|symbol| symbol.address < address);
+        let end = self
+            .folded
+            .partition_point(|symbol| symbol.address <= address);
+        &self.folded[start..end]
+    }
+
     /// Looks up a symbol covering an entire range.
     ///
-    /// This is similar to [`lookup`], but it only returns the symbol result if it _also_ covers the
+    /// This is similar to [`lookup`](Self::lookup), but it only returns the symbol result if it _also_ covers the
     /// inclusive end address of the range.
-    ///
-    /// [`lookup`]: struct.SymbolMap.html#method.lookup
     pub fn lookup_range<R>(&self, range: R) -> Option<&Symbol<'data>>
     where
         R: RangeBounds<u64>,
@@ -416,14 +429,13 @@ impl<'d> AsRef<[Symbol<'d>]> for SymbolMap<'d> {
 
 impl<'d> From<Vec<Symbol<'d>>> for SymbolMap<'d> {
     fn from(mut symbols: Vec<Symbol<'d>>) -> Self {
+        let mut folded = Vec::new();
         if !symbols.is_empty() {
-            // NB: This might require stable sorting to ensure determinism if multiple symbols point
-            // at the same location. However, this only seems to happen for equivalent variants of
-            // the same function.
-            //
-            // An example would be destructors where D2 (base object destructor) and D1 (complete
-            // object destructor) might share the same code. Since those always demangle to the same
-            // name, we do not care which function to keep in this case.
+            // NB: Multiple symbols may point at the same location. This happens for equivalent
+            // variants of the same function, such as destructors where D2 (base object destructor)
+            // and D1 (complete object destructor) share the same code. It also happens when the
+            // linker folds unrelated functions with identical code into one body. Only the first
+            // symbol is kept here, the differently named others are kept aside in `folded`.
             //
             // Inlined functions will generally not appear in this list, unless they _also_ have an
             // explicit function body, in which case they will have a unique address, again.
@@ -437,11 +449,15 @@ impl<'d> From<Vec<Symbol<'d>>> for SymbolMap<'d> {
                 if symbol.size == 0 {
                     symbol.size = next.address - symbol.address;
                 }
-                symbol.address == next.address
+                let duplicate = symbol.address == next.address;
+                if duplicate && symbol.name != next.name {
+                    folded.push(next.clone());
+                }
+                duplicate
             })
         }
 
-        SymbolMap { symbols }
+        SymbolMap { symbols, folded }
     }
 }
 
@@ -454,7 +470,7 @@ impl<'d> FromIterator<Symbol<'d>> for SymbolMap<'d> {
     }
 }
 
-/// File information referred by [`LineInfo`](struct.LineInfo.html) comprising a directory and name.
+/// File information referred by [`LineInfo`] comprising a directory and name.
 ///
 /// The file path is usually relative to a compilation directory. It might contain parent directory
 /// segments (`../`).
@@ -807,8 +823,6 @@ pub type DynIterator<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 ///  - Build a symbol map for random access to public symbols.
 ///  - Map string tables and other lookup tables.
 ///  - Read headers of compilation units (compilands) to resolve cross-unit references.
-///
-/// [`ObjectLike::debug_session`]: trait.ObjectLike.html#tymethod.debug_session
 pub trait DebugSession<'session> {
     /// The error returned when reading debug information fails.
     type Error;
@@ -896,7 +910,7 @@ pub trait ObjectLike<'data, 'object> {
     ///
     /// Constructing this session will also work if the object does not contain debugging
     /// information, in which case the session will be a no-op. This can be checked via
-    /// [`has_debug_info`](trait.ObjectLike.html#tymethod.has_debug_info).
+    /// [`has_debug_info`](Self::has_debug_info).
     fn debug_session(&'object self) -> Result<Self::Session, Self::Error>;
 
     /// Determines whether this object contains stack unwinding information.

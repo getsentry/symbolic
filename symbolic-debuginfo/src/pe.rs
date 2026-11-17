@@ -19,7 +19,7 @@ use crate::dwarf::*;
 pub use goblin::pe::exception::*;
 pub use goblin::pe::section_table::SectionTable;
 
-/// An error when dealing with [`PEObject`](struct.PEObject.html).
+/// An error when dealing with [`PeObject`].
 #[derive(Debug, Error)]
 #[error("invalid PE file")]
 pub struct PeError {
@@ -59,13 +59,11 @@ fn is_pe_stub(pe: &pe::PE<'_>) -> bool {
 /// Portable Executable, an extension of COFF used on Windows.
 ///
 /// This file format is used to carry program code. Debug information is usually moved to a separate
-/// container, [`PdbObject`]. The PE file contains a reference to the PDB and vice versa to verify
+/// container, [`PdbObject`](crate::pdb::PdbObject). The PE file contains a reference to the PDB and vice versa to verify
 /// that the files belong together.
 ///
 /// In rare instances, PE files might contain debug information.
 /// This is supported for DWARF debug information.
-///
-/// [`PdbObject`]: ../pdb/struct.PdbObject.html
 pub struct PeObject<'data> {
     pe: pe::PE<'data>,
     data: &'data [u8],
@@ -248,7 +246,7 @@ impl<'data> PeObject<'data> {
     ///
     /// Constructing this session will also work if the object does not contain debugging
     /// information, in which case the session will be a no-op. This can be checked via
-    /// [`has_debug_info`](struct.PeObject.html#method.has_debug_info).
+    /// [`has_debug_info`](Self::has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'data>, DwarfError> {
         let symbols = self.symbol_map();
         DwarfDebugSession::parse(
@@ -477,7 +475,7 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for PeObject<'data> {
 
 /// An iterator over symbols in the PE file.
 ///
-/// Returned by [`PeObject::symbols`](struct.PeObject.html#method.symbols).
+/// Returned by [`PeObject::symbols`].
 pub struct PeSymbolIterator<'data, 'object> {
     exports: std::slice::Iter<'object, pe::export::Export<'data>>,
 }

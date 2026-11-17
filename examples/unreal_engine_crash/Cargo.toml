@@ -12,3 +12,6 @@ clap = { workspace = true }
 symbolic = { version = "14.0.0-alpha.5", path = "../../symbolic", features = [
     "unreal",
 ] }
+
+[lints]
+workspace = true

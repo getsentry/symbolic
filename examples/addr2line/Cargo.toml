@@ -11,3 +11,6 @@ publish = false
 anyhow = { workspace = true }
 clap = { workspace = true }
 symbolic = { version = "14.0.0-alpha.5", path = "../../symbolic", features = ["demangle"] }
+
+[lints]
+workspace = true

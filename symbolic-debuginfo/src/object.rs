@@ -78,7 +78,7 @@ enum ObjectErrorRepr {
     Transparent(Box<dyn Error + Send + Sync + 'static>),
 }
 
-/// An error when dealing with any kind of [`Object`](enum.Object.html).
+/// An error when dealing with any kind of [`Object`].
 pub struct ObjectError {
     repr: ObjectErrorRepr,
 }
@@ -334,7 +334,7 @@ impl<'data> Object<'data> {
     ///
     /// Constructing this session will also work if the object does not contain debugging
     /// information, in which case the session will be a no-op. This can be checked via
-    /// [`has_debug_info`](enum.Object.html#method.has_debug_info).
+    /// [`has_debug_info`](Self::has_debug_info).
     pub fn debug_session(&self) -> Result<ObjectDebugSession<'data>, ObjectError> {
         match *self {
             Object::Breakpad(ref o) => o
@@ -579,7 +579,7 @@ impl<'session> DebugSession<'session> for ObjectDebugSession<'_> {
     }
 }
 
-/// An iterator over functions in an [`Object`](enum.Object.html).
+/// An iterator over functions in an [`Object`].
 #[allow(missing_docs)]
 pub enum ObjectFunctionIterator<'s> {
     Breakpad(BreakpadFunctionIterator<'s>),
@@ -613,7 +613,7 @@ impl<'s> Iterator for ObjectFunctionIterator<'s> {
     }
 }
 
-/// An iterator over source files in an [`Object`](enum.Object.html).
+/// An iterator over source files in an [`Object`].
 #[allow(missing_docs)]
 #[allow(clippy::large_enum_variant)]
 pub enum ObjectFileIterator<'s> {
@@ -837,7 +837,7 @@ enum ObjectIteratorInner<'d, 'a> {
     PortablePdb(MonoArchiveObjects<'d, PortablePdbObject<'d>>),
 }
 
-/// An iterator over [`Object`](enum.Object.html)s in an [`Archive`](struct.Archive.html).
+/// An iterator over [`Object`]s in an [`Archive`].
 pub struct ObjectIterator<'d, 'a>(ObjectIteratorInner<'d, 'a>);
 
 impl<'d> Iterator for ObjectIterator<'d, '_> {

@@ -179,7 +179,10 @@ where
     ) -> FwdResult<(u32, u32)> {
         let mut serialized = Vec::with_capacity(members.len());
         for member in members {
-            let Some(offset) = v9::convert::member_offset_to_raw(member.offset) else {
+            let Some(offset) = member.offset else {
+                continue;
+            };
+            let Some(offset) = v9::convert::size_to_raw(offset) else {
                 continue;
             };
             let type_idx = self.try_lookup_type_idx(&member.ty)?;
@@ -423,9 +426,10 @@ impl TypeWriter {
     }
 }
 
-fn size(s: di::TypeSize) -> u32 {
+fn size(s: di::Size) -> u32 {
     match s {
-        di::TypeSize::Bytes(bytes) => bytes as u32,
+        di::Size::Bytes(bytes) => bytes as u32,
+        di::Size::Bits(bits) => (bits / 8) as u32,
     }
 }
 
@@ -477,7 +481,8 @@ mod tests {
         di::PrimitiveType {
             name: Some("u8".into()),
             encoding: None,
-            size: di::TypeSize::Bytes(1),
+            size: di::Size::Bytes(1),
+            value_bits: None,
         }
     }
 
@@ -485,7 +490,8 @@ mod tests {
         di::PrimitiveType {
             name: Some("u16".into()),
             encoding: None,
-            size: di::TypeSize::Bytes(2),
+            size: di::Size::Bytes(2),
+            value_bits: None,
         }
     }
 
@@ -493,14 +499,15 @@ mod tests {
         di::PrimitiveType {
             name: Some("u32".into()),
             encoding: None,
-            size: di::TypeSize::Bytes(4),
+            size: di::Size::Bytes(4),
+            value_bits: None,
         }
     }
 
     fn ptr(pointee: TypeRef) -> di::PointerType {
         di::PointerType {
             pointee: Some(pointee),
-            size: di::TypeSize::Bytes(8),
+            size: di::Size::Bytes(8),
         }
     }
 
@@ -670,7 +677,7 @@ mod tests {
             TypeRef::generic(2),
             di::PointerType {
                 pointee: None,
-                size: di::TypeSize::Bytes(8),
+                size: di::Size::Bytes(8),
             },
         );
         session.register(TypeRef::generic(3), tydef("Missing", TypeRef::generic(100)));
@@ -679,17 +686,19 @@ mod tests {
             TypeRef::generic(5),
             di::StructureType {
                 name: Some("Partial".into()),
-                size: Some(di::TypeSize::Bytes(8)),
+                size: Some(di::Size::Bytes(8)),
                 members: vec![
                     di::StructureMember {
                         name: Some("missing".into()),
                         ty: TypeRef::generic(100),
-                        offset: di::MemberOffset::Bytes(0),
+                        offset: Some(di::Size::Bytes(0)),
+                        size: None,
                     },
                     di::StructureMember {
                         name: Some("value".into()),
                         ty: TypeRef::generic(6),
-                        offset: di::MemberOffset::Bytes(4),
+                        offset: Some(di::Size::Bytes(4)),
+                        size: None,
                     },
                 ],
             },
@@ -755,17 +764,19 @@ mod tests {
             TypeRef::generic(1),
             di::StructureType {
                 name: Some("Node".into()),
-                size: Some(di::TypeSize::Bytes(16)),
+                size: Some(di::Size::Bytes(16)),
                 members: vec![
                     di::StructureMember {
                         name: Some("next".into()),
                         ty: TypeRef::generic(2),
-                        offset: di::MemberOffset::Bytes(0),
+                        offset: Some(di::Size::Bytes(0)),
+                        size: None,
                     },
                     di::StructureMember {
                         name: Some("value".into()),
                         ty: TypeRef::generic(4),
-                        offset: di::MemberOffset::Bytes(8),
+                        offset: Some(di::Size::Bytes(8)),
+                        size: None,
                     },
                 ],
             },
@@ -854,11 +865,12 @@ mod tests {
             TypeRef::generic(100),
             di::StructureType {
                 name: Some("Foo".into()),
-                size: Some(di::TypeSize::Bytes(42)),
+                size: Some(di::Size::Bytes(42)),
                 members: vec![di::StructureMember {
                     name: Some("a".into()),
                     ty: TypeRef::generic(1),
-                    offset: di::MemberOffset::Bytes(0),
+                    offset: Some(di::Size::Bytes(0)),
+                    size: None,
                 }],
             },
         );
@@ -867,17 +879,19 @@ mod tests {
             TypeRef::generic(200),
             di::StructureType {
                 name: Some("Bar".into()),
-                size: Some(di::TypeSize::Bytes(1337)),
+                size: Some(di::Size::Bytes(1337)),
                 members: vec![
                     di::StructureMember {
                         name: Some("a".into()),
                         ty: TypeRef::generic(2),
-                        offset: di::MemberOffset::Bytes(0),
+                        offset: Some(di::Size::Bytes(0)),
+                        size: None,
                     },
                     di::StructureMember {
                         name: Some("b".into()),
                         ty: TypeRef::generic(2),
-                        offset: di::MemberOffset::Bytes(8),
+                        offset: Some(di::Size::Bytes(8)),
+                        size: None,
                     },
                 ],
             },
@@ -928,17 +942,19 @@ mod tests {
             TypeRef::generic(100),
             di::StructureType {
                 name: Some("Foo".into()),
-                size: Some(di::TypeSize::Bytes(42)),
+                size: Some(di::Size::Bytes(42)),
                 members: vec![
                     di::StructureMember {
                         name: Some("a_&Foo".into()),
                         ty: TypeRef::generic(20),
-                        offset: di::MemberOffset::Bytes(0),
+                        offset: Some(di::Size::Bytes(0)),
+                        size: None,
                     },
                     di::StructureMember {
                         name: Some("b_u32".into()),
                         ty: TypeRef::generic(11),
-                        offset: di::MemberOffset::Bytes(8),
+                        offset: Some(di::Size::Bytes(8)),
+                        size: None,
                     },
                 ],
             },
@@ -987,17 +1003,19 @@ mod tests {
             TypeRef::generic(100),
             di::StructureType {
                 name: Some("Foo".into()),
-                size: Some(di::TypeSize::Bytes(42)),
+                size: Some(di::Size::Bytes(42)),
                 members: vec![
                     di::StructureMember {
                         name: Some("a_u32".into()),
                         ty: TypeRef::generic(11),
-                        offset: di::MemberOffset::Bytes(0),
+                        offset: Some(di::Size::Bytes(0)),
+                        size: None,
                     },
                     di::StructureMember {
                         name: Some("b_Bar".into()),
                         ty: TypeRef::generic(200),
-                        offset: di::MemberOffset::Bytes(8),
+                        offset: Some(di::Size::Bytes(8)),
+                        size: None,
                     },
                 ],
             },
@@ -1006,22 +1024,25 @@ mod tests {
             TypeRef::generic(200),
             di::StructureType {
                 name: Some("Bar".into()),
-                size: Some(di::TypeSize::Bytes(1337)),
+                size: Some(di::Size::Bytes(1337)),
                 members: vec![
                     di::StructureMember {
                         name: Some("a_&Foo".into()),
                         ty: TypeRef::generic(20),
-                        offset: di::MemberOffset::Bytes(8),
+                        offset: Some(di::Size::Bytes(8)),
+                        size: None,
                     },
                     di::StructureMember {
                         name: Some("b_&Bar".into()),
                         ty: TypeRef::generic(21),
-                        offset: di::MemberOffset::Bytes(16),
+                        offset: Some(di::Size::Bytes(16)),
+                        size: None,
                     },
                     di::StructureMember {
                         name: Some("c_&u32".into()),
                         ty: TypeRef::generic(22),
-                        offset: di::MemberOffset::Bytes(0),
+                        offset: Some(di::Size::Bytes(0)),
+                        size: None,
                     },
                 ],
             },
@@ -1117,17 +1138,19 @@ mod tests {
             TypeRef::generic(1),
             di::StructureType {
                 name: Some("Foo".into()),
-                size: Some(di::TypeSize::Bytes(16)),
+                size: Some(di::Size::Bytes(16)),
                 members: vec![
                     di::StructureMember {
                         name: Some("first".into()),
                         ty: TypeRef::generic(2),
-                        offset: di::MemberOffset::Bytes(0),
+                        offset: Some(di::Size::Bytes(0)),
+                        size: None,
                     },
                     di::StructureMember {
                         name: Some("second".into()),
                         ty: TypeRef::generic(3),
-                        offset: di::MemberOffset::Bytes(8),
+                        offset: Some(di::Size::Bytes(8)),
+                        size: None,
                     },
                 ],
             },

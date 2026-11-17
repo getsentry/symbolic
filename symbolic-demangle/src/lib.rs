@@ -96,8 +96,6 @@ const MSVC_MAX_RECURSION_DEPTH: usize = 128;
 /// assert_eq!(&full, "mangling.GenericUnion.Foo<A>(mangling.GenericUnion<A>.Type) -> (Swift.Int) -> mangling.GenericUnion<A>");
 /// # }
 /// ```
-///
-/// [`Demangle::demangle`]: trait.Demangle.html#tymethod.demangle
 #[derive(Clone, Copy, Debug)]
 pub struct DemangleOptions {
     return_type: bool,
@@ -361,15 +359,13 @@ fn try_demangle_objcpp(ident: &str, opts: DemangleOptions) -> Option<String> {
 
 /// An extension trait on `Name` for demangling names.
 ///
-/// See the [module level documentation] for a list of supported languages.
-///
-/// [module level documentation]: index.html
+/// See the [module level documentation](crate) for a list of supported languages.
 pub trait Demangle {
     /// Infers the language of a mangled name.
     ///
     /// In case the symbol is not mangled or its language is unknown, the return value will be
     /// `Language::Unknown`. If the language of the symbol was specified explicitly, this is
-    /// returned instead. For a list of supported languages, see the [module level documentation].
+    /// returned instead. For a list of supported languages, see the [module level documentation](crate).
     ///
     /// # Examples
     ///
@@ -380,8 +376,6 @@ pub trait Demangle {
     /// assert_eq!(Name::from("_ZN3foo3barEv").detect_language(), Language::Cpp);
     /// assert_eq!(Name::from("unknown").detect_language(), Language::Unknown);
     /// ```
-    ///
-    /// [module level documentation]: index.html
     fn detect_language(&self) -> Language;
 
     /// Demangles the name with the given options.
@@ -432,8 +426,6 @@ pub trait Demangle {
     /// );
     /// # }
     /// ```
-    ///
-    /// [`demangle`]: trait.Demangle.html#tymethod.demangle
     fn try_demangle(&self, opts: DemangleOptions) -> Cow<'_, str>;
 }
 
@@ -503,8 +495,6 @@ impl Demangle for Name<'_> {
 /// assert_eq!(symbolic_demangle::demangle("_ZN3foo3barEv"), "foo::bar()");
 /// # }
 /// ```
-///
-/// [`Demangle::try_demangle`]: trait.Demangle.html#tymethod.try_demangle
 pub fn demangle(ident: &str) -> Cow<'_, str> {
     match Name::from(ident).demangle(DemangleOptions::complete()) {
         Some(demangled) => Cow::Owned(demangled),

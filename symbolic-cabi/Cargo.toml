@@ -3,7 +3,6 @@ name = "symbolic-cabi"
 version.workspace = true
 license.workspace = true
 authors.workspace = true
-homepage.workspace = true
 repository.workspace = true
 description = """
 C interface wrapper for symbolic, a library to symbolicate and process stack
@@ -24,3 +23,6 @@ symbolic = { version = "14.0.0-alpha.5", path = "../symbolic", features = [
     "symcache",
 ] }
 tempfile = { workspace = true }
+
+[lints]
+workspace = true

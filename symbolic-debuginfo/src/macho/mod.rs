@@ -26,7 +26,7 @@ pub use compact::*;
 /// Prefix for hidden symbols from Apple BCSymbolMap builds.
 const SWIFT_HIDDEN_PREFIX: &str = "__hidden#";
 
-/// An error when dealing with [`MachObject`](struct.MachObject.html).
+/// An error when dealing with [`MachObject`].
 #[derive(Debug, Error)]
 #[error("invalid MachO file")]
 pub struct MachError {
@@ -316,7 +316,7 @@ impl<'d> MachObject<'d> {
     ///
     /// Constructing this session will also work if the object does not contain debugging
     /// information, in which case the session will be a no-op. This can be checked via
-    /// [`has_debug_info`](struct.MachObject.html#method.has_debug_info).
+    /// [`has_debug_info`](Self::has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
         let symbols = self.symbol_map();
         let mut session = DwarfDebugSession::parse(
@@ -566,7 +566,7 @@ fn map_section_name(name: &str) -> &str {
 }
 /// An iterator over symbols in the MachO file.
 ///
-/// Returned by [`MachObject::symbols`](struct.MachObject.html#method.symbols).
+/// Returned by [`MachObject::symbols`].
 pub struct MachOSymbolIterator<'data> {
     symbols: mach::symbols::SymbolIterator<'data>,
     sections: SmallVec<[usize; 2]>,
@@ -621,7 +621,7 @@ impl<'data> Iterator for MachOSymbolIterator<'data> {
     }
 }
 
-/// An iterator over objects in a [`FatMachO`](struct.FatMachO.html).
+/// An iterator over objects in a [`FatMachO`].
 ///
 /// Objects are parsed just-in-time while iterating, which may result in errors. The iterator is
 /// still valid afterwards, however, and can be used to resolve the next object.
@@ -739,7 +739,7 @@ enum MachObjectIteratorInner<'d, 'a> {
     Archive(FatMachObjectIterator<'d, 'a>),
 }
 
-/// An iterator over objects in a [`MachArchive`](struct.MachArchive.html).
+/// An iterator over objects in a [`MachArchive`].
 pub struct MachObjectIterator<'d, 'a>(MachObjectIteratorInner<'d, 'a>);
 
 impl<'d> Iterator for MachObjectIterator<'d, '_> {
@@ -778,9 +778,6 @@ enum MachArchiveInner<'d> {
 ///
 /// To abstract over the differences, `MachArchive` simulates the archive interface also for single
 /// Mach objects. This allows uniform access to both file types.
-///
-/// [`MachObject`]: struct.MachObject.html
-/// [`FatMachO`]: struct.FatMachO.html
 #[derive(Debug)]
 pub struct MachArchive<'d>(MachArchiveInner<'d>);
 

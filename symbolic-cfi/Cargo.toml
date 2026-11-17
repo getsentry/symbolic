@@ -4,7 +4,6 @@ version.workspace = true
 license.workspace = true
 authors.workspace = true
 documentation = "https://docs.rs/symbolic-cfi"
-homepage.workspace = true
 repository.workspace = true
 description = """
 A library to process call frame information
@@ -21,3 +20,6 @@ thiserror = { workspace = true }
 insta = { workspace = true }
 similar-asserts = { workspace = true }
 symbolic-testutils = { path = "../symbolic-testutils" }
+
+[lints]
+workspace = true

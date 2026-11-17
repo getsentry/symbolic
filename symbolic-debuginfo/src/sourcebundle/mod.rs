@@ -20,19 +20,12 @@
 //! ```
 //!
 //! `SourceBundle` implements the [`ObjectLike`] trait. When created from another object, it carries
-//! over its meta data, such as the [`debug_id`] or [`code_id`]. However, source bundles never store
-//! symbols or debug information. To obtain sources or iterate files stored in this source bundle,
-//! use [`SourceBundle::debug_session`].
+//! over its meta data, such as the [`debug_id`](SourceBundle::debug_id) or [`code_id`](SourceBundle::code_id).
+//! However, source bundles never store symbols or debug information. To obtain sources or iterate
+//! files stored in this source bundle, use [`SourceBundle::debug_session`].
 //!
 //! Source bundles can be created manually or by converting any `ObjectLike` using
 //! [`SourceBundleWriter`].
-//!
-//! [`ObjectLike`]: ../trait.ObjectLike.html
-//! [`SourceBundle`]: struct.SourceBundle.html
-//! [`debug_id`]: struct.SourceBundle.html#method.debug_id
-//! [`code_id`]: struct.SourceBundle.html#method.code_id
-//! [`SourceBundle::debug_session`]: struct.SourceBundle.html#method.debug_session
-//! [`SourceBundleWriter`]: struct.SourceBundleWriter.html
 //!
 //! ## Artifact Bundles
 //!
@@ -140,7 +133,7 @@ impl fmt::Display for SourceBundleErrorKind {
     }
 }
 
-/// An error returned when handling [`SourceBundle`](struct.SourceBundle.html).
+/// An error returned when handling [`SourceBundle`].
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct SourceBundleError {
@@ -185,7 +178,7 @@ where
     string.truncate(cutoff);
 }
 
-/// The type of a [`SourceFileInfo`](struct.SourceFileInfo.html).
+/// The type of a [`SourceFileInfo`].
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum SourceFileType {
@@ -220,7 +213,7 @@ impl fmt::Display for SourceFileType {
     }
 }
 
-/// Meta data information of a file in a [`SourceBundle`](struct.SourceBundle.html).
+/// Meta data information of a file in a [`SourceBundle`].
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SourceFileInfo {
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
@@ -509,7 +502,7 @@ impl fmt::Debug for SourceFileDescriptor<'_> {
     }
 }
 
-/// Version number of a [`SourceBundle`](struct.SourceBundle.html).
+/// Version number of a [`SourceBundle`].
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct SourceBundleVersion(pub u32);
 
@@ -569,8 +562,6 @@ impl Default for SourceBundleHeader {
 }
 
 /// Manifest of a [`SourceBundle`] containing information on its contents.
-///
-/// [`SourceBundle`]: struct.SourceBundle.html
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 struct SourceBundleManifest {
     /// Descriptors for all files in this bundle.
@@ -629,10 +620,7 @@ impl<'data> SourceBundleIndex<'data> {
 /// A bundle of source code files.
 ///
 /// To create a source bundle, see [`SourceBundleWriter`]. For more information, see the [module
-/// level documentation].
-///
-/// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
-/// [module level documentation]: index.html
+/// level documentation](index.html).
 pub struct SourceBundle<'data> {
     data: &'data [u8],
     archive: zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>,
@@ -704,9 +692,6 @@ impl<'data> SourceBundle<'data> {
     ///
     /// This is only set if the source bundle was created from an [`ObjectLike`]. It can also be set
     /// in the [`SourceBundleWriter`] by setting the `"code_id"` attribute.
-    ///
-    /// [`ObjectLike`]: ../trait.ObjectLike.html
-    /// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
     pub fn code_id(&self) -> Option<CodeId> {
         self.index
             .manifest
@@ -719,9 +704,6 @@ impl<'data> SourceBundle<'data> {
     ///
     /// This is only set if the source bundle was created from an [`ObjectLike`]. It can also be set
     /// in the [`SourceBundleWriter`] by setting the `"debug_id"` attribute.
-    ///
-    /// [`ObjectLike`]: ../trait.ObjectLike.html
-    /// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
     pub fn debug_id(&self) -> DebugId {
         self.index
             .manifest
@@ -735,9 +717,6 @@ impl<'data> SourceBundle<'data> {
     ///
     /// This is only set if the source bundle was created from an [`ObjectLike`]. It can also be set
     /// in the [`SourceBundleWriter`] by setting the `"object_name"` attribute.
-    ///
-    /// [`ObjectLike`]: ../trait.ObjectLike.html
-    /// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
     pub fn name(&self) -> Option<&str> {
         self.index
             .manifest
@@ -750,9 +729,6 @@ impl<'data> SourceBundle<'data> {
     ///
     /// This is only set if the source bundle was created from an [`ObjectLike`]. It can also be set
     /// in the [`SourceBundleWriter`] by setting the `"arch"` attribute.
-    ///
-    /// [`ObjectLike`]: ../trait.ObjectLike.html
-    /// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
     pub fn arch(&self) -> Arch {
         self.index
             .manifest
@@ -1171,13 +1147,13 @@ impl Display for SkippedFileInfo<'_> {
     }
 }
 
-/// Writer to create [`SourceBundles`].
+/// Writer to create [`SourceBundle`]s.
 ///
-/// Writers can either [create a new file] or be created from an [existing file]. Then, use
-/// [`add_file`] to add files and finally call [`finish`] to flush the archive to
+/// Writers can either [create a new file](Self::create) or be created from an [existing file](Self::start). Then, use
+/// [`add_file`](Self::add_file) to add files and finally call [`finish`](Self::finish) to flush the archive to
 /// the underlying writer.
 ///
-/// Note that dropping the writer without calling [`finish`] will result in an incomplete bundle.
+/// Note that dropping the writer without calling [`finish`](Self::finish) will result in an incomplete bundle.
 ///
 /// ```no_run
 /// # use std::fs::File;
@@ -1193,12 +1169,6 @@ impl Display for SkippedFileInfo<'_> {
 /// bundle.finish()?;
 /// # Ok(()) }
 /// ```
-///
-/// [`SourceBundles`]: struct.SourceBundle.html
-/// [create a new file]: struct.SourceBundleWriter.html#method.create
-/// [existing file]: struct.SourceBundleWriter.html#method.new
-/// [`add_file`]: struct.SourceBundleWriter.html#method.add_file
-/// [`finish`]: struct.SourceBundleWriter.html#method.finish
 pub struct SourceBundleWriter<W>
 where
     W: Seek + Write,
@@ -1251,12 +1221,10 @@ where
 
     /// Sets a meta data attribute of the bundle.
     ///
-    /// Attributes are flushed to the bundle when it is [finished]. Thus, they can be retrieved or
+    /// Attributes are flushed to the bundle when it is [finished](Self::finish). Thus, they can be retrieved or
     /// changed at any time before flushing the writer.
     ///
     /// If the attribute was set before, the prior value is returned.
-    ///
-    /// [finished]: struct.SourceBundleWriter.html#method.remove_attribute
     pub fn set_attribute<K, V>(&mut self, key: K, value: V) -> Option<String>
     where
         K: Into<String>,
