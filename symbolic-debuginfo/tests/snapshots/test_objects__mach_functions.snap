@@ -16,7 +16,19 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     this (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Structure: MinidumpFileWriter (24 bytes)
+            > Member: file_ (offset 0 bytes)
+              > Primitive: int (SignedInt, 4 bytes)
+            > Member: close_file_when_destroyed_ (offset 4 bytes)
+              > Primitive: bool (Boolean, 1 byte)
+            > Member: position_ (offset 8 bytes)
+              > TypeDef: MDRVA
+                > TypeDef: uint32_t
+                  > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            > Member: size_ (offset 16 bytes)
+              > TypeDef: size_t
+                > TypeDef: __darwin_size_t
+                  > Primitive: long unsigned int (UnsignedInt, 8 bytes)
       0xd40..0xd5a: register rdi
 
   > 0xd40: _ZN15google_breakpad18MinidumpFileWriterC2Ev (0x19)
@@ -64,7 +76,19 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     this (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Structure: MinidumpFileWriter (24 bytes)
+            > Member: file_ (offset 0 bytes)
+              > Primitive: int (SignedInt, 4 bytes)
+            > Member: close_file_when_destroyed_ (offset 4 bytes)
+              > Primitive: bool (Boolean, 1 byte)
+            > Member: position_ (offset 8 bytes)
+              > TypeDef: MDRVA
+                > TypeDef: uint32_t
+                  > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            > Member: size_ (offset 16 bytes)
+              > TypeDef: size_t
+                > TypeDef: __darwin_size_t
+                  > Primitive: long unsigned int (UnsignedInt, 8 bytes)
       0xde0..0xde4: register rdi
       0xde4..0xe0b: register rbx
       0xe0c..0xe14: register rbx
@@ -98,7 +122,19 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     this (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Structure: MinidumpFileWriter (24 bytes)
+            > Member: file_ (offset 0 bytes)
+              > Primitive: int (SignedInt, 4 bytes)
+            > Member: close_file_when_destroyed_ (offset 4 bytes)
+              > Primitive: bool (Boolean, 1 byte)
+            > Member: position_ (offset 8 bytes)
+              > TypeDef: MDRVA
+                > TypeDef: uint32_t
+                  > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            > Member: size_ (offset 16 bytes)
+              > TypeDef: size_t
+                > TypeDef: __darwin_size_t
+                  > Primitive: long unsigned int (UnsignedInt, 8 bytes)
       0xe20..0xe27: register rdi
       0xe27..0xe49: register rbx
       0xe4a..0xe69: register rbx
@@ -120,7 +156,19 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     this (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Structure: MinidumpFileWriter (24 bytes)
+            > Member: file_ (offset 0 bytes)
+              > Primitive: int (SignedInt, 4 bytes)
+            > Member: close_file_when_destroyed_ (offset 4 bytes)
+              > Primitive: bool (Boolean, 1 byte)
+            > Member: position_ (offset 8 bytes)
+              > TypeDef: MDRVA
+                > TypeDef: uint32_t
+                  > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            > Member: size_ (offset 16 bytes)
+              > TypeDef: size_t
+                > TypeDef: __darwin_size_t
+                  > Primitive: long unsigned int (UnsignedInt, 8 bytes)
       0xe70..0xe85: register rdi
 
 > 0xea0: _ZN15google_breakpad18MinidumpFileWriter20CopyStringToMDStringEPKwjPNS_10TypedMDRVAI8MDStringEE (0x147)
@@ -145,7 +193,19 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     this (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Structure: MinidumpFileWriter (24 bytes)
+            > Member: file_ (offset 0 bytes)
+              > Primitive: int (SignedInt, 4 bytes)
+            > Member: close_file_when_destroyed_ (offset 4 bytes)
+              > Primitive: bool (Boolean, 1 byte)
+            > Member: position_ (offset 8 bytes)
+              > TypeDef: MDRVA
+                > TypeDef: uint32_t
+                  > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            > Member: size_ (offset 16 bytes)
+              > TypeDef: size_t
+                > TypeDef: __darwin_size_t
+                  > Primitive: long unsigned int (UnsignedInt, 8 bytes)
       0xea0..0xed2: register rdi
     str (parameter)
       type:
@@ -158,7 +218,16 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     mdstring (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Structure: TypedMDRVA<MDString> (40 bytes)
+            > Member: data_ (offset 24 bytes)
+              > Structure: <anonymous> (8 bytes)
+                > Member: length (offset 0 bytes)
+                  > TypeDef: uint32_t
+                    > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                > Member: buffer (offset 4 bytes)
+                  > Unknown
+            > Member: allocation_state_ (offset 32 bytes)
+              > Unknown
       0xea0..0xeb1: register rcx
       0xeb1..0xf41: register r12
       0xfa9..0xfe7: register r12
@@ -223,7 +292,19 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     this (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Structure: MinidumpFileWriter (24 bytes)
+            > Member: file_ (offset 0 bytes)
+              > Primitive: int (SignedInt, 4 bytes)
+            > Member: close_file_when_destroyed_ (offset 4 bytes)
+              > Primitive: bool (Boolean, 1 byte)
+            > Member: position_ (offset 8 bytes)
+              > TypeDef: MDRVA
+                > TypeDef: uint32_t
+                  > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            > Member: size_ (offset 16 bytes)
+              > TypeDef: size_t
+                > TypeDef: __darwin_size_t
+                  > Primitive: long unsigned int (UnsignedInt, 8 bytes)
       0xff0..0x1023: register rdi
     str (parameter)
       type:
@@ -235,7 +316,16 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     mdstring (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Structure: TypedMDRVA<MDString> (40 bytes)
+            > Member: data_ (offset 24 bytes)
+              > Structure: <anonymous> (8 bytes)
+                > Member: length (offset 0 bytes)
+                  > TypeDef: uint32_t
+                    > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                > Member: buffer (offset 4 bytes)
+                  > Unknown
+            > Member: allocation_state_ (offset 32 bytes)
+              > Unknown
       0xff0..0x1001: register rcx
       0x1001..0x107b: register r14
       0x10f9..0x1137: register r14
@@ -286,7 +376,19 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     this (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Structure: MinidumpFileWriter (24 bytes)
+            > Member: file_ (offset 0 bytes)
+              > Primitive: int (SignedInt, 4 bytes)
+            > Member: close_file_when_destroyed_ (offset 4 bytes)
+              > Primitive: bool (Boolean, 1 byte)
+            > Member: position_ (offset 8 bytes)
+              > TypeDef: MDRVA
+                > TypeDef: uint32_t
+                  > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            > Member: size_ (offset 16 bytes)
+              > TypeDef: size_t
+                > TypeDef: __darwin_size_t
+                  > Primitive: long unsigned int (UnsignedInt, 8 bytes)
       0x1140..0x1145: register rdi
     str (parameter)
       type:

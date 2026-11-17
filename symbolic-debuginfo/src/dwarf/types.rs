@@ -21,7 +21,7 @@ pub fn parse_type<'d>(
             parse_pointer_type(unit, entry).map(Type::Pointer)
         }
         constants::DW_TAG_typedef => parse_typedef(unit, entry).map(Type::TypeDef),
-        constants::DW_TAG_structure_type => {
+        constants::DW_TAG_structure_type | constants::DW_TAG_class_type => {
             parse_structure_type(unit, entry)?.map(Type::StructureType)
         }
         _ => None,
@@ -146,6 +146,9 @@ fn parse_structure_type<'d>(
     while let Some(child) = children.next()? {
         let member = child.entry();
         if member.tag != constants::DW_TAG_member {
+            continue;
+        }
+        if member.attr_value(constants::DW_AT_declaration) == Some(AttributeValue::Flag(true)) {
             continue;
         }
 
