@@ -245,10 +245,10 @@ fn test_lookup_variables_register_offset() -> Result<(), Error> {
     let symcache = SymCache::parse(&data)?;
 
     // `through_pointer(Point *out, int value)`, after `value` was stored to `out->y`.
-    let source_location = symcache.lookup(0x12cc).last().unwrap();
+    let source_location = symcache.lookup(0x12dc).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
-    out (parameter, <unknown>*): 0x12c0..0x12d4 register rdi
-    value (parameter, int): 0x12cb..0x12d4 memory at rdi +4
+    out (parameter, <unknown>*): 0x12d0..0x12e4 register rdi
+    value (parameter, int): 0x12db..0x12e4 memory at rdi +4
     ");
 
     Ok(())
