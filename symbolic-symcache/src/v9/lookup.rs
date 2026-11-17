@@ -7,8 +7,8 @@ use watto::StringTable;
 
 use crate::v9::{SymCache, convert, raw};
 use crate::{
-    File, Function, PointerType, PrimitiveType, Size, StructureMember, StructureType, Type,
-    TypeDefType, TypeId, VariableKind, VariableLocation, VariableLocationInfo,
+    File, Function, PointerType, PrimitiveType, StructureMember, StructureType, Type, TypeDefType,
+    TypeId, VariableKind, VariableLocation, VariableLocationInfo,
 };
 
 impl<'data> SymCache<'data> {
@@ -77,11 +77,11 @@ impl<'data> SymCache<'data> {
         Some(match raw_ty.as_enum()? {
             raw::ty::Enum::primitive(primitive) => Type::Primitive(PrimitiveType {
                 name: self.get_string(primitive.name_offset),
-                size: Size::Bytes(primitive.size.into()),
+                size: primitive.size.into_di(),
                 encoding: convert::u8_to_primitive_type_encoding(primitive.encoding),
             }),
             raw::ty::Enum::pointer(pointer) => Type::Pointer(PointerType {
-                size: Size::Bytes(pointer.size.into()),
+                size: pointer.size.into_di(),
                 pointee: (pointer.pointee_idx != raw::Type::VOID)
                     .then_some(TypeId(pointer.pointee_idx)),
             }),
@@ -96,8 +96,7 @@ impl<'data> SymCache<'data> {
 
                 Type::StructureType(StructureType {
                     name: self.get_string(structure.name_offset),
-                    size: (structure.size != u32::MAX)
-                        .then_some(Size::Bytes(structure.size.into())),
+                    size: structure.size.into_di(),
                     members: StructureMembers {
                         string_bytes: self.string_bytes,
                         members: members.iter(),
@@ -148,7 +147,7 @@ impl<'data> Iterator for StructureMembers<'data> {
         Some(StructureMember {
             name: StringTable::read(self.string_bytes, member.name_offset as usize).ok(),
             ty: TypeId(member.type_idx),
-            offset: Some(convert::raw_to_size(member.offset)),
+            offset: member.offset.into_di(),
         })
     }
 }

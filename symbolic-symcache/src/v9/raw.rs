@@ -265,7 +265,7 @@ pub struct PrimitiveType {
     /// The type name (reference to a [`String`]).
     pub name_offset: u32,
     /// The size of the type in memory.
-    pub size: u32,
+    pub size: Size,
     /// The encoding of the type.
     pub encoding: u8,
     /// Padding.
@@ -282,7 +282,7 @@ pub struct PointerType {
     /// indicates that the pointer has no referenced type (e.g. `void*`).
     pub pointee_idx: u32,
     /// The size/width of the pointer.
-    pub size: u32,
+    pub size: Size,
     /// Padding.
     pub _reserved: [u8; 8],
 }
@@ -309,7 +309,7 @@ pub struct StructureType {
     /// The optional structure name (reference to a [`String`]).
     pub name_offset: u32,
     /// The size in bytes, or [`u32::MAX`] if unknown.
-    pub size: u32,
+    pub size: SizeOpt,
     /// The first member (reference to a [`StructureMember`]).
     pub member_idx: u32,
     /// The number of members in the structure.
@@ -327,7 +327,7 @@ pub struct StructureMember {
     /// The offset from the beginning of the structure, packed into the low 31 bits.
     ///
     /// The top bit is set for bit offsets and clear for byte offsets.
-    pub offset: u32,
+    pub offset: SizeOpt,
 }
 
 pub mod ty {
@@ -401,6 +401,22 @@ impl std::hash::Hash for Type {
     }
 }
 
+/// A [`symbolic_debuginfo::Size`] packed into a `u32`.
+///
+/// The packed representation uses:
+///  - The top bit is used to indicate [`symbolic_debuginfo::Size::Bits`].
+///  - `u32::MAX` to indicate missing to represent `Option<Size>`.
+///
+/// See: [`convert`](super::convert) for the conversions.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct Size(pub u32);
+
+/// An optional [`symbolic_debuginfo::Size`] packed into a `u32`.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct SizeOpt(pub u32);
+
 unsafe impl Pod for Header {}
 unsafe impl Pod for VariableHeader {}
 unsafe impl Pod for Function {}
@@ -419,6 +435,8 @@ unsafe impl Pod for PointerType {}
 unsafe impl Pod for TypeDefType {}
 unsafe impl Pod for StructureType {}
 unsafe impl Pod for StructureMember {}
+unsafe impl Pod for Size {}
+unsafe impl Pod for SizeOpt {}
 
 #[cfg(test)]
 mod tests {
