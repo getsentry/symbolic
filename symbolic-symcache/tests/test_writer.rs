@@ -371,8 +371,8 @@ fn test_variable_cache_size() -> Result<(), Error> {
 
     insta::assert_snapshot!(s, @"
     no variables  : 219.95 KiB
-    with variables: 462.55 KiB
-    variables     : 242.60 KiB (52.45%)
+    with variables: 497.98 KiB
+    variables     : 278.03 KiB (55.83%)
     ");
 
     Ok(())

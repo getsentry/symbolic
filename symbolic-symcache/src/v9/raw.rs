@@ -11,7 +11,7 @@ use symbolic_common::DebugId;
 /// The current [`Header::variable_header`] version.
 ///
 /// On a version mismatch, the sections referenced in the [`VariableHeader`] must not be parsed.
-pub const VARIABLE_HEADER_VERSION: u16 = 4;
+pub const VARIABLE_HEADER_VERSION: u16 = 5;
 
 /// This [`FunctionVariables`] is a sentinel for functions without variables.
 pub const NO_VARIABLES: FunctionVariables = FunctionVariables {
@@ -176,6 +176,14 @@ pub struct Variable {
     pub location_idx: u32,
     /// The amount of locations.
     pub num_locations: u32,
+    /// Start address of the function or inlined function instance owning the variable.
+    ///
+    /// The variables of all inlined instances are stored in the list of their outermost function,
+    /// so [`Self::depth`] alone cannot tell apart the variables of two instances inlined at the
+    /// same depth. A lookup must also check that its address lies within this range.
+    pub range_start: u32,
+    /// Size of the address range of the owning instance.
+    pub range_size: u32,
     /// The inlined depth of the owning function.
     ///
     /// If `0` the variable belongs to the outermost function. This is essentially a way to track
@@ -185,7 +193,8 @@ pub struct Variable {
     /// must first be computed by following [`SourceLocation::inlined_into_idx`], each step increases
     /// the depth by one.
     /// Knowing the depth and the outermost function, the list of variables can then be filtered down
-    /// to only variables at this depth.
+    /// to only variables at this depth whose [`Self::range_start`] and [`Self::range_size`] cover
+    /// the looked up address.
     pub depth: u8,
     /// The variable kind.
     ///
@@ -450,7 +459,7 @@ mod tests {
         assert_eq!(mem::size_of::<VariableHeader>(), 16);
         assert_eq!(mem::align_of::<VariableHeader>(), 4);
 
-        assert_eq!(mem::size_of::<Variable>(), 20);
+        assert_eq!(mem::size_of::<Variable>(), 28);
         assert_eq!(mem::align_of::<Variable>(), 4);
 
         assert_eq!(mem::size_of::<VariableLocationInfo>(), 20);

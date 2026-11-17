@@ -14,6 +14,7 @@
 - Parse `DW_OP_breg<n>` and `DW_OP_bregx` locations from DWARF into `VariableLocation::RegisterOffset`. ([#1151](https://github.com/getsentry/symbolic/pull/1151), [#1155](https://github.com/getsentry/symbolic/pull/1155))
 - Resolve DWARF `DW_OP_fbreg` variable locations against the function's `DW_AT_frame_base`. A register frame base gives `VariableLocation::RegisterOffset`, the CFA gives `VariableLocation::CfaOffset`, and locations with any other frame base are dropped. ([#1152](https://github.com/getsentry/symbolic/pull/1152))
 - Resolve the names and types of inlined variables by following `DW_AT_abstract_origin` and `DW_AT_specification` references in DWARF. ([#1173](https://github.com/getsentry/symbolic/pull/1173))
+- Store the address range of the owning function or inlined instance with each symcache variable, and only return variables whose range covers the looked up address. Previously a lookup returned the variables of every instance inlined at the same depth into the function. This bumps the symcache variable header version, so symcaches with variables are regenerated. ([#1174](https://github.com/getsentry/symbolic/pull/1174))
 
 **Fixes**
 

@@ -513,6 +513,15 @@ impl<'a> SymCacheConverter<'a> {
             return;
         }
 
+        // The range of this function or inlined instance identifies the owner of its variables.
+        // Addresses beyond `u32` cannot be represented, like for the locations below.
+        let (Ok(range_start), Ok(range_size)) = (
+            u32::try_from(function.address),
+            u32::try_from(function.size),
+        ) else {
+            return;
+        };
+
         for variable in &function.variables {
             let location_idx = self.variable_locations.len();
             for location in &variable.locations {
@@ -589,6 +598,8 @@ impl<'a> SymCacheConverter<'a> {
                     type_idx,
                     location_idx: location_idx as u32,
                     num_locations: num_locations as u32,
+                    range_start,
+                    range_size,
                     depth: fn_depth as u8,
                     kind: v9::convert::variable_kind_to_u8(variable.kind),
                     _reserved: [0; _],

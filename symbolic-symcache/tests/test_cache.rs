@@ -95,11 +95,11 @@ fn test_load_header_linux() -> Result<(), Error> {
         functions: 697,
         source_locations: 8431,
         ranges: 6975,
-        string_bytes: 53754,
-        variables: 548,
-        variable_locations: 1610,
-        types: 143,
-        structure_members: 186,
+        string_bytes: 58693,
+        variables: 4536,
+        variable_locations: 6604,
+        types: 313,
+        structure_members: 412,
     }
     "#);
     Ok(())
@@ -129,11 +129,11 @@ fn test_load_header_macos() -> Result<(), Error> {
         functions: 639,
         source_locations: 7382,
         ranges: 5965,
-        string_bytes: 46192,
-        variables: 477,
-        variable_locations: 1098,
-        types: 197,
-        structure_members: 246,
+        string_bytes: 51251,
+        variables: 1578,
+        variable_locations: 2316,
+        types: 368,
+        structure_members: 543,
     }
     "#);
     Ok(())
@@ -388,7 +388,7 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     this (parameter, <unknown>*): 0xea0..0xed2 register rdi
     str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
     mdstring (parameter, <unknown>*): 0xea0..0xeb1 register rcx
-    out (local, <unknown>): 0xea0..0xfe7 cfa 16
+    out (local, <unknown>): 0xea0..0xfe7 memory at rsp +16
     out_size (local, <unknown>): <unavailable>
     ");
 
@@ -397,7 +397,7 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     this (parameter, <unknown>*): 0xea0..0xed2 register rdi
     str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
     mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
-    out (local, <unknown>): 0xea0..0xfe7 cfa 16
+    out (local, <unknown>): 0xea0..0xfe7 memory at rsp +16
     out_size (local, <unknown>): <unavailable>
     ");
 
@@ -406,7 +406,7 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     this (parameter, <unknown>*): <unavailable>
     str (parameter, <unknown>*): 0xeb6..0xf23 register rbx
     mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
-    out (local, <unknown>): 0xea0..0xfe7 cfa 16
+    out (local, <unknown>): 0xea0..0xfe7 memory at rsp +16
     out_size (local, <unknown>): <unavailable>
     ");
 
