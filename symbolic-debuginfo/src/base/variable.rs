@@ -90,8 +90,10 @@ pub struct PrimitiveType<'data> {
     ///
     /// The encoding gives additional information how the value of the type is to be interpreted.
     pub encoding: Option<PrimitiveTypeEncoding>,
-    /// The size of the primitive type.
-    pub size: TypeSize,
+    /// The size of the primitive type's storage.
+    pub size: Size,
+    /// The meaningful value range within the primitive type's storage.
+    pub value_bits: Option<ValueBits>,
 }
 
 /// An encoding for a [`PrimitiveType`].
@@ -117,6 +119,15 @@ pub enum PrimitiveTypeEncoding {
     ComplexFloat,
 }
 
+/// The meaningful value range within a base type's storage.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ValueBits {
+    /// The actual size of the value in bits.
+    pub size: u64,
+    /// The bit offset of the value from the beginning of the storage.
+    pub offset: u64,
+}
+
 /// A pointer or reference type.
 #[derive(Debug, Clone)]
 pub struct PointerType {
@@ -125,7 +136,7 @@ pub struct PointerType {
     /// A value of `None` indicates that the pointer has no referenced type, e.g. for `void*`.
     pub pointee: Option<TypeRef>,
     /// The size of a pointer.
-    pub size: TypeSize,
+    pub size: Size,
 }
 
 /// A type that is defined in the terms of another type.
@@ -148,7 +159,7 @@ pub struct StructureType<'data> {
     /// For anonymous structures the name may be missing.
     pub name: Option<Cow<'data, str>>,
     /// The size of the structure.
-    pub size: Option<TypeSize>,
+    pub size: Option<Size>,
     /// All members of the structure in declaration order.
     pub members: Vec<StructureMember<'data>>,
 }
@@ -163,23 +174,31 @@ pub struct StructureMember<'data> {
     /// The type of the member.
     pub ty: TypeRef,
     /// The offset of this member from the beginning of the structure.
-    pub offset: MemberOffset,
+    ///
+    /// `None` if the offset could not be determined.
+    pub offset: Option<Size>,
+    /// The size of this member's storage.
+    ///
+    /// This is an optional override of type of this member.
+    pub size: Option<Size>,
 }
 
-/// The offset of a member from the beginning of a structure.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum MemberOffset {
-    /// The offset is given in bytes.
+/// A size represented in bits or bytes.
+#[derive(Debug, Copy, Clone)]
+pub enum Size {
+    /// The value is given in bytes.
     Bytes(u64),
-    /// The offset is given in bits.
+    /// The value is given in bits.
     Bits(u64),
 }
 
-/// The size of a type in memory.
-#[derive(Debug, Copy, Clone)]
-pub enum TypeSize {
-    /// The size is given in bytes.
-    Bytes(u64),
+impl fmt::Display for Size {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Size::Bytes(size) => write!(f, "{size} byte{}", if size == 1 { "" } else { "s" }),
+            Size::Bits(size) => write!(f, "{size} bit{}", if size == 1 { "" } else { "s" }),
+        }
+    }
 }
 
 /// A single variable available in a function scope.
@@ -262,4 +281,19 @@ pub enum VariableLocation {
         /// The signed offset from the register's contents.
         offset: i64,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_size_display() {
+        assert_eq!(Size::Bytes(0).to_string(), "0 bytes");
+        assert_eq!(Size::Bytes(1).to_string(), "1 byte");
+        assert_eq!(Size::Bytes(2).to_string(), "2 bytes");
+        assert_eq!(Size::Bits(0).to_string(), "0 bits");
+        assert_eq!(Size::Bits(1).to_string(), "1 bit");
+        assert_eq!(Size::Bits(2).to_string(), "2 bits");
+    }
 }

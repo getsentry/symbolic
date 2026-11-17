@@ -2,37 +2,37 @@
 source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug::new(&session, &functions)"
 ---
-> 0x13e5: main (0xf5)
-  0x13e5: variables.cpp:248 (/fixture)
-  0x13ee: variables.cpp:249 (/fixture)
-  0x13f3: variables.cpp:250 (/fixture)
-  0x1412: variables.cpp:251 (/fixture)
-  0x1417: variables.cpp:252 (/fixture)
-  0x1421: variables.cpp:254 (/fixture)
-  0x1430: variables.cpp:254 (/fixture)
-  0x143d: variables.cpp:254 (/fixture)
-  0x143f: variables.cpp:254 (/fixture)
-  0x144c: variables.cpp:254 (/fixture)
-  0x1451: variables.cpp:255 (/fixture)
-  0x145e: variables.cpp:255 (/fixture)
-  0x1461: variables.cpp:256 (/fixture)
-  0x1467: variables.cpp:256 (/fixture)
-  0x1471: variables.cpp:256 (/fixture)
-  0x1474: variables.cpp:258 (/fixture)
-  0x1488: variables.cpp:259 (/fixture)
-  0x148b: variables.cpp:259 (/fixture)
-  0x148e: variables.cpp:260 (/fixture)
-  0x14ba: variables.cpp:260 (/fixture)
-  0x14be: variables.cpp:260 (/fixture)
-  0x14c1: variables.cpp:261 (/fixture)
-  0x14ca: variables.cpp:262 (/fixture)
-  0x14cf: variables.cpp:263 (/fixture)
-  0x14d4: variables.cpp:264 (/fixture)
+> 0x1412: main (0xf5)
+  0x1412: variables.cpp:256 (/fixture)
+  0x141b: variables.cpp:257 (/fixture)
+  0x1420: variables.cpp:258 (/fixture)
+  0x143f: variables.cpp:259 (/fixture)
+  0x1444: variables.cpp:260 (/fixture)
+  0x144e: variables.cpp:262 (/fixture)
+  0x145d: variables.cpp:262 (/fixture)
+  0x146a: variables.cpp:262 (/fixture)
+  0x146c: variables.cpp:262 (/fixture)
+  0x1479: variables.cpp:262 (/fixture)
+  0x147e: variables.cpp:263 (/fixture)
+  0x148b: variables.cpp:263 (/fixture)
+  0x148e: variables.cpp:264 (/fixture)
+  0x1494: variables.cpp:264 (/fixture)
+  0x149e: variables.cpp:264 (/fixture)
+  0x14a1: variables.cpp:266 (/fixture)
+  0x14b5: variables.cpp:267 (/fixture)
+  0x14b8: variables.cpp:267 (/fixture)
+  0x14bb: variables.cpp:268 (/fixture)
+  0x14e7: variables.cpp:268 (/fixture)
+  0x14eb: variables.cpp:268 (/fixture)
+  0x14ee: variables.cpp:269 (/fixture)
+  0x14f7: variables.cpp:270 (/fixture)
+  0x14fc: variables.cpp:271 (/fixture)
+  0x1501: variables.cpp:272 (/fixture)
   variables:
     result (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x13e5..0x14da: cfa -36
+      0x1412..0x1507: cfa -36
     stored (local)
       type:
         > TypeDef: Point
@@ -41,12 +41,12 @@ expression: "FunctionsDebug::new(&session, &functions)"
               > Primitive: int (SignedInt, 4 bytes)
             > Member: y (offset 4 bytes)
               > Primitive: int (SignedInt, 4 bytes)
-      0x13e5..0x14da: cfa -44
+      0x1412..0x1507: cfa -44
 
-> 0x13ca: _Z13class_membersv (0x1b)
-  0x13ca: variables.cpp:242 (/fixture)
-  0x13ce: variables.cpp:243 (/fixture)
-  0x13e2: variables.cpp:245 (/fixture)
+> 0x13f7: _Z13class_membersv (0x1b)
+  0x13f7: variables.cpp:250 (/fixture)
+  0x13fb: variables.cpp:251 (/fixture)
+  0x140f: variables.cpp:253 (/fixture)
   variables:
     instance (local)
       type:
@@ -55,17 +55,17 @@ expression: "FunctionsDebug::new(&session, &functions)"
             > Primitive: int (SignedInt, 4 bytes)
           > Member: weight (offset 8 bytes)
             > Primitive: double (Float, 8 bytes)
-      0x13ca..0x13e5: cfa -32
+      0x13f7..0x1412: cfa -32
 
-> 0x1395: _Z15through_pointerP5Pointi (0x35)
-  0x1395: variables.cpp:228 (/fixture)
-  0x13a0: variables.cpp:229 (/fixture)
-  0x13aa: variables.cpp:230 (/fixture)
-  0x13b0: variables.cpp:230 (/fixture)
-  0x13b5: variables.cpp:230 (/fixture)
-  0x13bb: variables.cpp:231 (/fixture)
-  0x13c1: variables.cpp:231 (/fixture)
-  0x13c7: variables.cpp:232 (/fixture)
+> 0x13c2: _Z15through_pointerP5Pointi (0x35)
+  0x13c2: variables.cpp:236 (/fixture)
+  0x13cd: variables.cpp:237 (/fixture)
+  0x13d7: variables.cpp:238 (/fixture)
+  0x13dd: variables.cpp:238 (/fixture)
+  0x13e2: variables.cpp:238 (/fixture)
+  0x13e8: variables.cpp:239 (/fixture)
+  0x13ee: variables.cpp:239 (/fixture)
+  0x13f4: variables.cpp:240 (/fixture)
   variables:
     out (parameter)
       type:
@@ -76,182 +76,183 @@ expression: "FunctionsDebug::new(&session, &functions)"
                 > Primitive: int (SignedInt, 4 bytes)
               > Member: y (offset 4 bytes)
                 > Primitive: int (SignedInt, 4 bytes)
-      0x1395..0x13ca: cfa -24
+      0x13c2..0x13f7: cfa -24
     value (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1395..0x13ca: cfa -28
+      0x13c2..0x13f7: cfa -28
 
-> 0x130f: _Z3vlai (0x86)
-  0x130f: variables.cpp:213 (/fixture)
-  0x131a: variables.cpp:218 (/fixture)
-  0x1320: variables.cpp:214 (/fixture)
-  0x132a: variables.cpp:214 (/fixture)
-  0x136b: variables.cpp:215 (/fixture)
-  0x1374: variables.cpp:216 (/fixture)
-  0x137a: variables.cpp:216 (/fixture)
-  0x1380: variables.cpp:217 (/fixture)
-  0x1386: variables.cpp:217 (/fixture)
-  0x1393: variables.cpp:218 (/fixture)
+> 0x133c: _Z3vlai (0x86)
+  0x133c: variables.cpp:221 (/fixture)
+  0x1347: variables.cpp:226 (/fixture)
+  0x134d: variables.cpp:222 (/fixture)
+  0x1357: variables.cpp:222 (/fixture)
+  0x1398: variables.cpp:223 (/fixture)
+  0x13a1: variables.cpp:224 (/fixture)
+  0x13a7: variables.cpp:224 (/fixture)
+  0x13ad: variables.cpp:225 (/fixture)
+  0x13b3: variables.cpp:225 (/fixture)
+  0x13c0: variables.cpp:226 (/fixture)
   variables:
     n (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x130f..0x1395: cfa -36
+      0x133c..0x13c2: cfa -36
 
-> 0x12fa: _Z10stack_homei (0x15)
-  0x12fa: variables.cpp:201 (/fixture)
-  0x1301: variables.cpp:202 (/fixture)
-  0x1307: variables.cpp:203 (/fixture)
-  0x130a: variables.cpp:203 (/fixture)
-  0x130d: variables.cpp:204 (/fixture)
+> 0x1327: _Z10stack_homei (0x15)
+  0x1327: variables.cpp:209 (/fixture)
+  0x132e: variables.cpp:210 (/fixture)
+  0x1334: variables.cpp:211 (/fixture)
+  0x1337: variables.cpp:211 (/fixture)
+  0x133a: variables.cpp:212 (/fixture)
   variables:
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x12fa..0x130f: cfa -36
+      0x1327..0x133c: cfa -36
     slot (local)
       type:
         > Unknown
-      0x12fa..0x130f: cfa -20
+      0x1327..0x133c: cfa -20
 
-> 0x12e2: _Z13optimized_outi (0x18)
-  0x12e2: variables.cpp:189 (/fixture)
-  0x12e9: variables.cpp:190 (/fixture)
-  0x12f0: variables.cpp:191 (/fixture)
-  0x12f8: variables.cpp:192 (/fixture)
+> 0x130f: _Z13optimized_outi (0x18)
+  0x130f: variables.cpp:197 (/fixture)
+  0x1316: variables.cpp:198 (/fixture)
+  0x131d: variables.cpp:199 (/fixture)
+  0x1325: variables.cpp:200 (/fixture)
   variables:
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x12e2..0x12fa: cfa -36
+      0x130f..0x1327: cfa -36
     gone (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x12e2..0x12fa: cfa -20
+      0x130f..0x1327: cfa -20
 
-> 0x12af: _Z13external_calli (0x33)
-  0x12af: variables.cpp:175 (/fixture)
-  0x12ba: variables.cpp:176 (/fixture)
-  0x12c8: variables.cpp:177 (/fixture)
-  0x12cb: variables.cpp:178 (/fixture)
-  0x12d3: variables.cpp:179 (/fixture)
-  0x12db: variables.cpp:179 (/fixture)
-  0x12e0: variables.cpp:180 (/fixture)
+> 0x12dc: _Z13external_calli (0x33)
+  0x12dc: variables.cpp:183 (/fixture)
+  0x12e7: variables.cpp:184 (/fixture)
+  0x12f5: variables.cpp:185 (/fixture)
+  0x12f8: variables.cpp:186 (/fixture)
+  0x1300: variables.cpp:187 (/fixture)
+  0x1308: variables.cpp:187 (/fixture)
+  0x130d: variables.cpp:188 (/fixture)
   variables:
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x12af..0x12e2: cfa -36
+      0x12dc..0x130f: cfa -36
     kept (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x12af..0x12e2: cfa -20
+      0x12dc..0x130f: cfa -20
     r (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x12af..0x12e2: cfa -24
+      0x12dc..0x130f: cfa -24
 
-> 0x127d: _Z11across_calli (0x32)
-  0x127d: variables.cpp:161 (/fixture)
-  0x1288: variables.cpp:162 (/fixture)
-  0x1290: variables.cpp:163 (/fixture)
-  0x1293: variables.cpp:164 (/fixture)
-  0x12a5: variables.cpp:165 (/fixture)
-  0x12ad: variables.cpp:166 (/fixture)
+> 0x12aa: _Z11across_calli (0x32)
+  0x12aa: variables.cpp:169 (/fixture)
+  0x12b5: variables.cpp:170 (/fixture)
+  0x12bd: variables.cpp:171 (/fixture)
+  0x12c0: variables.cpp:172 (/fixture)
+  0x12d2: variables.cpp:173 (/fixture)
+  0x12da: variables.cpp:174 (/fixture)
   variables:
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x127d..0x12af: cfa -36
+      0x12aa..0x12dc: cfa -36
     doubled (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x127d..0x12af: cfa -20
+      0x12aa..0x12dc: cfa -20
     other (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x127d..0x12af: cfa -24
+      0x12aa..0x12dc: cfa -24
 
-> 0x123b: _Z15float_registersff (0x42)
-  0x123b: variables.cpp:146 (/fixture)
-  0x1249: variables.cpp:147 (/fixture)
-  0x1258: variables.cpp:148 (/fixture)
-  0x125d: variables.cpp:149 (/fixture)
-  0x126c: variables.cpp:150 (/fixture)
-  0x1271: variables.cpp:151 (/fixture)
-  0x127b: variables.cpp:152 (/fixture)
+> 0x1268: _Z15float_registersff (0x42)
+  0x1268: variables.cpp:154 (/fixture)
+  0x1276: variables.cpp:155 (/fixture)
+  0x1285: variables.cpp:156 (/fixture)
+  0x128a: variables.cpp:157 (/fixture)
+  0x1299: variables.cpp:158 (/fixture)
+  0x129e: variables.cpp:159 (/fixture)
+  0x12a8: variables.cpp:160 (/fixture)
   variables:
     a (parameter)
       type:
         > Primitive: float (Float, 4 bytes)
-      0x123b..0x127d: cfa -36
+      0x1268..0x12aa: cfa -36
     b (parameter)
       type:
         > Primitive: float (Float, 4 bytes)
-      0x123b..0x127d: cfa -40
+      0x1268..0x12aa: cfa -40
     sum (local)
       type:
         > Primitive: float (Float, 4 bytes)
-      0x123b..0x127d: cfa -20
+      0x1268..0x12aa: cfa -20
     scaled (local)
       type:
         > Primitive: float (Float, 4 bytes)
-      0x123b..0x127d: cfa -24
+      0x1268..0x12aa: cfa -24
 
-> 0x120e: _Z9registersii (0x2d)
-  0x120e: variables.cpp:133 (/fixture)
-  0x1218: variables.cpp:134 (/fixture)
-  0x1223: variables.cpp:135 (/fixture)
-  0x1226: variables.cpp:136 (/fixture)
-  0x1230: variables.cpp:137 (/fixture)
-  0x1233: variables.cpp:138 (/fixture)
-  0x1239: variables.cpp:139 (/fixture)
+> 0x123b: _Z9registersii (0x2d)
+  0x123b: variables.cpp:141 (/fixture)
+  0x1245: variables.cpp:142 (/fixture)
+  0x1250: variables.cpp:143 (/fixture)
+  0x1253: variables.cpp:144 (/fixture)
+  0x125d: variables.cpp:145 (/fixture)
+  0x1260: variables.cpp:146 (/fixture)
+  0x1266: variables.cpp:147 (/fixture)
   variables:
     a (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x120e..0x123b: cfa -36
+      0x123b..0x1268: cfa -36
     b (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x120e..0x123b: cfa -40
+      0x123b..0x1268: cfa -40
     sum (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x120e..0x123b: cfa -20
+      0x123b..0x1268: cfa -20
     product (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x120e..0x123b: cfa -24
+      0x123b..0x1268: cfa -24
 
-> 0x11ed: _Z8inliningi (0x21)
-  0x11ed: variables.cpp:119 (/fixture)
-  0x11fa: variables.cpp:120 (/fixture)
-  0x1208: variables.cpp:120 (/fixture)
-  0x120b: variables.cpp:121 (/fixture)
+> 0x121a: _Z8inliningi (0x21)
+  0x121a: variables.cpp:127 (/fixture)
+  0x1227: variables.cpp:128 (/fixture)
+  0x1235: variables.cpp:128 (/fixture)
+  0x1238: variables.cpp:129 (/fixture)
   variables:
     outer (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x11ed..0x120e: cfa -36
+      0x121a..0x123b: cfa -36
     result (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x11ed..0x120e: cfa -20
+      0x121a..0x123b: cfa -20
 
-  > 0x11fa: inlined (0xe)
-    0x11fa: variables.cpp:114 (/fixture)
-    0x1202: variables.cpp:115 (/fixture)
+  > 0x1227: inlined (0xe)
+    0x1227: variables.cpp:122 (/fixture)
+    0x122f: variables.cpp:123 (/fixture)
 
-> 0x11ae: _Z10aggregatesv (0x3f)
-  0x11ae: variables.cpp:100 (/fixture)
-  0x11b2: variables.cpp:101 (/fixture)
-  0x11c0: variables.cpp:102 (/fixture)
-  0x11d5: variables.cpp:103 (/fixture)
-  0x11dc: variables.cpp:104 (/fixture)
-  0x11e3: variables.cpp:105 (/fixture)
-  0x11ea: variables.cpp:106 (/fixture)
+> 0x11ae: _Z10aggregatesv (0x6c)
+  0x11ae: variables.cpp:107 (/fixture)
+  0x11b2: variables.cpp:108 (/fixture)
+  0x11c0: variables.cpp:109 (/fixture)
+  0x11d5: variables.cpp:110 (/fixture)
+  0x11dc: variables.cpp:111 (/fixture)
+  0x11e3: variables.cpp:112 (/fixture)
+  0x1210: variables.cpp:113 (/fixture)
+  0x1217: variables.cpp:114 (/fixture)
   variables:
     point (local)
       type:
@@ -261,23 +262,36 @@ expression: "FunctionsDebug::new(&session, &functions)"
               > Primitive: int (SignedInt, 4 bytes)
             > Member: y (offset 4 bytes)
               > Primitive: int (SignedInt, 4 bytes)
-      0x11ae..0x11ed: cfa -32
+      0x11ae..0x121a: cfa -32
     array (local)
       type:
         > Unknown
-      0x11ae..0x11ed: cfa -44
+      0x11ae..0x121a: cfa -44
     color (local)
       type:
         > Unknown
-      0x11ae..0x11ed: cfa -20
+      0x11ae..0x121a: cfa -20
     value (local)
       type:
         > Unknown
-      0x11ae..0x11ed: cfa -48
+      0x11ae..0x121a: cfa -48
+    bitfields (local)
+      type:
+        > TypeDef: BitFields
+          > Structure: <anonymous> (4 bytes)
+            > Member: j (offset 0 bits, size 5 bits)
+              > Primitive: int (SignedInt, 4 bytes)
+            > Member: k (offset 5 bits, size 6 bits)
+              > Primitive: int (SignedInt, 4 bytes)
+            > Member: m (offset 11 bits, size 5 bits)
+              > Primitive: int (SignedInt, 4 bytes)
+            > Member: n (offset 16 bits, size 8 bits)
+              > Primitive: int (SignedInt, 4 bytes)
+      0x11ae..0x121a: cfa -52
     constant (local)
       type:
         > Unknown
-      0x11ae..0x11ed: cfa -24
+      0x11ae..0x121a: cfa -24
 
 > 0x1193: _Z8pointersPiPS_PKcPvPFiiE (0x1b)
   0x1193: variables.cpp:78 (/fixture)
