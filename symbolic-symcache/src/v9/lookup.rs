@@ -78,6 +78,7 @@ impl<'data> SymCache<'data> {
             raw::ty::Enum::primitive(primitive) => Type::Primitive(PrimitiveType {
                 name: self.get_string(primitive.name_offset),
                 size: primitive.size.into_di().unwrap_or_default(),
+                value_bits: primitive.value_bits.into_di(),
                 encoding: convert::u8_to_primitive_type_encoding(primitive.encoding),
             }),
             raw::ty::Enum::pointer(pointer) => Type::Pointer(PointerType {
@@ -148,6 +149,7 @@ impl<'data> Iterator for StructureMembers<'data> {
             name: StringTable::read(self.string_bytes, member.name_offset as usize).ok(),
             ty: TypeId(member.type_idx),
             offset: member.offset.into_di(),
+            size: member.size.into_di(),
         })
     }
 }

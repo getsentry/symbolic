@@ -1,6 +1,7 @@
 use std::fmt;
 
 use symbolic_common::{Language, Name, NameMangling};
+use symbolic_debuginfo::ValueBits;
 
 use crate::SymCache;
 
@@ -127,6 +128,7 @@ pub enum Type<'data> {
 pub struct PrimitiveType<'data> {
     pub(crate) name: Option<&'data str>,
     pub(crate) size: Size,
+    pub(crate) value_bits: Option<ValueBits>,
     pub(crate) encoding: Option<PrimitiveTypeEncoding>,
 }
 
@@ -141,6 +143,11 @@ impl<'data> PrimitiveType<'data> {
     /// The size of this primitive type in memory.
     pub fn size(&self) -> Size {
         self.size
+    }
+
+    /// The meaningful value range within this primitive's storage.
+    pub fn value_bits(&self) -> Option<ValueBits> {
+        self.value_bits
     }
 
     /// The encoding of this primitive type.
@@ -228,6 +235,7 @@ pub struct StructureMember<'data> {
     pub(crate) name: Option<&'data str>,
     pub(crate) ty: TypeId,
     pub(crate) offset: Option<Size>,
+    pub(crate) size: Option<Size>,
 }
 
 impl<'data> StructureMember<'data> {
@@ -244,6 +252,13 @@ impl<'data> StructureMember<'data> {
     /// The offset from the beginning of the structure.
     pub fn offset(&self) -> Option<Size> {
         self.offset
+    }
+
+    /// The size of this member's storage.
+    ///
+    /// If specified, this overrides the default size for the member's type.
+    pub fn size(&self) -> Option<Size> {
+        self.size
     }
 }
 
