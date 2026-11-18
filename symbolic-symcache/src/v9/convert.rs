@@ -4,7 +4,7 @@ use symbolic_debuginfo::{self as di, PrimitiveTypeEncoding, VariableKind};
 
 use crate::v9::raw;
 
-impl raw::SizeOpt {
+impl raw::Size {
     #[inline(always)]
     pub fn from_di(size: Option<di::Size>) -> Self {
         match size {
@@ -21,23 +21,6 @@ impl raw::SizeOpt {
             v if v < 1 << 31 => Some(di::Size::Bytes(v.into())),
             v => Some(di::Size::Bits((v << 1 >> 1).into())),
         }
-    }
-}
-
-impl raw::Size {
-    #[inline(always)]
-    pub fn from_di(size: di::Size) -> Self {
-        // We use the same internal representation as [`raw::SizeOpt`] just with an API that is
-        // non-optional.
-        Self(raw::SizeOpt::from_di(Some(size)).0)
-    }
-
-    #[inline(always)]
-    pub fn into_di(self) -> di::Size {
-        // Use `0` as the fallback, though we have an implicit assumption that for a `raw::Size` the
-        // max bit pattern is never written, it can still happen when the size is too large and in
-        // general these kinds of overflows aren't handled in Symcaches.
-        raw::SizeOpt(self.0).into_di().unwrap_or(di::Size::Bytes(0))
     }
 }
 
@@ -125,8 +108,8 @@ mod tests {
     fn test_convert_size_di_to_raw() {
         const BIT_FLAG: u32 = 1 << 31;
 
-        let conv_bytes = |s| raw::Size::from_di(di::Size::Bytes(s)).0;
-        let conv_bits = |s| raw::Size::from_di(di::Size::Bits(s)).0;
+        let conv_bytes = |s| raw::Size::from_di(Some(di::Size::Bytes(s))).0;
+        let conv_bits = |s| raw::Size::from_di(Some(di::Size::Bits(s))).0;
 
         assert_eq!(conv_bytes(0), 0);
         assert_eq!(conv_bytes(42), 42);
@@ -140,28 +123,15 @@ mod tests {
             conv_bits(u64::from(BIT_FLAG) - 1),
             BIT_FLAG | (BIT_FLAG - 1)
         );
-    }
 
-    #[test]
-    fn test_convert_size_raw_to_di() {
-        const BIT_FLAG: u32 = 1 << 31;
-
-        let conv = |s| raw::Size(s).into_di();
-
-        assert_matches!(conv(0), di::Size::Bytes(0));
-        assert_matches!(conv(42), di::Size::Bytes(42));
-        assert_matches!(conv(BIT_FLAG - 1), di::Size::Bytes(0x7fff_ffff));
-
-        assert_matches!(conv(BIT_FLAG), di::Size::Bits(0));
-        assert_matches!(conv(BIT_FLAG | 42), di::Size::Bits(42));
-        assert_matches!(conv(u32::MAX), di::Size::Bytes(0));
+        assert_eq!(raw::Size::from_di(None).0, u32::MAX);
     }
 
     #[test]
     fn test_convert_size_raw_to_di_opt() {
         const BIT_FLAG: u32 = 1 << 31;
 
-        let conv = |s| raw::SizeOpt(s).into_di();
+        let conv = |s| raw::Size(s).into_di();
 
         assert_matches!(conv(0), Some(di::Size::Bytes(0)));
         assert_matches!(conv(42), Some(di::Size::Bytes(42)));

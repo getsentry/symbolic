@@ -77,11 +77,11 @@ impl<'data> SymCache<'data> {
         Some(match raw_ty.as_enum()? {
             raw::ty::Enum::primitive(primitive) => Type::Primitive(PrimitiveType {
                 name: self.get_string(primitive.name_offset),
-                size: primitive.size.into_di(),
+                size: primitive.size.into_di().unwrap_or_default(),
                 encoding: convert::u8_to_primitive_type_encoding(primitive.encoding),
             }),
             raw::ty::Enum::pointer(pointer) => Type::Pointer(PointerType {
-                size: pointer.size.into_di(),
+                size: pointer.size.into_di().unwrap_or_default(),
                 pointee: (pointer.pointee_idx != raw::Type::VOID)
                     .then_some(TypeId(pointer.pointee_idx)),
             }),

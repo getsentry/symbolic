@@ -120,7 +120,7 @@ where
     fn ser_primitive(&mut self, ty: &di::PrimitiveType<'_>, st: &mut StringTable) -> FwdResult {
         Ok(v9::raw::PrimitiveType {
             name_offset: ty.name.as_ref().map_or(u32::MAX, |n| st.insert(n) as u32),
-            size: v9::raw::Size::from_di(ty.size),
+            size: v9::raw::Size::from_di(Some(ty.size)),
             encoding: v9::convert::primitive_type_encoding_to_u8(ty.encoding),
             _reserved: [0; _],
         }
@@ -133,7 +133,7 @@ where
                 Some(pointee) => self.try_lookup_type_idx(pointee)?,
                 None => v9::raw::Type::VOID,
             },
-            size: v9::raw::Size::from_di(ty.size),
+            size: v9::raw::Size::from_di(Some(ty.size)),
             _reserved: [0; _],
         }
         .into())
@@ -164,7 +164,7 @@ where
                 .name
                 .as_ref()
                 .map_or(u32::MAX, |name| st.insert(name) as u32),
-            size: v9::raw::SizeOpt::from_di(ty.size),
+            size: v9::raw::Size::from_di(ty.size),
             member_idx,
             num_members,
         }
@@ -187,7 +187,7 @@ where
             serialized.push(v9::raw::StructureMember {
                 name_offset,
                 type_idx,
-                offset: v9::raw::SizeOpt::from_di(member.offset),
+                offset: v9::raw::Size::from_di(member.offset),
             });
         }
 
