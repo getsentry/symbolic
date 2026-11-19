@@ -39,11 +39,6 @@ pub fn parse_type<'d>(
 /// Returns the qualifier and the reference to the modified type. Returns `None` if the entry is
 /// not a supported modifier, or if it has no resolvable `DW_AT_type`. A modifier without
 /// `DW_AT_type` qualifies `void`, which is not supported yet.
-///
-/// The referenced type can live in another unit, so this function does not resolve it.
-/// [`DwarfDebugSession::lookup_type`](super::DwarfDebugSession::lookup_type) calls this function
-/// for every entry it looks up: if it returns `Some`, the lookup continues with the modified
-/// type and adds the qualifier to the result. Otherwise, the entry is parsed with [`parse_type`].
 pub(super) fn parse_modifier(
     unit: UnitRef<'_, '_>,
     offset: UnitOffset,
