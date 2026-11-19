@@ -27,11 +27,23 @@ pub fn parse_type<'d>(
     })
 }
 
-/// Parses a type modifier entry (DWARF 5 §5.3), such as `DW_TAG_const_type`.
+/// Parses a type modifier entry (DWARF 5 §5.3).
 ///
-/// Returns the qualifiers the entry applies and the type it modifies, or `None` if the entry is
-/// not a type modifier or has no resolvable `DW_AT_type`. A modifier without `DW_AT_type`
-/// qualifies `void`, which is not supported yet.
+/// A modifier entry is not a type by itself. It applies a qualifier to the type that its
+/// `DW_AT_type` attribute references. The supported modifiers are:
+///
+/// - `DW_TAG_const_type`: [`Qualifiers::CONST`]
+/// - `DW_TAG_volatile_type`: [`Qualifiers::VOLATILE`]
+/// - `DW_TAG_restrict_type`: [`Qualifiers::RESTRICT`]
+///
+/// Returns the qualifier and the reference to the modified type. Returns `None` if the entry is
+/// not a supported modifier, or if it has no resolvable `DW_AT_type`. A modifier without
+/// `DW_AT_type` qualifies `void`, which is not supported yet.
+///
+/// The referenced type can live in another unit, so this function does not resolve it.
+/// [`DwarfDebugSession::lookup_type`](super::DwarfDebugSession::lookup_type) calls this function
+/// for every entry it looks up: if it returns `Some`, the lookup continues with the modified
+/// type and adds the qualifier to the result. Otherwise, the entry is parsed with [`parse_type`].
 pub fn parse_modifier(
     unit: UnitRef<'_, '_>,
     offset: UnitOffset,

@@ -2085,52 +2085,51 @@ impl<'data> DwarfDebugSession<'data> {
         ///
         /// Modifier chains in valid DWARF are short (e.g. `const volatile`), this limit only
         /// protects against cycles in malformed debug information.
-        const MAX_MODIFIER_DEPTH: usize = 16;
+        const MAX_MODIFIER_DEPTH: u8 = 16;
+
+        /// Looks up a DWARF type, folding type modifiers (see [`types::parse_modifier`]) into the
+        /// type they modify. `depth` limits how many modifier entries are followed.
+        fn lookup<'d>(
+            info: &DwarfInfo<'d>,
+            ty: &DwarfTypeRefInner,
+            depth: u8,
+        ) -> Result<Option<Type<'d>>, DwarfError> {
+            let unit = match ty {
+                DwarfTypeRefInner::Offset {
+                    section: SectionId::DebugInfo,
+                    offset,
+                } => Some(info.find_info_unit_offset(gimli::DebugInfoOffset(offset.0))?),
+                DwarfTypeRefInner::Offset {
+                    section: SectionId::DebugTypes,
+                    offset,
+                } => Some(info.find_types_unit_offset(*offset)?),
+                DwarfTypeRefInner::Signature(signature) => info.find_type_signature(*signature)?,
+                DwarfTypeRefInner::Offset { .. } => None,
+            };
+            let Some((unit, offset)) = unit else {
+                return Ok(None);
+            };
+
+            let Some((qualifiers, DwarfTypeRef(modified))) = types::parse_modifier(unit, offset)?
+            else {
+                return types::parse_type(unit, offset);
+            };
+            if depth == 0 {
+                return Ok(None);
+            }
+
+            let mut ty = lookup(info, &modified, depth - 1)?;
+            if let Some(ty) = &mut ty {
+                *ty.qualifiers_mut() |= qualifiers;
+            }
+            Ok(ty)
+        }
 
         let Some(DwarfTypeRef(ty)) = ty.as_dwarf() else {
             return Ok(None);
         };
 
-        self.lookup_dwarf_type(ty, MAX_MODIFIER_DEPTH)
-    }
-
-    /// Looks up a DWARF type, folding type modifiers (`const`, `volatile`, ...) into the type
-    /// they modify. Follows at most `depth` modifier entries.
-    fn lookup_dwarf_type(
-        &self,
-        ty: &DwarfTypeRefInner,
-        depth: usize,
-    ) -> Result<Option<Type<'_>>, DwarfError> {
-        let info = self.cell.get();
-        let unit = match ty {
-            DwarfTypeRefInner::Offset {
-                section: SectionId::DebugInfo,
-                offset,
-            } => Some(info.find_info_unit_offset(gimli::DebugInfoOffset(offset.0))?),
-            DwarfTypeRefInner::Offset {
-                section: SectionId::DebugTypes,
-                offset,
-            } => Some(info.find_types_unit_offset(*offset)?),
-            DwarfTypeRefInner::Signature(signature) => info.find_type_signature(*signature)?,
-            DwarfTypeRefInner::Offset { .. } => None,
-        };
-        let Some((unit, offset)) = unit else {
-            return Ok(None);
-        };
-
-        let Some((qualifiers, DwarfTypeRef(modified))) = self::types::parse_modifier(unit, offset)?
-        else {
-            return self::types::parse_type(unit, offset);
-        };
-        let Some(depth) = depth.checked_sub(1) else {
-            return Ok(None);
-        };
-
-        let mut ty = self.lookup_dwarf_type(&modified, depth)?;
-        if let Some(ty) = &mut ty {
-            *ty.qualifiers_mut() |= qualifiers;
-        }
-        Ok(ty)
+        lookup(self.cell.get(), ty, MAX_MODIFIER_DEPTH)
     }
 
     /// See [`DebugSession::source_by_path`] for more information.
