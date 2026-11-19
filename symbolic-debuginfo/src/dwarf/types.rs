@@ -44,7 +44,7 @@ pub fn parse_type<'d>(
 /// [`DwarfDebugSession::lookup_type`](super::DwarfDebugSession::lookup_type) calls this function
 /// for every entry it looks up: if it returns `Some`, the lookup continues with the modified
 /// type and adds the qualifier to the result. Otherwise, the entry is parsed with [`parse_type`].
-pub fn parse_modifier(
+pub(super) fn parse_modifier(
     unit: UnitRef<'_, '_>,
     offset: UnitOffset,
 ) -> Result<Option<(Qualifiers, DwarfTypeRef)>, DwarfError> {
