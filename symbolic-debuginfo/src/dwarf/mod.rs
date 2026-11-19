@@ -2113,13 +2113,18 @@ impl<'data> DwarfDebugSession<'data> {
             match types::parse_modifier(unit, offset)? {
                 // Not a modifier: the entry is the type itself.
                 None => types::parse_type(unit, offset),
+                // A modifier without a modified type qualifies `void`.
+                Some((qualifiers, None)) => Ok(Some(Type {
+                    kind: None,
+                    qualifiers,
+                })),
                 // A modifier chain longer than the depth limit.
                 Some(_) if depth == 0 => Ok(None),
                 // Recursive case: look up the modified type and add the qualifier to it.
-                Some((qualifiers, DwarfTypeRef(modified))) => {
+                Some((qualifiers, Some(DwarfTypeRef(modified)))) => {
                     let ty = lookup(info, &modified, depth - 1)?;
                     Ok(ty.map(|mut ty| {
-                        *ty.qualifiers_mut() |= qualifiers;
+                        ty.qualifiers |= qualifiers;
                         ty
                     }))
                 }

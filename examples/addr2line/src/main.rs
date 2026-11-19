@@ -6,7 +6,9 @@ use clap::builder::ValueParser;
 use clap::{value_parser, Arg, ArgAction, ArgMatches, Command};
 
 use symbolic::common::{ByteView, Language, Name, NameMangling};
-use symbolic::debuginfo::{Function, Object, ObjectDebugSession, Type, TypeRef, VariableLocation};
+use symbolic::debuginfo::{
+    Function, Object, ObjectDebugSession, TypeKind, TypeRef, VariableLocation,
+};
 use symbolic::demangle::{Demangle, DemangleOptions};
 
 fn print_name<'a, N: Borrow<Name<'a>>>(name: Option<N>, matches: &ArgMatches) {
@@ -40,23 +42,24 @@ fn print_type(session: &ObjectDebugSession<'_>, ty: &TypeRef, max_depth: usize) 
         return Ok(());
     };
 
-    match ty {
-        Type::Primitive(t) => print!("{}", t.name.as_deref().unwrap_or("?")),
-        Type::Pointer(t) => match t.pointee {
+    match ty.kind {
+        None => print!("void"),
+        Some(TypeKind::Primitive(t)) => print!("{}", t.name.as_deref().unwrap_or("?")),
+        Some(TypeKind::Pointer(t)) => match t.pointee {
             Some(pointee) => {
                 print_type(session, &pointee, max_depth - 1)?;
                 print!("*")
             }
             None => print!("void*"),
         },
-        Type::TypeDef(t) => {
+        Some(TypeKind::TypeDef(t)) => {
             print!("typedef ");
             if let Some(ty) = &t.ty {
                 print_type(session, ty, max_depth - 1)?;
             }
             print!(" {};", t.name);
         }
-        Type::StructureType(t) => {
+        Some(TypeKind::StructureType(t)) => {
             print!("struct ");
             if let Some(name) = &t.name {
                 print!("{name} ");

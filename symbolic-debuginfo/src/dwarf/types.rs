@@ -13,15 +13,15 @@ pub fn parse_type<'d>(
     let entry = unit.unit.entry(offset)?;
 
     Ok(match entry.tag {
-        constants::DW_TAG_base_type => parse_base_type(unit, entry).map(Type::Primitive),
+        constants::DW_TAG_base_type => parse_base_type(unit, entry).map(Type::from),
         constants::DW_TAG_pointer_type
         | constants::DW_TAG_reference_type
         | constants::DW_TAG_rvalue_reference_type => {
-            parse_pointer_type(unit, entry).map(Type::Pointer)
+            parse_pointer_type(unit, entry).map(Type::from)
         }
-        constants::DW_TAG_typedef => parse_typedef(unit, entry).map(Type::TypeDef),
+        constants::DW_TAG_typedef => parse_typedef(unit, entry).map(Type::from),
         constants::DW_TAG_structure_type | constants::DW_TAG_class_type => {
-            parse_structure_type(unit, entry)?.map(Type::StructureType)
+            parse_structure_type(unit, entry)?.map(Type::from)
         }
         _ => None,
     })
@@ -36,13 +36,13 @@ pub fn parse_type<'d>(
 /// - `DW_TAG_volatile_type`: [`Qualifiers::VOLATILE`]
 /// - `DW_TAG_restrict_type`: [`Qualifiers::RESTRICT`]
 ///
-/// Returns the qualifier and the reference to the modified type. Returns `None` if the entry is
-/// not a supported modifier, or if it has no resolvable `DW_AT_type`. A modifier without
-/// `DW_AT_type` qualifies `void`, which is not supported yet.
+/// Returns the qualifier and the reference to the modified type. The reference is `None` if the
+/// entry has no `DW_AT_type`, which means it qualifies `void`. Returns `None` if the entry is not a
+/// supported modifier, or if its `DW_AT_type` cannot be resolved.
 pub(super) fn parse_modifier(
     unit: UnitRef<'_, '_>,
     offset: UnitOffset,
-) -> Result<Option<(Qualifiers, DwarfTypeRef)>, DwarfError> {
+) -> Result<Option<(Qualifiers, Option<DwarfTypeRef>)>, DwarfError> {
     let entry = unit.unit.entry(offset)?;
 
     let qualifiers = match entry.tag {
@@ -52,13 +52,15 @@ pub(super) fn parse_modifier(
         _ => return Ok(None),
     };
 
-    let ty = entry
+    let Some(attr) = entry
         .attrs
         .into_iter()
         .find(|attr| attr.name() == constants::DW_AT_type)
-        .and_then(|attr| unit.to_type_ref(attr));
+    else {
+        return Ok(Some((qualifiers, None)));
+    };
 
-    Ok(ty.map(|ty| (qualifiers, ty)))
+    Ok(unit.to_type_ref(attr).map(|ty| (qualifiers, Some(ty))))
 }
 
 fn parse_base_type<'d>(
@@ -126,7 +128,6 @@ fn parse_base_type<'d>(
         encoding,
         size,
         value_bits,
-        qualifiers: Qualifiers::empty(),
     })
 }
 
@@ -155,7 +156,6 @@ fn parse_pointer_type<'d>(
     Some(PointerType {
         pointee: pointee.map(Into::into),
         size: size.unwrap_or_else(|| Size::Bytes(unit.unit.encoding().address_size.into())),
-        qualifiers: Qualifiers::empty(),
     })
 }
 
@@ -179,7 +179,6 @@ fn parse_typedef<'d>(
     Some(TypeDefType {
         name: name?,
         ty: ty.map(Into::into),
-        qualifiers: Qualifiers::empty(),
     })
 }
 
@@ -277,6 +276,5 @@ fn parse_structure_type<'d>(
         name: name,
         size,
         members,
-        qualifiers: Qualifiers::empty(),
     }))
 }
