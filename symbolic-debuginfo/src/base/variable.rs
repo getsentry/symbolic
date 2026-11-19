@@ -51,12 +51,8 @@ impl From<crate::pdb::PdbTypeRef> for TypeRef {
 /// A concrete type, together with the qualifiers applied to it.
 #[derive(Debug, Clone)]
 pub struct Type<'data> {
-    /// The kind of the type, or `None` for `void`.
-    ///
-    /// An unqualified `void` has no type of its own, it is represented by a missing type reference,
-    /// for example [`PointerType::pointee`]. A `Type` with no kind is a qualified `void`, such as
-    /// `const void`.
-    pub kind: Option<TypeKind<'data>>,
+    /// The kind of the type.
+    pub kind: TypeKind<'data>,
     /// The qualifiers applied to the type, for example `const`.
     pub qualifiers: Qualifiers,
 }
@@ -67,7 +63,7 @@ where
 {
     fn from(value: T) -> Self {
         Self {
-            kind: Some(value.into()),
+            kind: value.into(),
             qualifiers: Qualifiers::empty(),
         }
     }
@@ -76,6 +72,11 @@ where
 /// The kind of a [`Type`].
 #[derive(Debug, Clone)]
 pub enum TypeKind<'data> {
+    /// A qualified `void`, such as `const void`.
+    ///
+    /// An unqualified `void` has no type of its own. It is represented by a missing type
+    /// reference, for example [`PointerType::pointee`].
+    Void,
     /// A primitive type.
     Primitive(PrimitiveType<'data>),
     /// A pointer type.

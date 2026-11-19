@@ -43,23 +43,23 @@ fn print_type(session: &ObjectDebugSession<'_>, ty: &TypeRef, max_depth: usize) 
     };
 
     match ty.kind {
-        None => print!("void"),
-        Some(TypeKind::Primitive(t)) => print!("{}", t.name.as_deref().unwrap_or("?")),
-        Some(TypeKind::Pointer(t)) => match t.pointee {
+        TypeKind::Void => print!("void"),
+        TypeKind::Primitive(t) => print!("{}", t.name.as_deref().unwrap_or("?")),
+        TypeKind::Pointer(t) => match t.pointee {
             Some(pointee) => {
                 print_type(session, &pointee, max_depth - 1)?;
                 print!("*")
             }
             None => print!("void*"),
         },
-        Some(TypeKind::TypeDef(t)) => {
+        TypeKind::TypeDef(t) => {
             print!("typedef ");
             if let Some(ty) = &t.ty {
                 print_type(session, ty, max_depth - 1)?;
             }
             print!(" {};", t.name);
         }
-        Some(TypeKind::StructureType(t)) => {
+        TypeKind::StructureType(t) => {
             print!("struct ");
             if let Some(name) = &t.name {
                 print!("{name} ");

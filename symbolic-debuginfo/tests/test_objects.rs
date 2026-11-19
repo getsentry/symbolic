@@ -187,10 +187,10 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
         let mut seen_types = self.seen_types.clone();
         if !seen_types.insert(type_ref.clone()) {
             let name = match &ty.kind {
-                Some(TypeKind::Primitive(ty)) => ty.name.as_deref(),
-                Some(TypeKind::Pointer(_)) | None => None,
-                Some(TypeKind::TypeDef(ty)) => Some(ty.name.as_ref()),
-                Some(TypeKind::StructureType(ty)) => ty.name.as_deref(),
+                TypeKind::Primitive(ty) => ty.name.as_deref(),
+                TypeKind::Pointer(_) | TypeKind::Void => None,
+                TypeKind::TypeDef(ty) => Some(ty.name.as_ref()),
+                TypeKind::StructureType(ty) => ty.name.as_deref(),
             };
             let identifier = name
                 .map(str::to_owned)
@@ -211,13 +211,13 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
             .collect();
 
         match ty.kind {
-            None => writeln!(
+            TypeKind::Void => writeln!(
                 f,
                 "{:indent$}> Void{qualifiers}",
                 "",
                 indent = self.depth * 2
             ),
-            Some(TypeKind::Primitive(ty)) => {
+            TypeKind::Primitive(ty) => {
                 let name = ty.name.as_deref().unwrap_or("<unknown>");
 
                 let result = match ty.encoding {
@@ -248,7 +248,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                 }
                 result
             }
-            Some(TypeKind::Pointer(ty)) => {
+            TypeKind::Pointer(ty) => {
                 writeln!(
                     f,
                     "{:indent$}> Pointer{qualifiers} ({size})",
@@ -267,7 +267,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                     }
                 )
             }
-            Some(TypeKind::TypeDef(ty)) => {
+            TypeKind::TypeDef(ty) => {
                 writeln!(
                     f,
                     "{:indent$}> TypeDef: {}{qualifiers}",
@@ -286,7 +286,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                     }
                 )
             }
-            Some(TypeKind::StructureType(ty)) => {
+            TypeKind::StructureType(ty) => {
                 let name = ty.name.as_deref().unwrap_or("<anonymous>");
 
                 write!(
