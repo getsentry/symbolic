@@ -1386,7 +1386,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
                     > Structure: list<google_breakpad::AppMemory, std::allocator<google_breakpad::AppMemory> > (24 bytes)
           > Member: context (offset 24 bytes)
             > Pointer (8 bytes)
-              > Unknown
+              > Void const
           > Member: context_size (offset 32 bytes)
             > TypeDef: size_t
               > Primitive: long unsigned int (UnsignedInt, 8 bytes)

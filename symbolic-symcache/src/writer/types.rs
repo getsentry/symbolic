@@ -86,7 +86,14 @@ where
             Entry::Vacant(entry) => entry,
         };
 
-        let Some(ty) = self.session.lookup_type(&ty_ref).ok().flatten() else {
+        // Qualifiers, and with them qualified `void`, are not stored in symcaches yet.
+        let Some(ty) = self
+            .session
+            .lookup_type(&ty_ref)
+            .ok()
+            .flatten()
+            .and_then(|ty| ty.kind)
+        else {
             entry.insert(ResolvedState::Unknown);
             return Err(ResolvedState::Unknown);
         };
@@ -105,15 +112,15 @@ where
 
     fn serialize(
         &mut self,
-        ty: &di::Type<'data>,
+        ty: &di::TypeKind<'data>,
         type_writer: &mut TypeWriter,
         string_table: &mut StringTable,
     ) -> FwdResult {
         match ty {
-            di::Type::Primitive(ty) => self.ser_primitive(ty, string_table),
-            di::Type::Pointer(ty) => self.ser_pointer(ty),
-            di::Type::TypeDef(ty) => self.ser_typedef(ty, string_table),
-            di::Type::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
+            di::TypeKind::Primitive(ty) => self.ser_primitive(ty, string_table),
+            di::TypeKind::Pointer(ty) => self.ser_pointer(ty),
+            di::TypeKind::TypeDef(ty) => self.ser_typedef(ty, string_table),
+            di::TypeKind::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
         }
     }
 
@@ -285,12 +292,12 @@ where
 
 struct Resolved<'a> {
     ty_ref: TypeRef,
-    ty: di::Type<'a>,
+    ty: di::TypeKind<'a>,
     child_offset: usize,
 }
 
 impl<'a> Resolved<'a> {
-    fn new(ty_ref: TypeRef, ty: di::Type<'a>) -> Self {
+    fn new(ty_ref: TypeRef, ty: di::TypeKind<'a>) -> Self {
         Self {
             ty_ref,
             ty,
@@ -300,9 +307,9 @@ impl<'a> Resolved<'a> {
 
     fn next_child(&mut self) -> Option<TypeRef> {
         let next = match &self.ty {
-            di::Type::Pointer(t) if self.child_offset == 0 => t.pointee.clone(),
-            di::Type::TypeDef(t) if self.child_offset == 0 => t.ty.clone(),
-            di::Type::StructureType(t) => t
+            di::TypeKind::Pointer(t) if self.child_offset == 0 => t.pointee.clone(),
+            di::TypeKind::TypeDef(t) if self.child_offset == 0 => t.ty.clone(),
+            di::TypeKind::StructureType(t) => t
                 .members
                 .get(self.child_offset)
                 .map(|member| member.ty.clone()),
@@ -472,7 +479,6 @@ mod tests {
             encoding: None,
             size: di::Size::Bytes(1),
             value_bits: None,
-            qualifiers: di::Qualifiers::empty(),
         }
     }
 
@@ -482,7 +488,6 @@ mod tests {
             encoding: None,
             size: di::Size::Bytes(2),
             value_bits: None,
-            qualifiers: di::Qualifiers::empty(),
         }
     }
 
@@ -492,7 +497,6 @@ mod tests {
             encoding: None,
             size: di::Size::Bytes(4),
             value_bits: None,
-            qualifiers: di::Qualifiers::empty(),
         }
     }
 
@@ -500,7 +504,6 @@ mod tests {
         di::PointerType {
             pointee: Some(pointee),
             size: di::Size::Bytes(8),
-            qualifiers: di::Qualifiers::empty(),
         }
     }
 
@@ -508,7 +511,6 @@ mod tests {
         di::TypeDefType {
             name: name.into(),
             ty: ty.into(),
-            qualifiers: di::Qualifiers::empty(),
         }
     }
 
@@ -672,7 +674,6 @@ mod tests {
             di::PointerType {
                 pointee: None,
                 size: di::Size::Bytes(8),
-                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(3), tydef("Missing", TypeRef::generic(100)));
@@ -696,7 +697,6 @@ mod tests {
                         size: None,
                     },
                 ],
-                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(6), ty_u32());
@@ -775,7 +775,6 @@ mod tests {
                         size: None,
                     },
                 ],
-                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(2), ptr(TypeRef::generic(3)));
@@ -869,7 +868,6 @@ mod tests {
                     offset: Some(di::Size::Bytes(0)),
                     size: None,
                 }],
-                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(2), ptr(TypeRef::generic(100)));
@@ -892,7 +890,6 @@ mod tests {
                         size: None,
                     },
                 ],
-                qualifiers: di::Qualifiers::empty(),
             },
         );
 
@@ -956,7 +953,6 @@ mod tests {
                         size: None,
                     },
                 ],
-                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(11), ty_u32());
@@ -1018,7 +1014,6 @@ mod tests {
                         size: None,
                     },
                 ],
-                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(
@@ -1046,7 +1041,6 @@ mod tests {
                         size: None,
                     },
                 ],
-                qualifiers: di::Qualifiers::empty(),
             },
         );
 
@@ -1155,7 +1149,6 @@ mod tests {
                         size: None,
                     },
                 ],
-                qualifiers: di::Qualifiers::empty(),
             },
         );
         session.register(TypeRef::generic(2), ptr(TypeRef::generic(1)));

@@ -39,9 +39,34 @@ impl From<crate::dwarf::DwarfTypeRef> for TypeRef {
     }
 }
 
-/// A concrete type.
+/// A concrete type, together with the qualifiers applied to it.
 #[derive(Debug, Clone)]
-pub enum Type<'data> {
+pub struct Type<'data> {
+    /// The kind of the type, or `None` for `void`.
+    ///
+    /// An unqualified `void` has no type of its own, it is represented by a missing type reference,
+    /// for example [`PointerType::pointee`]. A `Type` with no kind is a qualified `void`, such as
+    /// `const void`.
+    pub kind: Option<TypeKind<'data>>,
+    /// The qualifiers applied to the type, for example `const`.
+    pub qualifiers: Qualifiers,
+}
+
+impl<'data, T> From<T> for Type<'data>
+where
+    T: Into<TypeKind<'data>>,
+{
+    fn from(value: T) -> Self {
+        Self {
+            kind: Some(value.into()),
+            qualifiers: Qualifiers::empty(),
+        }
+    }
+}
+
+/// The kind of a [`Type`].
+#[derive(Debug, Clone)]
+pub enum TypeKind<'data> {
     /// A primitive type.
     Primitive(PrimitiveType<'data>),
     /// A pointer type.
@@ -50,28 +75,6 @@ pub enum Type<'data> {
     TypeDef(TypeDefType<'data>),
     /// A structure type.
     StructureType(StructureType<'data>),
-}
-
-impl Type<'_> {
-    /// Returns the [`Qualifiers`] applied to this type.
-    pub fn qualifiers(&self) -> Qualifiers {
-        match self {
-            Self::Primitive(ty) => ty.qualifiers,
-            Self::Pointer(ty) => ty.qualifiers,
-            Self::TypeDef(ty) => ty.qualifiers,
-            Self::StructureType(ty) => ty.qualifiers,
-        }
-    }
-
-    /// Returns a mutable reference to the [`Qualifiers`] applied to this type.
-    pub(crate) fn qualifiers_mut(&mut self) -> &mut Qualifiers {
-        match self {
-            Self::Primitive(ty) => &mut ty.qualifiers,
-            Self::Pointer(ty) => &mut ty.qualifiers,
-            Self::TypeDef(ty) => &mut ty.qualifiers,
-            Self::StructureType(ty) => &mut ty.qualifiers,
-        }
-    }
 }
 
 bitflags::bitflags! {
@@ -87,25 +90,25 @@ bitflags::bitflags! {
     }
 }
 
-impl<'data> From<PrimitiveType<'data>> for Type<'data> {
+impl<'data> From<PrimitiveType<'data>> for TypeKind<'data> {
     fn from(value: PrimitiveType<'data>) -> Self {
         Self::Primitive(value)
     }
 }
 
-impl<'data> From<PointerType> for Type<'data> {
+impl<'data> From<PointerType> for TypeKind<'data> {
     fn from(value: PointerType) -> Self {
         Self::Pointer(value)
     }
 }
 
-impl<'data> From<TypeDefType<'data>> for Type<'data> {
+impl<'data> From<TypeDefType<'data>> for TypeKind<'data> {
     fn from(value: TypeDefType<'data>) -> Self {
         Self::TypeDef(value)
     }
 }
 
-impl<'data> From<StructureType<'data>> for Type<'data> {
+impl<'data> From<StructureType<'data>> for TypeKind<'data> {
     fn from(value: StructureType<'data>) -> Self {
         Self::StructureType(value)
     }
@@ -129,8 +132,6 @@ pub struct PrimitiveType<'data> {
     pub size: Size,
     /// The meaningful value range within the primitive type's storage.
     pub value_bits: Option<ValueBits>,
-    /// The qualifiers applied to the type.
-    pub qualifiers: Qualifiers,
 }
 
 /// An encoding for a [`PrimitiveType`].
@@ -174,8 +175,6 @@ pub struct PointerType {
     pub pointee: Option<TypeRef>,
     /// The size of a pointer.
     pub size: Size,
-    /// The qualifiers applied to the pointer itself, for example `const` in `int *const`.
-    pub qualifiers: Qualifiers,
 }
 
 /// A type that is defined in the terms of another type.
@@ -188,8 +187,6 @@ pub struct TypeDefType<'data> {
     /// This may be `None` if the debug information provides no underlying type reference,
     /// for example an alias to `void` or a type declaration without a definition.
     pub ty: Option<TypeRef>,
-    /// The qualifiers applied to the `typedef`.
-    pub qualifiers: Qualifiers,
 }
 
 /// A structure type.
@@ -203,8 +200,6 @@ pub struct StructureType<'data> {
     pub size: Option<Size>,
     /// All members of the structure in declaration order.
     pub members: Vec<StructureMember<'data>>,
-    /// The qualifiers applied to the structure.
-    pub qualifiers: Qualifiers,
 }
 
 /// A member of a [structure](StructureType).

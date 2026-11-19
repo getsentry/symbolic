@@ -8,7 +8,7 @@ use symbolic_debuginfo::ObjectDebugSession;
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
 use symbolic_debuginfo::{
-    FileEntry, Function, LineInfo, Object, ObjectKind, ParseObjectOptions, SymbolMap, Type,
+    FileEntry, Function, LineInfo, Object, ObjectKind, ParseObjectOptions, SymbolMap, TypeKind,
     TypeRef, VariableLocation, pe::PeObject,
 };
 use symbolic_testutils::fixture;
@@ -186,11 +186,11 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
 
         let mut seen_types = self.seen_types.clone();
         if !seen_types.insert(type_ref.clone()) {
-            let name = match &ty {
-                Type::Primitive(ty) => ty.name.as_deref(),
-                Type::Pointer(_) => None,
-                Type::TypeDef(ty) => Some(ty.name.as_ref()),
-                Type::StructureType(ty) => ty.name.as_deref(),
+            let name = match &ty.kind {
+                Some(TypeKind::Primitive(ty)) => ty.name.as_deref(),
+                Some(TypeKind::Pointer(_)) | None => None,
+                Some(TypeKind::TypeDef(ty)) => Some(ty.name.as_ref()),
+                Some(TypeKind::StructureType(ty)) => ty.name.as_deref(),
             };
             let identifier = name
                 .map(str::to_owned)
@@ -205,13 +205,19 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
 
         // Qualifiers as a suffix ("east const"), such as ` const volatile`.
         let qualifiers: String = ty
-            .qualifiers()
+            .qualifiers
             .iter_names()
             .map(|(name, _)| format!(" {}", name.to_lowercase()))
             .collect();
 
-        match ty {
-            Type::Primitive(ty) => {
+        match ty.kind {
+            None => writeln!(
+                f,
+                "{:indent$}> Void{qualifiers}",
+                "",
+                indent = self.depth * 2
+            ),
+            Some(TypeKind::Primitive(ty)) => {
                 let name = ty.name.as_deref().unwrap_or("<unknown>");
 
                 let result = match ty.encoding {
@@ -242,7 +248,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                 }
                 result
             }
-            Type::Pointer(ty) => {
+            Some(TypeKind::Pointer(ty)) => {
                 writeln!(
                     f,
                     "{:indent$}> Pointer{qualifiers} ({size})",
@@ -261,7 +267,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                     }
                 )
             }
-            Type::TypeDef(ty) => {
+            Some(TypeKind::TypeDef(ty)) => {
                 writeln!(
                     f,
                     "{:indent$}> TypeDef: {}{qualifiers}",
@@ -280,7 +286,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                     }
                 )
             }
-            Type::StructureType(ty) => {
+            Some(TypeKind::StructureType(ty)) => {
                 let name = ty.name.as_deref().unwrap_or("<anonymous>");
 
                 write!(
