@@ -2110,19 +2110,20 @@ impl<'data> DwarfDebugSession<'data> {
                 return Ok(None);
             };
 
-            let Some((qualifiers, DwarfTypeRef(modified))) = types::parse_modifier(unit, offset)?
-            else {
-                return types::parse_type(unit, offset);
-            };
-            if depth == 0 {
-                return Ok(None);
+            match types::parse_modifier(unit, offset)? {
+                // Not a modifier: the entry is the type itself.
+                None => types::parse_type(unit, offset),
+                // A modifier chain longer than the depth limit.
+                Some(_) if depth == 0 => Ok(None),
+                // Recursive case: look up the modified type and add the qualifier to it.
+                Some((qualifiers, DwarfTypeRef(modified))) => {
+                    let ty = lookup(info, &modified, depth - 1)?;
+                    Ok(ty.map(|mut ty| {
+                        *ty.qualifiers_mut() |= qualifiers;
+                        ty
+                    }))
+                }
             }
-
-            let mut ty = lookup(info, &modified, depth - 1)?;
-            if let Some(ty) = &mut ty {
-                *ty.qualifiers_mut() |= qualifiers;
-            }
-            Ok(ty)
         }
 
         let Some(DwarfTypeRef(ty)) = ty.as_dwarf() else {
