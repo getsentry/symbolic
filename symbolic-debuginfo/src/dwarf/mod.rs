@@ -489,6 +489,23 @@ impl<'d> UnitRef<'d, '_> {
         }
     }
 
+    /// Returns the section offset of the DIE an attribute refers to, if it is a reference into
+    /// `.debug_info` or `.debug_types`.
+    ///
+    /// Two attributes referring to the same DIE yield equal offsets, also across units.
+    fn reference_offset(self, attr: Attribute<'d>) -> Option<(SectionId, UnitSectionOffset)> {
+        match attr.value() {
+            AttributeValue::UnitRef(offset) => Some((
+                self.unit.section(),
+                offset.to_unit_section_offset(self.unit),
+            )),
+            AttributeValue::DebugInfoRef(offset) => offset
+                .to_unit_section_offset(self.unit)
+                .map(|offset| (SectionId::DebugInfo, offset)),
+            _ => None,
+        }
+    }
+
     /// Resolves a attribute unit ref or debug info ref to a [`DwarfTypeRef`].
     ///
     /// Returns `None` for attributes not containing a reference or unsupported references.
@@ -838,11 +855,31 @@ impl<'a> InProgressSubProgram<'a> {
         }
     }
 
+    /// Adds a variable to this function.
+    ///
+    /// GCC may describe one source variable several times within a single function, for example
+    /// a parameter once at the top and again inside a `DW_TAG_lexical_block` with a narrower
+    /// location list. All of these refer to the same abstract instance through
+    /// `DW_AT_abstract_origin`. Lexical blocks are not tracked, so such entries are merged into
+    /// one variable here instead of showing up as duplicates.
+    ///
+    /// Only entries of the same function, inlined or not, are merged. Two inlined copies of the
+    /// same function share an origin but are separate frames with separate variables.
     fn push_variable(&mut self, variable: ParsedVariable<'a>) {
-        match self {
-            InProgressSubProgram::Deadcode(_) => {}
-            InProgressSubProgram::Regular(p) => p.variables.push(variable),
-            InProgressSubProgram::Inlined(p) => p.variables.push(variable),
+        let variables = match self {
+            InProgressSubProgram::Deadcode(_) => return,
+            InProgressSubProgram::Regular(p) => &mut p.variables,
+            InProgressSubProgram::Inlined(p) => &mut p.variables,
+        };
+
+        let existing = match variable.origin {
+            Some(_) => variables.iter_mut().find(|v| v.origin == variable.origin),
+            None => None,
+        };
+
+        match existing {
+            Some(existing) => existing.locations.merge(variable.locations),
+            None => variables.push(variable),
         }
     }
 
@@ -1470,6 +1507,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             return Ok(None);
         }
 
+        let origin_offset = origin.and_then(|attr| self.inner.reference_offset(attr));
+
         if let Some(attr) = origin {
             if variable.name.is_none() || variable.ty.is_none() {
                 // A reference that cannot be followed only costs us this variable's name or
@@ -1499,6 +1538,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             ty,
             kind,
             locations,
+            origin: origin_offset,
         }))
     }
 
@@ -1663,6 +1703,11 @@ struct ParsedVariable<'data> {
     ty: Option<TypeRef>,
     kind: VariableKind,
     locations: Locations,
+    /// The DIE referenced by `DW_AT_abstract_origin` or `DW_AT_specification`, if any.
+    ///
+    /// Variables of the same function with the same origin describe the same source variable
+    /// and are merged, see [`InProgressSubProgram::push_variable`].
+    origin: Option<(SectionId, UnitSectionOffset)>,
 }
 
 /// The name and type of a variable, collected across the DIE and its abstract origin or
@@ -1679,6 +1724,63 @@ enum Locations {
     Single(VariableLocation),
     /// Many locations, dependent on the PC at runtime.
     Many(Vec<(Range, VariableLocationInfo)>),
+}
+
+impl Locations {
+    /// Merges the locations of another description of the same variable into `self`.
+    ///
+    /// Where both describe the same addresses, the existing locations win, so only the parts of
+    /// `other` that `self` does not cover yet are added. This keeps the ranges sorted and free
+    /// of overlaps.
+    ///
+    /// A [`Locations::Single`] applies to the whole enclosing function (see
+    /// `DwarfUnit::variable_for_range`), so it already covers everything when it is `self`, and
+    /// cannot be placed precisely when it is `other`. Both cases keep `self` unchanged.
+    fn merge(&mut self, other: Locations) {
+        let (Locations::Many(existing), Locations::Many(other)) = (&mut *self, other) else {
+            return;
+        };
+
+        let mut added = Vec::new();
+        for (range, info) in other {
+            let mut cursor = range.begin;
+            for (covered, _) in existing.iter() {
+                if cursor >= range.end || covered.begin >= range.end {
+                    break;
+                }
+                if covered.end <= cursor {
+                    continue;
+                }
+                if covered.begin > cursor {
+                    added.push(sub_location(range, &info, cursor, covered.begin));
+                }
+                cursor = cursor.max(covered.end);
+            }
+            if cursor < range.end {
+                added.push(sub_location(range, &info, cursor, range.end));
+            }
+        }
+
+        if !added.is_empty() {
+            existing.extend(added);
+            existing.sort_unstable_by_key(|(r, _)| *r);
+        }
+    }
+}
+
+/// Returns the part `begin..end` of a location entry that covers `range`.
+fn sub_location(
+    range: Range,
+    info: &VariableLocationInfo,
+    begin: u64,
+    end: u64,
+) -> (Range, VariableLocationInfo) {
+    let info = VariableLocationInfo {
+        address: info.address + (begin - range.begin),
+        size: end - begin,
+        location: info.location.clone(),
+    };
+    (Range { begin, end }, info)
 }
 
 /// The state we pass around during function parsing.

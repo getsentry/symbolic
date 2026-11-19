@@ -28,15 +28,6 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         > Primitive: bool (Boolean, 1 byte)
       0x1ec0..0x1ed9: register rdx
       0x1ede..0x1ee4: register rdx
-    context (parameter)
-      type:
-        > Pointer (8 bytes)
-          > Void
-      0x1ede..0x1eeb: register rsi
-    descriptor (parameter)
-      type:
-        > Unknown
-      0x1ede..0x1ef0: register rdi
 
   > 0x1ec7: printf (0x13)
     0x1ec7: stdio2.h:104 (/usr/include/x86_64-linux-gnu/bits)
@@ -2323,10 +2314,6 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         > Primitive: int (SignedInt, 4 bytes)
       0x2485..0x2499: register rax
       0x2507..0x250b: register rax
-    this (parameter)
-      type:
-        > Unknown
-      0x24b1..0x2500: register r14
 
   > 0x2454: sys_write (0xb)
     0x2454: linux_syscall_support.h:3553 (../deps/third_party/lss)
@@ -3198,33 +3185,6 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x2a10..0x2a1d: register r12
       0x2a20..0x2b9b: register r12
       0x2ba2..0x2bca: register r12
-    uc (parameter)
-      type:
-        > Pointer (8 bytes)
-          > Void
-      0x2a20..0x2b9b: register r12
-      0x2ba2..0x2bca: register r12
-    info (parameter)
-      type:
-        > Pointer (8 bytes)
-          > TypeDef: siginfo_t
-            > Structure: <anonymous> (128 bytes)
-              > Member: si_signo (offset 0 bytes)
-                > Primitive: int (SignedInt, 4 bytes)
-              > Member: si_errno (offset 4 bytes)
-                > Primitive: int (SignedInt, 4 bytes)
-              > Member: si_code (offset 8 bytes)
-                > Primitive: int (SignedInt, 4 bytes)
-              > Member: _sifields (offset 16 bytes)
-                > Unknown
-      0x2a20..0x2b98: register rbx
-      0x2ba2..0x2bca: register rbx
-    this (parameter)
-      type:
-        > Unknown
-      0x2a20..0x2b99: register rbp
-      0x2b99..0x2ba1: register rdi
-      0x2ba2..0x2bca: register rbp
     uc_ptr (local)
       type:
         > Pointer (8 bytes)
