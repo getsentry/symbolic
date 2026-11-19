@@ -66,7 +66,7 @@ the inlined and the standalone `inlined` entries. At `-O2` the inlined copy only
 GCC describes `doubled` there as a computed expression, which symbolic does not evaluate yet.
 
 `DW_AT_specification` on variables is handled by the same code path but is not in the fixture: in
-C it never occurs on variables, and in C++ it only appears on static data members and
+C it never occurs on function-scoped variables, and in C++ it only appears on static data members and
 namespace-scope definitions, which are not function-scoped.
 
 Currently not covered, worth adding when the surrounding support lands:
