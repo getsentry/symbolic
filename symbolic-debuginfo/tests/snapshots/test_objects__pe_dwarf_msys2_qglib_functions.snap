@@ -404,7 +404,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x15fb..0x1601: register rsi
     connectivityState (local)
       type:
-        > TypeDef: const GNetworkConnectivity
+        > TypeDef: GNetworkConnectivity const
           > Unknown
       0x1505..0x15ac: register rdi
 

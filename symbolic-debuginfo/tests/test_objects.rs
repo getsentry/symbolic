@@ -203,11 +203,11 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
             );
         }
 
-        // Qualifiers as a prefix, such as `const volatile `.
+        // Qualifiers as a suffix ("east const"), such as ` const volatile`.
         let qualifiers: String = ty
             .qualifiers()
             .iter_names()
-            .map(|(name, _)| format!("{} ", name.to_lowercase()))
+            .map(|(name, _)| format!(" {}", name.to_lowercase()))
             .collect();
 
         match ty {
@@ -217,14 +217,14 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                 let result = match ty.encoding {
                     Some(encoding) => writeln!(
                         f,
-                        "{:indent$}> Primitive: {qualifiers}{name} ({encoding:?}, {size})",
+                        "{:indent$}> Primitive: {name}{qualifiers} ({encoding:?}, {size})",
                         "",
                         size = ty.size,
                         indent = self.depth * 2
                     ),
                     None => writeln!(
                         f,
-                        "{:indent$}> Primitive: {qualifiers}{name} (<unknown encoding>, {size})",
+                        "{:indent$}> Primitive: {name}{qualifiers} (<unknown encoding>, {size})",
                         "",
                         size = ty.size,
                         indent = self.depth * 2
@@ -245,7 +245,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
             Type::Pointer(ty) => {
                 writeln!(
                     f,
-                    "{:indent$}> {qualifiers}Pointer ({size})",
+                    "{:indent$}> Pointer{qualifiers} ({size})",
                     "",
                     size = ty.size,
                     indent = self.depth * 2
@@ -264,7 +264,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
             Type::TypeDef(ty) => {
                 writeln!(
                     f,
-                    "{:indent$}> TypeDef: {qualifiers}{}",
+                    "{:indent$}> TypeDef: {}{qualifiers}",
                     "",
                     ty.name,
                     indent = self.depth * 2
@@ -285,7 +285,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
 
                 write!(
                     f,
-                    "{:indent$}> Structure: {qualifiers}{name}",
+                    "{:indent$}> Structure: {name}{qualifiers}",
                     "",
                     indent = self.depth * 2
                 )?;
