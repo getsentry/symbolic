@@ -2115,7 +2115,7 @@ impl<'data> DwarfDebugSession<'data> {
                 None => types::parse_type(unit, offset),
                 // A modifier without a modified type qualifies `void`.
                 Some((qualifiers, None)) => Ok(Some(Type {
-                    kind: None,
+                    kind: TypeKind::Void,
                     qualifiers,
                 })),
                 // A modifier chain longer than the depth limit.

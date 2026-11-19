@@ -92,7 +92,8 @@ where
             .lookup_type(&ty_ref)
             .ok()
             .flatten()
-            .and_then(|ty| ty.kind)
+            .map(|ty| ty.kind)
+            .filter(|kind| !matches!(kind, di::TypeKind::Void))
         else {
             entry.insert(ResolvedState::Unknown);
             return Err(ResolvedState::Unknown);
@@ -121,6 +122,8 @@ where
             di::TypeKind::Pointer(ty) => self.ser_pointer(ty),
             di::TypeKind::TypeDef(ty) => self.ser_typedef(ty, string_table),
             di::TypeKind::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
+            // Filtered out in `resolve`, qualified `void` is not stored in symcaches yet.
+            di::TypeKind::Void => unreachable!(),
         }
     }
 
