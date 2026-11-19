@@ -2526,6 +2526,7 @@ dependencies = [
 name = "symbolic-debuginfo"
 version = "14.0.0-alpha.5"
 dependencies = [
+ "bitflags",
  "criterion",
  "debugid",
  "elementtree",

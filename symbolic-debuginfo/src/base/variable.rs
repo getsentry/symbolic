@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt, ops};
+use std::{borrow::Cow, fmt};
 
 use symbolic_common::register::Register;
 
@@ -83,71 +83,16 @@ impl Type<'_> {
     }
 }
 
-/// Type qualifiers, such as `const` or `volatile`, applied to a type.
-///
-/// Qualifiers are a set of flags. Combine them with `|`, for example
-/// `Qualifiers::CONST | Qualifiers::VOLATILE`.
-#[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct Qualifiers(u8);
-
-impl Qualifiers {
-    /// The `const` qualifier.
-    pub const CONST: Self = Self(1 << 0);
-    /// The `volatile` qualifier.
-    pub const VOLATILE: Self = Self(1 << 1);
-    /// The `restrict` qualifier.
-    pub const RESTRICT: Self = Self(1 << 2);
-
-    /// Returns a set without any qualifiers.
-    pub const fn empty() -> Self {
-        Self(0)
-    }
-
-    /// Returns `true` if no qualifier is set.
-    pub const fn is_empty(self) -> bool {
-        self.0 == 0
-    }
-
-    /// Returns `true` if all qualifiers in `other` are also set in `self`.
-    pub const fn contains(self, other: Self) -> bool {
-        self.0 & other.0 == other.0
-    }
-}
-
-impl ops::BitOr for Qualifiers {
-    type Output = Self;
-
-    fn bitor(self, rhs: Self) -> Self {
-        Self(self.0 | rhs.0)
-    }
-}
-
-impl ops::BitOrAssign for Qualifiers {
-    fn bitor_assign(&mut self, rhs: Self) {
-        self.0 |= rhs.0;
-    }
-}
-
-impl fmt::Debug for Qualifiers {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let names = [
-            (Self::CONST, "CONST"),
-            (Self::VOLATILE, "VOLATILE"),
-            (Self::RESTRICT, "RESTRICT"),
-        ];
-
-        f.write_str("Qualifiers(")?;
-        let mut first = true;
-        for (flag, name) in names {
-            if self.contains(flag) {
-                if !first {
-                    f.write_str(" | ")?;
-                }
-                f.write_str(name)?;
-                first = false;
-            }
-        }
-        f.write_str(")")
+bitflags::bitflags! {
+    /// Type qualifiers, such as `const` or `volatile`, applied to a type.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct Qualifiers: u8 {
+        /// The `const` qualifier.
+        const CONST = 1 << 0;
+        /// The `volatile` qualifier.
+        const VOLATILE = 1 << 1;
+        /// The `restrict` qualifier.
+        const RESTRICT = 1 << 2;
     }
 }
 

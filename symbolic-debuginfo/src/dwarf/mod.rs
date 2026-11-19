@@ -36,8 +36,6 @@ use crate::macho::BcSymbolMap;
 use crate::sourcebundle::SourceFileDescriptor;
 use crate::{Type, TypeRef, Variable, VariableKind, VariableLocation, VariableLocationInfo};
 
-use self::types::ParsedType;
-
 /// This is a fake BcSymbolMap used when macho support is turned off since they are unfortunately
 /// part of the dwarf interface
 #[cfg(not(feature = "macho"))]
@@ -2093,46 +2091,46 @@ impl<'data> DwarfDebugSession<'data> {
             return Ok(None);
         };
 
+        self.lookup_dwarf_type(ty, MAX_MODIFIER_DEPTH)
+    }
+
+    /// Looks up a DWARF type, folding type modifiers (`const`, `volatile`, ...) into the type
+    /// they modify. Follows at most `depth` modifier entries.
+    fn lookup_dwarf_type(
+        &self,
+        ty: &DwarfTypeRefInner,
+        depth: usize,
+    ) -> Result<Option<Type<'_>>, DwarfError> {
         let info = self.cell.get();
-        let mut ty = ty.clone();
-        let mut qualifiers = Qualifiers::empty();
+        let unit = match ty {
+            DwarfTypeRefInner::Offset {
+                section: SectionId::DebugInfo,
+                offset,
+            } => Some(info.find_info_unit_offset(gimli::DebugInfoOffset(offset.0))?),
+            DwarfTypeRefInner::Offset {
+                section: SectionId::DebugTypes,
+                offset,
+            } => Some(info.find_types_unit_offset(*offset)?),
+            DwarfTypeRefInner::Signature(signature) => info.find_type_signature(*signature)?,
+            DwarfTypeRefInner::Offset { .. } => None,
+        };
+        let Some((unit, offset)) = unit else {
+            return Ok(None);
+        };
 
-        // Type modifiers (`const`, `volatile`, ...) are folded into the type they modify.
-        for _ in 0..MAX_MODIFIER_DEPTH {
-            let unit = match ty {
-                DwarfTypeRefInner::Offset {
-                    section: SectionId::DebugInfo,
-                    offset,
-                } => Some(info.find_info_unit_offset(gimli::DebugInfoOffset(offset.0))?),
-                DwarfTypeRefInner::Offset {
-                    section: SectionId::DebugTypes,
-                    offset,
-                } => Some(info.find_types_unit_offset(offset)?),
-                DwarfTypeRefInner::Signature(signature) => info.find_type_signature(signature)?,
-                DwarfTypeRefInner::Offset { .. } => None,
-            };
-            let Some((unit, offset)) = unit else {
-                return Ok(None);
-            };
+        let Some((qualifiers, DwarfTypeRef(modified))) = self::types::parse_modifier(unit, offset)?
+        else {
+            return self::types::parse_type(unit, offset);
+        };
+        let Some(depth) = depth.checked_sub(1) else {
+            return Ok(None);
+        };
 
-            match self::types::parse_type(unit, offset)? {
-                Some(ParsedType::Type(mut parsed)) => {
-                    *parsed.qualifiers_mut() |= qualifiers;
-                    return Ok(Some(parsed));
-                }
-                Some(ParsedType::Qualified {
-                    qualifiers: modifier,
-                    ty: Some(DwarfTypeRef(modified)),
-                }) => {
-                    qualifiers |= modifier;
-                    ty = modified;
-                }
-                // Qualified `void` (e.g. the pointee of `const void *`) is not supported yet.
-                Some(ParsedType::Qualified { ty: None, .. }) | None => return Ok(None),
-            }
+        let mut ty = self.lookup_dwarf_type(&modified, depth)?;
+        if let Some(ty) = &mut ty {
+            *ty.qualifiers_mut() |= qualifiers;
         }
-
-        Ok(None)
+        Ok(ty)
     }
 
     /// See [`DebugSession::source_by_path`] for more information.

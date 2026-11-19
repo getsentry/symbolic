@@ -6,27 +6,13 @@ use crate::{
     StructureType, Type, TypeDefType, ValueBits,
 };
 
-/// A type entry parsed from DWARF.
-pub enum ParsedType<'d> {
-    /// A concrete type.
-    Type(Type<'d>),
-    /// A type modifier entry (DWARF 5 §5.3), such as `DW_TAG_const_type`, which applies
-    /// `qualifiers` to the type referenced by `ty`.
-    ///
-    /// `ty` is `None` if the modifier has no `DW_AT_type`, which qualifies `void`.
-    Qualified {
-        qualifiers: Qualifiers,
-        ty: Option<DwarfTypeRef>,
-    },
-}
-
 pub fn parse_type<'d>(
     unit: UnitRef<'d, '_>,
     offset: UnitOffset,
-) -> Result<Option<ParsedType<'d>>, DwarfError> {
+) -> Result<Option<Type<'d>>, DwarfError> {
     let entry = unit.unit.entry(offset)?;
 
-    let ty = match entry.tag {
+    Ok(match entry.tag {
         constants::DW_TAG_base_type => parse_base_type(unit, entry).map(Type::Primitive),
         constants::DW_TAG_pointer_type
         | constants::DW_TAG_reference_type
@@ -37,37 +23,35 @@ pub fn parse_type<'d>(
         constants::DW_TAG_structure_type | constants::DW_TAG_class_type => {
             parse_structure_type(unit, entry)?.map(Type::StructureType)
         }
-        constants::DW_TAG_const_type => {
-            return Ok(parse_modifier(unit, entry, Qualifiers::CONST));
-        }
-        constants::DW_TAG_volatile_type => {
-            return Ok(parse_modifier(unit, entry, Qualifiers::VOLATILE));
-        }
-        constants::DW_TAG_restrict_type => {
-            return Ok(parse_modifier(unit, entry, Qualifiers::RESTRICT));
-        }
         _ => None,
-    };
-
-    Ok(ty.map(ParsedType::Type))
+    })
 }
 
-fn parse_modifier<'d>(
-    unit: UnitRef<'d, '_>,
-    entry: DebuggingInformationEntry<Slice<'d>>,
-    qualifiers: Qualifiers,
-) -> Option<ParsedType<'d>> {
-    let mut ty = None;
+/// Parses a type modifier entry (DWARF 5 §5.3), such as `DW_TAG_const_type`.
+///
+/// Returns the qualifiers the entry applies and the type it modifies, or `None` if the entry is
+/// not a type modifier or has no resolvable `DW_AT_type`. A modifier without `DW_AT_type`
+/// qualifies `void`, which is not supported yet.
+pub fn parse_modifier(
+    unit: UnitRef<'_, '_>,
+    offset: UnitOffset,
+) -> Result<Option<(Qualifiers, DwarfTypeRef)>, DwarfError> {
+    let entry = unit.unit.entry(offset)?;
 
-    for attr in entry.attrs {
-        if attr.name() == constants::DW_AT_type {
-            // Return `None` if `DW_AT_type` is present but cannot be resolved, rather than
-            // treating the modifier as qualifying `void`.
-            ty = Some(unit.to_type_ref(attr)?);
-        }
-    }
+    let qualifiers = match entry.tag {
+        constants::DW_TAG_const_type => Qualifiers::CONST,
+        constants::DW_TAG_volatile_type => Qualifiers::VOLATILE,
+        constants::DW_TAG_restrict_type => Qualifiers::RESTRICT,
+        _ => return Ok(None),
+    };
 
-    Some(ParsedType::Qualified { qualifiers, ty })
+    let ty = entry
+        .attrs
+        .into_iter()
+        .find(|attr| attr.name() == constants::DW_AT_type)
+        .and_then(|attr| unit.to_type_ref(attr));
+
+    Ok(ty.map(|ty| (qualifiers, ty)))
 }
 
 fn parse_base_type<'d>(
