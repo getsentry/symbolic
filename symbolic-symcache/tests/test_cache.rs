@@ -307,9 +307,9 @@ fn test_lookup_variables_inlined() -> Result<(), Error> {
     // `DW_AT_abstract_origin` reference to the abstract instance, which holds their names and
     // types.
     //
-    // The two instances are siblings at the same inline depth, and the symcache cannot tell their
-    // variables apart yet. A lookup in one call therefore also returns the `param` and `doubled`
-    // of the other call, without a location.
+    // The two instances are siblings at the same inline depth, so the depth alone cannot tell their
+    // variables apart. A lookup in one call must return only the `param` and `doubled` of that
+    // call.
     let mut first_call = symcache.lookup(0x1227);
 
     let inlined = first_call.next().unwrap();
@@ -317,8 +317,6 @@ fn test_lookup_variables_inlined() -> Result<(), Error> {
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, inlined.variables()), @"
     param (parameter, int): 0x1227..0x1238 cfa -32
     doubled (local, int): 0x1227..0x1238 cfa -36
-    param (parameter, int): <unavailable>
-    doubled (local, int): <unavailable>
     ");
 
     let inlining = first_call.next().unwrap();
@@ -335,8 +333,6 @@ fn test_lookup_variables_inlined() -> Result<(), Error> {
     let inlined = second_call.next().unwrap();
     assert_eq!(inlined.function().name(), "_Z7inlinedi");
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, inlined.variables()), @"
-    param (parameter, int): <unavailable>
-    doubled (local, int): <unavailable>
     param (parameter, int): 0x1241..0x1252 cfa -24
     doubled (local, int): 0x1241..0x1252 cfa -28
     ");

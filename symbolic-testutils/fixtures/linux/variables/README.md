@@ -66,10 +66,9 @@ and `doubled` show up by name under the inlined and the standalone `inlined` ent
 the `param` of the first inlined copy resolves: GCC gives the other three an empty range or a
 computed expression, which symbolic does not evaluate yet.
 
-The two inlined copies are siblings at the same inline depth. The symcache does not record which
-copy a variable belongs to, so a lookup inside one copy also returns the `param` and `doubled` of
-the other, without a location. `test_lookup_variables_inlined` in `symbolic-symcache` records that
-gap.
+The two inlined copies are siblings at the same inline depth. The symcache records the address range
+of the copy a variable belongs to, so a lookup inside one copy returns only that copy's `param` and
+`doubled`. `test_lookup_variables_inlined` in `symbolic-symcache` checks this for both copies.
 
 `DW_AT_specification` on variables is handled by the same code path but is not in the fixture: in
 C it never occurs on function-scoped variables, and in C++ it only appears on static data members and
