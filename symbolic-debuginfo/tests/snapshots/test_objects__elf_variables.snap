@@ -112,7 +112,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x1327..0x133c: cfa -36
     slot (local)
       type:
-        > Primitive: int (SignedInt, 4 bytes) Qualifiers(VOLATILE)
+        > Primitive: volatile int (SignedInt, 4 bytes)
       0x1327..0x133c: cfa -20
 
 > 0x130f: _Z13optimized_outi (0x18)
@@ -290,7 +290,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x11ae..0x121a: cfa -52
     constant (local)
       type:
-        > Primitive: int (SignedInt, 4 bytes) Qualifiers(CONST)
+        > Primitive: const int (SignedInt, 4 bytes)
       0x11ae..0x121a: cfa -24
 
 > 0x1193: _Z8pointersPiPS_PKcPvPFiiE (0x1b)
@@ -311,7 +311,7 @@ expression: "FunctionsDebug::new(&session, &functions)"
     str (parameter)
       type:
         > Pointer (8 bytes)
-          > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+          > Primitive: const char (SignedChar, 1 byte)
       0x1193..0x11ae: cfa -40
     any (parameter)
       type:

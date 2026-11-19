@@ -159,7 +159,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
                   > Unknown
           > Member: c_path_ (offset 72 bytes)
             > Pointer (8 bytes)
-              > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+              > Primitive: const char (SignedChar, 1 byte)
           > Member: size_limit_ (offset 80 bytes)
             > TypeDef: off_t
               > TypeDef: __off_t
@@ -175,30 +175,30 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
             > Structure: MicrodumpExtraInfo (32 bytes)
               > Member: build_fingerprint (offset 0 bytes)
                 > Pointer (8 bytes)
-                  > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                  > Primitive: const char (SignedChar, 1 byte)
               > Member: product_info (offset 8 bytes)
                 > Pointer (8 bytes)
-                  > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                  > Primitive: const char (SignedChar, 1 byte)
               > Member: gpu_fingerprint (offset 16 bytes)
                 > Pointer (8 bytes)
-                  > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                  > Primitive: const char (SignedChar, 1 byte)
               > Member: process_type (offset 24 bytes)
                 > Pointer (8 bytes)
-                  > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                  > Primitive: const char (SignedChar, 1 byte)
       0x1c70..0x1dbc: cfa -416
     eh (local)
       type:
         > Structure: ExceptionHandler (232 bytes)
           > Member: filter_ (offset 0 bytes)
-            > TypeDef: FilterCallback Qualifiers(CONST)
+            > TypeDef: const FilterCallback
               > Pointer (8 bytes)
                 > Unknown
           > Member: callback_ (offset 8 bytes)
-            > TypeDef: MinidumpCallback Qualifiers(CONST)
+            > TypeDef: const MinidumpCallback
               > Pointer (8 bytes)
                 > Unknown
           > Member: callback_context_ (offset 16 bytes)
-            > Pointer (8 bytes) Qualifiers(CONST)
+            > const Pointer (8 bytes)
               > Void
           > Member: crash_generation_client_ (offset 24 bytes)
             > Structure: scoped_ptr<google_breakpad::CrashGenerationClient> (8 bytes)
@@ -255,7 +255,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
                       > Unknown
               > Member: c_path_ (offset 72 bytes)
                 > Pointer (8 bytes)
-                  > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                  > Primitive: const char (SignedChar, 1 byte)
               > Member: size_limit_ (offset 80 bytes)
                 > TypeDef: off_t
                   > TypeDef: __off_t
@@ -271,18 +271,18 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
                 > Structure: MicrodumpExtraInfo (32 bytes)
                   > Member: build_fingerprint (offset 0 bytes)
                     > Pointer (8 bytes)
-                      > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                      > Primitive: const char (SignedChar, 1 byte)
                   > Member: product_info (offset 8 bytes)
                     > Pointer (8 bytes)
-                      > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                      > Primitive: const char (SignedChar, 1 byte)
                   > Member: gpu_fingerprint (offset 16 bytes)
                     > Pointer (8 bytes)
-                      > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                      > Primitive: const char (SignedChar, 1 byte)
                   > Member: process_type (offset 24 bytes)
                     > Pointer (8 bytes)
-                      > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                      > Primitive: const char (SignedChar, 1 byte)
           > Member: crash_handler_ (offset 168 bytes)
-            > TypeDef: HandlerCallback Qualifiers(VOLATILE)
+            > TypeDef: volatile HandlerCallback
               > Pointer (8 bytes)
                 > Unknown
           > Member: fdes (offset 176 bytes)
@@ -917,18 +917,18 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   variables:
     this (parameter)
       type:
-        > Pointer (8 bytes) Qualifiers(CONST)
+        > const Pointer (8 bytes)
           > Structure: ExceptionHandler (232 bytes)
             > Member: filter_ (offset 0 bytes)
-              > TypeDef: FilterCallback Qualifiers(CONST)
+              > TypeDef: const FilterCallback
                 > Pointer (8 bytes)
                   > Unknown
             > Member: callback_ (offset 8 bytes)
-              > TypeDef: MinidumpCallback Qualifiers(CONST)
+              > TypeDef: const MinidumpCallback
                 > Pointer (8 bytes)
                   > Unknown
             > Member: callback_context_ (offset 16 bytes)
-              > Pointer (8 bytes) Qualifiers(CONST)
+              > const Pointer (8 bytes)
                 > Void
             > Member: crash_generation_client_ (offset 24 bytes)
               > Structure: scoped_ptr<google_breakpad::CrashGenerationClient> (8 bytes)
@@ -985,7 +985,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
                         > Unknown
                 > Member: c_path_ (offset 72 bytes)
                   > Pointer (8 bytes)
-                    > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                    > Primitive: const char (SignedChar, 1 byte)
                 > Member: size_limit_ (offset 80 bytes)
                   > TypeDef: off_t
                     > TypeDef: __off_t
@@ -1001,18 +1001,18 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
                   > Structure: MicrodumpExtraInfo (32 bytes)
                     > Member: build_fingerprint (offset 0 bytes)
                       > Pointer (8 bytes)
-                        > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                        > Primitive: const char (SignedChar, 1 byte)
                     > Member: product_info (offset 8 bytes)
                       > Pointer (8 bytes)
-                        > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                        > Primitive: const char (SignedChar, 1 byte)
                     > Member: gpu_fingerprint (offset 16 bytes)
                       > Pointer (8 bytes)
-                        > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                        > Primitive: const char (SignedChar, 1 byte)
                     > Member: process_type (offset 24 bytes)
                       > Pointer (8 bytes)
-                        > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                        > Primitive: const char (SignedChar, 1 byte)
             > Member: crash_handler_ (offset 168 bytes)
-              > TypeDef: HandlerCallback Qualifiers(VOLATILE)
+              > TypeDef: volatile HandlerCallback
                 > Pointer (8 bytes)
                   > Unknown
             > Member: fdes (offset 176 bytes)
@@ -1206,7 +1206,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
                 > Primitive: int (SignedInt, 4 bytes)
           > Member: minidump_descriptor (offset 8 bytes)
             > Pointer (8 bytes)
-              > Structure: MinidumpDescriptor (136 bytes) Qualifiers(CONST)
+              > Structure: const MinidumpDescriptor (136 bytes)
                 > Member: mode_ (offset 0 bytes)
                   > Unknown
                 > Member: fd_ (offset 4 bytes)
@@ -1251,7 +1251,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
                         > Unknown
                 > Member: c_path_ (offset 72 bytes)
                   > Pointer (8 bytes)
-                    > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                    > Primitive: const char (SignedChar, 1 byte)
                 > Member: size_limit_ (offset 80 bytes)
                   > TypeDef: off_t
                     > TypeDef: __off_t
@@ -1267,29 +1267,29 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
                   > Structure: MicrodumpExtraInfo (32 bytes)
                     > Member: build_fingerprint (offset 0 bytes)
                       > Pointer (8 bytes)
-                        > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                        > Primitive: const char (SignedChar, 1 byte)
                     > Member: product_info (offset 8 bytes)
                       > Pointer (8 bytes)
-                        > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                        > Primitive: const char (SignedChar, 1 byte)
                     > Member: gpu_fingerprint (offset 16 bytes)
                       > Pointer (8 bytes)
-                        > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                        > Primitive: const char (SignedChar, 1 byte)
                     > Member: process_type (offset 24 bytes)
                       > Pointer (8 bytes)
-                        > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                        > Primitive: const char (SignedChar, 1 byte)
           > Member: handler (offset 16 bytes)
             > Pointer (8 bytes)
               > Structure: ExceptionHandler (232 bytes)
                 > Member: filter_ (offset 0 bytes)
-                  > TypeDef: FilterCallback Qualifiers(CONST)
+                  > TypeDef: const FilterCallback
                     > Pointer (8 bytes)
                       > Unknown
                 > Member: callback_ (offset 8 bytes)
-                  > TypeDef: MinidumpCallback Qualifiers(CONST)
+                  > TypeDef: const MinidumpCallback
                     > Pointer (8 bytes)
                       > Unknown
                 > Member: callback_context_ (offset 16 bytes)
-                  > Pointer (8 bytes) Qualifiers(CONST)
+                  > const Pointer (8 bytes)
                     > Void
                 > Member: crash_generation_client_ (offset 24 bytes)
                   > Structure: scoped_ptr<google_breakpad::CrashGenerationClient> (8 bytes)
@@ -1346,7 +1346,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
                             > Unknown
                     > Member: c_path_ (offset 72 bytes)
                       > Pointer (8 bytes)
-                        > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                        > Primitive: const char (SignedChar, 1 byte)
                     > Member: size_limit_ (offset 80 bytes)
                       > TypeDef: off_t
                         > TypeDef: __off_t
@@ -1362,18 +1362,18 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
                       > Structure: MicrodumpExtraInfo (32 bytes)
                         > Member: build_fingerprint (offset 0 bytes)
                           > Pointer (8 bytes)
-                            > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                            > Primitive: const char (SignedChar, 1 byte)
                         > Member: product_info (offset 8 bytes)
                           > Pointer (8 bytes)
-                            > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                            > Primitive: const char (SignedChar, 1 byte)
                         > Member: gpu_fingerprint (offset 16 bytes)
                           > Pointer (8 bytes)
-                            > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                            > Primitive: const char (SignedChar, 1 byte)
                         > Member: process_type (offset 24 bytes)
                           > Pointer (8 bytes)
-                            > Primitive: char (SignedChar, 1 byte) Qualifiers(CONST)
+                            > Primitive: const char (SignedChar, 1 byte)
                 > Member: crash_handler_ (offset 168 bytes)
-                  > TypeDef: HandlerCallback Qualifiers(VOLATILE)
+                  > TypeDef: volatile HandlerCallback
                     > Pointer (8 bytes)
                       > Unknown
                 > Member: fdes (offset 176 bytes)
@@ -1397,7 +1397,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x2520..0x29e6: cfa -116
     r (local)
       type:
-        > Primitive: int (SignedInt, 4 bytes) Qualifiers(CONST)
+        > Primitive: const int (SignedInt, 4 bytes)
       0x28cd..0x28f1: register rsi
       0x28f1..0x28f7: cfa -144
       0x28f7..0x291d: register rsi
