@@ -114,13 +114,16 @@ NOINLINE void aggregates(void)
 }
 
 /*
- * Inlined variables. `inlined` is always inlined, so the call below becomes a
+ * Inlined variables. `inlined` is always inlined, so each call below becomes a
  * DW_TAG_inlined_subroutine whose variable DIEs carry only a location plus a
  * DW_AT_abstract_origin reference; their names and types live on the abstract
  * instance. Taking the address of `inlined` below also makes GCC emit a
  * standalone copy: a concrete out-of-line DW_TAG_subprogram whose variables
- * reference the same abstract instance. USE keeps the inlined copy alive at
- * -O2, where it would otherwise fold away.
+ * reference the same abstract instance. USE keeps the inlined copies alive at
+ * -O2, where they would otherwise fold away.
+ *
+ * The two calls are siblings: both are inlined at the same depth into
+ * `inlining`, and each has its own `param` and `doubled`.
  */
 inline __attribute__((always_inline)) int inlined(int param)
 {
@@ -134,6 +137,7 @@ int (*volatile inlined_address)(int) = inlined;
 NOINLINE void inlining(int outer)
 {
     int result = inlined(outer);
+    result += inlined(result);
 }
 
 /*

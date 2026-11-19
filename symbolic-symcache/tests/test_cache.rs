@@ -302,26 +302,53 @@ fn test_lookup_variables_inlined() -> Result<(), Error> {
     converter.serialize(&mut Cursor::new(&mut data))?;
     let symcache = SymCache::parse(&data)?;
 
-    // `inlined(int param)` inlined into `inlining(int outer)`. The variable DIEs of the inlined
-    // instance carry only a location plus a `DW_AT_abstract_origin` reference to the abstract
-    // instance, which holds their names and types.
-    let mut source_locations = symcache.lookup(0x1227);
+    // `inlining(int outer)` calls `inlined(int param)` twice and both calls are inlined. The
+    // variable DIEs of each inlined instance carry only a location plus a
+    // `DW_AT_abstract_origin` reference to the abstract instance, which holds their names and
+    // types.
+    //
+    // The two instances are siblings at the same inline depth, and the symcache cannot tell their
+    // variables apart yet. A lookup in one call therefore also returns the `param` and `doubled`
+    // of the other call, without a location.
+    let mut first_call = symcache.lookup(0x1227);
 
-    let inlined = source_locations.next().unwrap();
+    let inlined = first_call.next().unwrap();
     assert_eq!(inlined.function().name(), "_Z7inlinedi");
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, inlined.variables()), @"
-    param (parameter, int): 0x1227..0x1238 cfa -24
-    doubled (local, int): 0x1227..0x1238 cfa -28
+    param (parameter, int): 0x1227..0x1238 cfa -32
+    doubled (local, int): 0x1227..0x1238 cfa -36
+    param (parameter, int): <unavailable>
+    doubled (local, int): <unavailable>
     ");
 
-    let inlining = source_locations.next().unwrap();
+    let inlining = first_call.next().unwrap();
     assert_eq!(inlining.function().name(), "_Z8inliningi");
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, inlining.variables()), @"
-    outer (parameter, int): 0x121a..0x123e cfa -36
-    result (local, int): 0x121a..0x123e cfa -20
+    outer (parameter, int): 0x121a..0x1258 cfa -52
+    result (local, int): 0x121a..0x1258 cfa -20
     ");
 
-    assert!(source_locations.next().is_none());
+    assert!(first_call.next().is_none());
+
+    let mut second_call = symcache.lookup(0x1241);
+
+    let inlined = second_call.next().unwrap();
+    assert_eq!(inlined.function().name(), "_Z7inlinedi");
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, inlined.variables()), @"
+    param (parameter, int): <unavailable>
+    doubled (local, int): <unavailable>
+    param (parameter, int): 0x1241..0x1252 cfa -24
+    doubled (local, int): 0x1241..0x1252 cfa -28
+    ");
+
+    let inlining = second_call.next().unwrap();
+    assert_eq!(inlining.function().name(), "_Z8inliningi");
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, inlining.variables()), @"
+    outer (parameter, int): 0x121a..0x1258 cfa -52
+    result (local, int): 0x121a..0x1258 cfa -20
+    ");
+
+    assert!(second_call.next().is_none());
 
     Ok(())
 }
