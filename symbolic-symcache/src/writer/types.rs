@@ -86,7 +86,15 @@ where
             Entry::Vacant(entry) => entry,
         };
 
-        let Some(ty) = self.session.lookup_type(&ty_ref).ok().flatten() else {
+        // Qualifiers, and with them qualified `void`, are not stored in symcaches yet.
+        let Some(ty) = self
+            .session
+            .lookup_type(&ty_ref)
+            .ok()
+            .flatten()
+            .map(|ty| ty.kind)
+            .filter(|kind| !matches!(kind, di::TypeKind::Void))
+        else {
             entry.insert(ResolvedState::Unknown);
             return Err(ResolvedState::Unknown);
         };
@@ -105,15 +113,17 @@ where
 
     fn serialize(
         &mut self,
-        ty: &di::Type<'data>,
+        ty: &di::TypeKind<'data>,
         type_writer: &mut TypeWriter,
         string_table: &mut StringTable,
     ) -> FwdResult {
         match ty {
-            di::Type::Primitive(ty) => self.ser_primitive(ty, string_table),
-            di::Type::Pointer(ty) => self.ser_pointer(ty),
-            di::Type::TypeDef(ty) => self.ser_typedef(ty, string_table),
-            di::Type::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
+            di::TypeKind::Primitive(ty) => self.ser_primitive(ty, string_table),
+            di::TypeKind::Pointer(ty) => self.ser_pointer(ty),
+            di::TypeKind::TypeDef(ty) => self.ser_typedef(ty, string_table),
+            di::TypeKind::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
+            // Filtered out in `resolve`, qualified `void` is not stored in symcaches yet.
+            di::TypeKind::Void => unreachable!(),
         }
     }
 
@@ -285,12 +295,12 @@ where
 
 struct Resolved<'a> {
     ty_ref: TypeRef,
-    ty: di::Type<'a>,
+    ty: di::TypeKind<'a>,
     child_offset: usize,
 }
 
 impl<'a> Resolved<'a> {
-    fn new(ty_ref: TypeRef, ty: di::Type<'a>) -> Self {
+    fn new(ty_ref: TypeRef, ty: di::TypeKind<'a>) -> Self {
         Self {
             ty_ref,
             ty,
@@ -300,9 +310,9 @@ impl<'a> Resolved<'a> {
 
     fn next_child(&mut self) -> Option<TypeRef> {
         let next = match &self.ty {
-            di::Type::Pointer(t) if self.child_offset == 0 => t.pointee.clone(),
-            di::Type::TypeDef(t) if self.child_offset == 0 => t.ty.clone(),
-            di::Type::StructureType(t) => t
+            di::TypeKind::Pointer(t) if self.child_offset == 0 => t.pointee.clone(),
+            di::TypeKind::TypeDef(t) if self.child_offset == 0 => t.ty.clone(),
+            di::TypeKind::StructureType(t) => t
                 .members
                 .get(self.child_offset)
                 .map(|member| member.ty.clone()),

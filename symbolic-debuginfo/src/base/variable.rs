@@ -39,9 +39,35 @@ impl From<crate::dwarf::DwarfTypeRef> for TypeRef {
     }
 }
 
-/// A concrete type.
+/// A concrete type, together with the qualifiers applied to it.
 #[derive(Debug, Clone)]
-pub enum Type<'data> {
+pub struct Type<'data> {
+    /// The kind of the type.
+    pub kind: TypeKind<'data>,
+    /// The qualifiers applied to the type, for example `const`.
+    pub qualifiers: Qualifiers,
+}
+
+impl<'data, T> From<T> for Type<'data>
+where
+    T: Into<TypeKind<'data>>,
+{
+    fn from(value: T) -> Self {
+        Self {
+            kind: value.into(),
+            qualifiers: Qualifiers::empty(),
+        }
+    }
+}
+
+/// The kind of a [`Type`].
+#[derive(Debug, Clone)]
+pub enum TypeKind<'data> {
+    /// A qualified `void`, such as `const void`.
+    ///
+    /// An unqualified `void` has no type of its own. It is represented by a missing type
+    /// reference, for example [`PointerType::pointee`].
+    Void,
     /// A primitive type.
     Primitive(PrimitiveType<'data>),
     /// A pointer type.
@@ -52,25 +78,38 @@ pub enum Type<'data> {
     StructureType(StructureType<'data>),
 }
 
-impl<'data> From<PrimitiveType<'data>> for Type<'data> {
+bitflags::bitflags! {
+    /// Type qualifiers, such as `const` or `volatile`, applied to a type.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct Qualifiers: u8 {
+        /// The `const` qualifier.
+        const CONST = 1 << 0;
+        /// The `volatile` qualifier.
+        const VOLATILE = 1 << 1;
+        /// The `restrict` qualifier.
+        const RESTRICT = 1 << 2;
+    }
+}
+
+impl<'data> From<PrimitiveType<'data>> for TypeKind<'data> {
     fn from(value: PrimitiveType<'data>) -> Self {
         Self::Primitive(value)
     }
 }
 
-impl<'data> From<PointerType> for Type<'data> {
+impl<'data> From<PointerType> for TypeKind<'data> {
     fn from(value: PointerType) -> Self {
         Self::Pointer(value)
     }
 }
 
-impl<'data> From<TypeDefType<'data>> for Type<'data> {
+impl<'data> From<TypeDefType<'data>> for TypeKind<'data> {
     fn from(value: TypeDefType<'data>) -> Self {
         Self::TypeDef(value)
     }
 }
 
-impl<'data> From<StructureType<'data>> for Type<'data> {
+impl<'data> From<StructureType<'data>> for TypeKind<'data> {
     fn from(value: StructureType<'data>) -> Self {
         Self::StructureType(value)
     }

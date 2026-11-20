@@ -2081,28 +2081,61 @@ impl<'data> DwarfDebugSession<'data> {
     ///
     /// See also: [`DebugSession::lookup_type`].
     pub fn lookup_type(&self, ty: &TypeRef) -> Result<Option<Type<'_>>, DwarfError> {
+        /// The maximum number of type modifier entries followed for a single type.
+        ///
+        /// Modifier chains in valid DWARF are short (e.g. `const volatile`), this limit only
+        /// protects against cycles in malformed debug information.
+        const MAX_MODIFIER_DEPTH: u8 = 16;
+
+        /// Looks up a DWARF type, folding type modifiers (see [`types::parse_modifier`]) into the
+        /// type they modify. `depth` limits how many modifier entries are followed.
+        fn lookup<'d>(
+            info: &DwarfInfo<'d>,
+            ty: &DwarfTypeRefInner,
+            depth: u8,
+        ) -> Result<Option<Type<'d>>, DwarfError> {
+            let unit = match ty {
+                DwarfTypeRefInner::Offset {
+                    section: SectionId::DebugInfo,
+                    offset,
+                } => Some(info.find_info_unit_offset(gimli::DebugInfoOffset(offset.0))?),
+                DwarfTypeRefInner::Offset {
+                    section: SectionId::DebugTypes,
+                    offset,
+                } => Some(info.find_types_unit_offset(*offset)?),
+                DwarfTypeRefInner::Signature(signature) => info.find_type_signature(*signature)?,
+                DwarfTypeRefInner::Offset { .. } => None,
+            };
+            let Some((unit, offset)) = unit else {
+                return Ok(None);
+            };
+
+            match types::parse_modifier(unit, offset)? {
+                // Not a modifier: the entry is the type itself.
+                None => types::parse_type(unit, offset),
+                // A modifier without a modified type qualifies `void`.
+                Some((qualifiers, None)) => Ok(Some(Type {
+                    kind: TypeKind::Void,
+                    qualifiers,
+                })),
+                // A modifier chain longer than the depth limit.
+                Some(_) if depth == 0 => Ok(None),
+                // Recursive case: look up the modified type and add the qualifier to it.
+                Some((qualifiers, Some(DwarfTypeRef(modified)))) => {
+                    let ty = lookup(info, &modified, depth - 1)?;
+                    Ok(ty.map(|mut ty| {
+                        ty.qualifiers |= qualifiers;
+                        ty
+                    }))
+                }
+            }
+        }
+
         let Some(DwarfTypeRef(ty)) = ty.as_dwarf() else {
             return Ok(None);
         };
 
-        let info = self.cell.get();
-        let unit = match ty {
-            DwarfTypeRefInner::Offset {
-                section: SectionId::DebugInfo,
-                offset,
-            } => Some(info.find_info_unit_offset(gimli::DebugInfoOffset(offset.0))?),
-            DwarfTypeRefInner::Offset {
-                section: SectionId::DebugTypes,
-                offset,
-            } => Some(info.find_types_unit_offset(*offset)?),
-            DwarfTypeRefInner::Signature(signature) => info.find_type_signature(*signature)?,
-            DwarfTypeRefInner::Offset { .. } => None,
-        };
-        let Some((unit, offset)) = unit else {
-            return Ok(None);
-        };
-
-        self::types::parse_type(unit, offset)
+        lookup(self.cell.get(), ty, MAX_MODIFIER_DEPTH)
     }
 
     /// See [`DebugSession::source_by_path`] for more information.

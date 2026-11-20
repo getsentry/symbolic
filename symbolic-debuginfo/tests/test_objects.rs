@@ -8,7 +8,7 @@ use symbolic_debuginfo::ObjectDebugSession;
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
 use symbolic_debuginfo::elf::ElfObject;
 use symbolic_debuginfo::{
-    FileEntry, Function, LineInfo, Object, ObjectKind, ParseObjectOptions, SymbolMap, Type,
+    FileEntry, Function, LineInfo, Object, ObjectKind, ParseObjectOptions, SymbolMap, TypeKind,
     TypeRef, VariableLocation, pe::PeObject,
 };
 use symbolic_testutils::fixture;
@@ -186,11 +186,11 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
 
         let mut seen_types = self.seen_types.clone();
         if !seen_types.insert(type_ref.clone()) {
-            let name = match &ty {
-                Type::Primitive(ty) => ty.name.as_deref(),
-                Type::Pointer(_) => None,
-                Type::TypeDef(ty) => Some(ty.name.as_ref()),
-                Type::StructureType(ty) => ty.name.as_deref(),
+            let name = match &ty.kind {
+                TypeKind::Primitive(ty) => ty.name.as_deref(),
+                TypeKind::Pointer(_) | TypeKind::Void => None,
+                TypeKind::TypeDef(ty) => Some(ty.name.as_ref()),
+                TypeKind::StructureType(ty) => ty.name.as_deref(),
             };
             let identifier = name
                 .map(str::to_owned)
@@ -203,21 +203,34 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
             );
         }
 
-        match ty {
-            Type::Primitive(ty) => {
+        // Qualifiers as a suffix ("east const"), such as ` const volatile`.
+        let qualifiers: String = ty
+            .qualifiers
+            .iter_names()
+            .map(|(name, _)| format!(" {}", name.to_lowercase()))
+            .collect();
+
+        match ty.kind {
+            TypeKind::Void => writeln!(
+                f,
+                "{:indent$}> Void{qualifiers}",
+                "",
+                indent = self.depth * 2
+            ),
+            TypeKind::Primitive(ty) => {
                 let name = ty.name.as_deref().unwrap_or("<unknown>");
 
                 let result = match ty.encoding {
                     Some(encoding) => writeln!(
                         f,
-                        "{:indent$}> Primitive: {name} ({encoding:?}, {size})",
+                        "{:indent$}> Primitive: {name}{qualifiers} ({encoding:?}, {size})",
                         "",
                         size = ty.size,
                         indent = self.depth * 2
                     ),
                     None => writeln!(
                         f,
-                        "{:indent$}> Primitive: {name} (<unknown encoding>, {size})",
+                        "{:indent$}> Primitive: {name}{qualifiers} (<unknown encoding>, {size})",
                         "",
                         size = ty.size,
                         indent = self.depth * 2
@@ -235,10 +248,10 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                 }
                 result
             }
-            Type::Pointer(ty) => {
+            TypeKind::Pointer(ty) => {
                 writeln!(
                     f,
-                    "{:indent$}> Pointer ({size})",
+                    "{:indent$}> Pointer{qualifiers} ({size})",
                     "",
                     size = ty.size,
                     indent = self.depth * 2
@@ -254,10 +267,10 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                     }
                 )
             }
-            Type::TypeDef(ty) => {
+            TypeKind::TypeDef(ty) => {
                 writeln!(
                     f,
-                    "{:indent$}> TypeDef: {}",
+                    "{:indent$}> TypeDef: {}{qualifiers}",
                     "",
                     ty.name,
                     indent = self.depth * 2
@@ -273,12 +286,12 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                     }
                 )
             }
-            Type::StructureType(ty) => {
+            TypeKind::StructureType(ty) => {
                 let name = ty.name.as_deref().unwrap_or("<anonymous>");
 
                 write!(
                     f,
-                    "{:indent$}> Structure: {name}",
+                    "{:indent$}> Structure: {name}{qualifiers}",
                     "",
                     indent = self.depth * 2
                 )?;

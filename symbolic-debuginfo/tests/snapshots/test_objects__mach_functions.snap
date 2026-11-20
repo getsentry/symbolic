@@ -141,7 +141,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     path (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Primitive: char const (SignedChar, 1 byte)
       0xe20..0xe24: register rsi
       0xe24..0xe40: register rcx
       0xe4a..0xe5f: register rcx
@@ -210,7 +210,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     str (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Primitive: wchar_t const (SignedInt, 4 bytes)
       0xea0..0xeb6: register rsi
       0xeb6..0xf23: register rbx
       0xf76..0xf94: register rbx
@@ -309,7 +309,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     str (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Primitive: char const (SignedChar, 1 byte)
       0xff0..0x1006: register rsi
       0x1006..0x10ef: register rbx
       0x10f9..0x1137: register rbx
@@ -393,7 +393,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     str (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Primitive: wchar_t const (SignedInt, 4 bytes)
       0x1140..0x1145: register rsi
     location (parameter)
       type:
