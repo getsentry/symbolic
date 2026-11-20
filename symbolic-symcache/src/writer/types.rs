@@ -86,15 +86,7 @@ where
             Entry::Vacant(entry) => entry,
         };
 
-        // Qualifiers, and with them qualified `void`, are not stored in symcaches yet.
-        let Some(ty) = self
-            .session
-            .lookup_type(&ty_ref)
-            .ok()
-            .flatten()
-            .map(|ty| ty.kind)
-            .filter(|kind| !matches!(kind, di::TypeKind::Void))
-        else {
+        let Some(ty) = self.session.lookup_type(&ty_ref).ok().flatten() else {
             entry.insert(ResolvedState::Unknown);
             return Err(ResolvedState::Unknown);
         };
@@ -118,18 +110,19 @@ where
 
     fn serialize(
         &mut self,
-        ty: &di::TypeKind<'data>,
+        ty: &di::Type<'data>,
         type_writer: &mut TypeWriter,
         string_table: &mut StringTable,
     ) -> FwdResult {
-        match ty {
+        let mut raw = match &ty.kind {
+            di::TypeKind::Void => Ok(v9::raw::VoidType::default().into()),
             di::TypeKind::Primitive(ty) => self.ser_primitive(ty, string_table),
             di::TypeKind::Pointer(ty) => self.ser_pointer(ty),
             di::TypeKind::TypeDef(ty) => self.ser_typedef(ty, string_table),
             di::TypeKind::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
-            // Filtered out in `resolve`, qualified `void` is not stored in symcaches yet.
-            di::TypeKind::Void => unreachable!(),
-        }
+        }?;
+        raw.qualifiers = ty.qualifiers.bits();
+        Ok(raw)
     }
 
     fn ser_primitive(&mut self, ty: &di::PrimitiveType<'_>, st: &mut StringTable) -> FwdResult {
@@ -294,12 +287,12 @@ where
 
 struct Resolved<'a> {
     ty_ref: TypeRef,
-    ty: di::TypeKind<'a>,
+    ty: di::Type<'a>,
     child_offset: usize,
 }
 
 impl<'a> Resolved<'a> {
-    fn new(ty_ref: TypeRef, ty: di::TypeKind<'a>) -> Self {
+    fn new(ty_ref: TypeRef, ty: di::Type<'a>) -> Self {
         Self {
             ty_ref,
             ty,
@@ -308,7 +301,7 @@ impl<'a> Resolved<'a> {
     }
 
     fn next_child(&mut self) -> Option<TypeRef> {
-        let next = match &self.ty {
+        let next = match &self.ty.kind {
             di::TypeKind::Pointer(t) if self.child_offset == 0 => Some(t.pointee.clone()),
             di::TypeKind::TypeDef(t) if self.child_offset == 0 => Some(t.ty.clone()),
             di::TypeKind::StructureType(t) => t
@@ -563,6 +556,7 @@ mod tests {
                             Some(v9::raw::ty::Enum::structure(t)) => {
                                 format!("[{idx}] (struct:{})", name(t.name_offset))
                             }
+                            Some(v9::raw::ty::Enum::void(_)) => format!("[{idx}] (void)"),
                             None => format!("[{idx}] <ERROR>"),
                         },
                     };
@@ -598,6 +592,7 @@ mod tests {
                                 .field("members", &members)
                                 .finish()
                         }
+                        Some(v9::raw::ty::Enum::void(_)) => write!(f, "[{idx}] Void"),
                         None => f.write_str("<invalid type>"),
                     }
                 }

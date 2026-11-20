@@ -3,7 +3,8 @@ use std::{fmt, io::Cursor};
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
 use symbolic_symcache::{
-    FunctionsDebug, SymCache, SymCacheConverter, Type, VariableLocation, Variables,
+    FunctionsDebug, Qualifiers, SymCache, SymCacheConverter, Type, TypeKind, VariableLocation,
+    Variables,
 };
 use symbolic_testutils::fixture;
 
@@ -13,14 +14,26 @@ struct TypeDebug<'data, 'cache>(&'cache SymCache<'data>, Type<'data>);
 
 impl fmt::Debug for TypeDebug<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.1 {
-            Type::Primitive(primitive) => f.write_str(primitive.name().unwrap_or("<unknown>")),
-            Type::Pointer(pointer) => match pointer.pointee() {
+        // Qualifiers as a suffix ("east const"), such as ` const volatile`.
+        let qualifiers = |qualifiers: Qualifiers| -> String {
+            qualifiers
+                .iter_names()
+                .map(|(name, _)| format!(" {}", name.to_lowercase()))
+                .collect()
+        };
+
+        let qualifiers = qualifiers(self.1.qualifiers());
+        match self.1.kind() {
+            TypeKind::Void => write!(f, "void{qualifiers}"),
+            TypeKind::Primitive(primitive) => {
+                write!(f, "{}{qualifiers}", primitive.name().unwrap_or("<unknown>"))
+            }
+            TypeKind::Pointer(pointer) => match pointer.pointee() {
                 Some(ty) => match self.0.lookup_type(ty) {
-                    Some(pointee) => write!(f, "{:?}*", TypeDebug(self.0, pointee)),
-                    None => f.write_str("<unknown>*"),
+                    Some(pointee) => write!(f, "{:?}*{qualifiers}", TypeDebug(self.0, pointee)),
+                    None => write!(f, "<unknown>*{qualifiers}"),
                 },
-                None => f.write_str("void*"),
+                None => write!(f, "void*{qualifiers}"),
             },
             _ => f.write_str("<unknown>"),
         }
@@ -95,11 +108,11 @@ fn test_load_header_linux() -> Result<(), Error> {
         functions: 697,
         source_locations: 8431,
         ranges: 6975,
-        string_bytes: 55328,
+        string_bytes: 56493,
         variables: 548,
         variable_locations: 1610,
-        types: 183,
-        structure_members: 257,
+        types: 313,
+        structure_members: 325,
     }
     "#);
     Ok(())
@@ -129,11 +142,11 @@ fn test_load_header_macos() -> Result<(), Error> {
         functions: 639,
         source_locations: 7382,
         ranges: 5965,
-        string_bytes: 50218,
+        string_bytes: 50320,
         variables: 477,
         variable_locations: 1098,
-        types: 299,
-        structure_members: 521,
+        types: 344,
+        structure_members: 526,
     }
     "#);
     Ok(())
@@ -195,8 +208,8 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
 
     let source_location = symcache.lookup(0xfe50).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
-    this (parameter, <unknown>): 0xfe50..0xfe86 register rdi
-    str (parameter, <unknown>*): 0xfe50..0xfe86 register rsi
+    this (parameter, <unknown>* const): 0xfe50..0xfe86 register rdi
+    str (parameter, wchar_t const*): 0xfe50..0xfe86 register rsi
     length (parameter, unsigned int): 0xfe50..0xfe86 register rdx
     mdstring (parameter, <unknown>*): 0xfe50..0xfe86 register rcx
     result (local, bool): <unavailable>
@@ -207,8 +220,8 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
 
     let source_location = symcache.lookup(0xfe90).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
-    this (parameter, <unknown>): <unavailable>
-    str (parameter, <unknown>*): 0xfe86..0xff02 register rbp
+    this (parameter, <unknown>* const): <unavailable>
+    str (parameter, wchar_t const*): 0xfe86..0xff02 register rbp
     length (parameter, unsigned int): 0xfe86..0xff02 register rbx
     mdstring (parameter, <unknown>*): 0xfe86..0xff02 register r13
     result (local, bool): <unavailable>
@@ -219,8 +232,8 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
 
     let source_location = symcache.lookup(0xfecb).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
-    this (parameter, <unknown>): <unavailable>
-    str (parameter, <unknown>*): 0xfe86..0xff02 register rbp
+    this (parameter, <unknown>* const): <unavailable>
+    str (parameter, wchar_t const*): 0xfe86..0xff02 register rbp
     length (parameter, unsigned int): 0xfe86..0xff02 register rbx
     mdstring (parameter, <unknown>*): 0xfe86..0xff02 register r13
     result (local, bool): <unavailable>
@@ -271,7 +284,7 @@ fn test_lookup_variables_void_pointer() -> Result<(), Error> {
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     num (parameter, int*): 0x1193..0x11ae cfa -24
     num_ptr (parameter, int**): 0x1193..0x11ae cfa -32
-    str (parameter, char*): 0x1193..0x11ae cfa -40
+    str (parameter, char const*): 0x1193..0x11ae cfa -40
     any (parameter, void*): 0x1193..0x11ae cfa -48
     fn (parameter, <unknown>*): 0x1193..0x11ae cfa -56
     ");
@@ -287,7 +300,7 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     let source_location = symcache.lookup(0xea0).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>*): 0xea0..0xed2 register rdi
-    str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
+    str (parameter, wchar_t const*): 0xea0..0xeb6 register rsi
     mdstring (parameter, <unknown>*): 0xea0..0xeb1 register rcx
     out (local, <unknown>): 0xea0..0xfe7 memory at rsp +16
     out_size (local, <unknown>): <unavailable>
@@ -296,7 +309,7 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     let source_location = symcache.lookup(0xeb2).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>*): 0xea0..0xed2 register rdi
-    str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
+    str (parameter, wchar_t const*): 0xea0..0xeb6 register rsi
     mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
     out (local, <unknown>): 0xea0..0xfe7 memory at rsp +16
     out_size (local, <unknown>): <unavailable>
@@ -305,7 +318,7 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     let source_location = symcache.lookup(0xed2).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>*): <unavailable>
-    str (parameter, <unknown>*): 0xeb6..0xf23 register rbx
+    str (parameter, wchar_t const*): 0xeb6..0xf23 register rbx
     mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
     out (local, <unknown>): 0xea0..0xfe7 memory at rsp +16
     out_size (local, <unknown>): <unavailable>

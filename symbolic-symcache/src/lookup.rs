@@ -6,7 +6,7 @@ use symbolic_debuginfo::ValueBits;
 use crate::SymCache;
 
 pub use symbolic_debuginfo::{
-    PrimitiveTypeEncoding, Size, VariableKind, VariableLocation, VariableLocationInfo,
+    PrimitiveTypeEncoding, Qualifiers, Size, VariableKind, VariableLocation, VariableLocationInfo,
 };
 
 /// A source File included in the SymCache.
@@ -109,10 +109,31 @@ impl Default for Function<'_> {
 #[derive(Copy, Clone, Debug)]
 pub struct TypeId(pub(crate) u32);
 
-/// A type in the SymCache.
+/// A type in the SymCache, together with the qualifiers applied to it.
+#[derive(Clone, Debug)]
+pub struct Type<'data> {
+    pub(crate) kind: TypeKind<'data>,
+    pub(crate) qualifiers: Qualifiers,
+}
+
+impl<'data> Type<'data> {
+    /// The kind of this type.
+    pub fn kind(&self) -> &TypeKind<'data> {
+        &self.kind
+    }
+
+    /// The qualifiers applied to this type, for example `const`.
+    pub fn qualifiers(&self) -> Qualifiers {
+        self.qualifiers
+    }
+}
+
+/// The kind of a [`Type`].
 #[derive(Clone, Debug)]
 #[non_exhaustive]
-pub enum Type<'data> {
+pub enum TypeKind<'data> {
+    /// A qualified `void`, such as `const void`.
+    Void,
     /// A primitive type.
     Primitive(PrimitiveType<'data>),
     /// A pointer type.

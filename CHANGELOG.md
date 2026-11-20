@@ -6,6 +6,7 @@
 
 - Rename `VariableLocation::FrameOffset` to `VariableLocation::CfaOffset`. It now only describes variables at an offset from the CFA. ([#1168](https://github.com/getsentry/symbolic/pull/1168))
 - `Type` is now a struct with the type's `qualifiers` and its `kind`. The previous `Type` enum is renamed to `TypeKind`. The new `TypeKind::Void` variant represents `void`, including a qualified `void`, such as `const void`. `PointerType::pointee` and `TypeDefType::ty` are now a `TypeRef` instead of an `Option<TypeRef>`, and the new `TypeRef::void()` refers to `void`. ([#1176](https://github.com/getsentry/symbolic/pull/1176))
+- The symcache `Type` is now a struct with the type's `qualifiers()` and its `kind()`. The previous enum is renamed to `TypeKind`. ([#1177](https://github.com/getsentry/symbolic/pull/1177))
 
 **Features**
 
@@ -15,6 +16,7 @@
 - Parse `DW_OP_breg<n>` and `DW_OP_bregx` locations from DWARF into `VariableLocation::RegisterOffset`. ([#1151](https://github.com/getsentry/symbolic/pull/1151), [#1155](https://github.com/getsentry/symbolic/pull/1155))
 - Resolve DWARF `DW_OP_fbreg` variable locations against the function's `DW_AT_frame_base`. A register frame base gives `VariableLocation::RegisterOffset`, the CFA gives `VariableLocation::CfaOffset`, and locations with any other frame base are dropped. ([#1152](https://github.com/getsentry/symbolic/pull/1152))
 - Resolve DWARF `const`, `volatile` and `restrict` type qualifiers by folding them into the qualified type. ([#1176](https://github.com/getsentry/symbolic/pull/1176))
+- Store type qualifiers in symcaches, including qualified `void`, such as `const void`. ([#1177](https://github.com/getsentry/symbolic/pull/1177))
 
 **Fixes**
 
