@@ -3,12 +3,13 @@ use std::cmp::Ordering;
 use std::collections::HashSet;
 
 use symbolic_common::{Arch, CpuFamily, Language};
+use symbolic_debuginfo::Qualifiers;
 use watto::StringTable;
 
 use crate::v9::{SymCache, convert, raw};
 use crate::{
     File, Function, PointerType, PrimitiveType, StructureMember, StructureType, Type, TypeDefType,
-    TypeId, VariableKind, VariableLocation, VariableLocationInfo,
+    TypeId, TypeKind, VariableKind, VariableLocation, VariableLocationInfo,
 };
 
 impl<'data> SymCache<'data> {
@@ -73,20 +74,21 @@ impl<'data> SymCache<'data> {
 
     pub fn get_type(&self, ty_idx: u32) -> Option<Type<'data>> {
         let raw_ty = self.types.get(ty_idx as usize)?;
+        let qualifiers = Qualifiers::from_bits_truncate(raw_ty.qualifiers);
 
-        Some(match raw_ty.as_enum()? {
-            raw::ty::Enum::primitive(primitive) => Type::Primitive(PrimitiveType {
+        let kind = match raw_ty.as_enum()? {
+            raw::ty::Enum::primitive(primitive) => TypeKind::Primitive(PrimitiveType {
                 name: self.get_string(primitive.name_offset),
                 size: primitive.size.into_di().unwrap_or_default(),
                 value_bits: primitive.value_bits.into_di(),
                 encoding: convert::u8_to_primitive_type_encoding(primitive.encoding),
             }),
-            raw::ty::Enum::pointer(pointer) => Type::Pointer(PointerType {
+            raw::ty::Enum::pointer(pointer) => TypeKind::Pointer(PointerType {
                 size: pointer.size.into_di().unwrap_or_default(),
                 pointee: (pointer.pointee_idx != raw::Type::VOID)
                     .then_some(TypeId(pointer.pointee_idx)),
             }),
-            raw::ty::Enum::typedef(td) => Type::TypeDef(TypeDefType {
+            raw::ty::Enum::typedef(td) => TypeKind::TypeDef(TypeDefType {
                 name: self.get_string(td.name_offset).unwrap_or("?"),
                 ty: (td.ty_idx != raw::Type::VOID).then_some(TypeId(td.ty_idx)),
             }),
@@ -95,7 +97,7 @@ impl<'data> SymCache<'data> {
                 let end = start.checked_add(structure.num_members as usize)?;
                 let members = self.structure_members.get(start..end)?;
 
-                Type::StructureType(StructureType {
+                TypeKind::StructureType(StructureType {
                     name: self.get_string(structure.name_offset),
                     size: structure.size.into_di(),
                     members: StructureMembers {
@@ -105,7 +107,10 @@ impl<'data> SymCache<'data> {
                     .into(),
                 })
             }
-        })
+            raw::ty::Enum::void(_) => TypeKind::Void,
+        };
+
+        Some(Type { kind, qualifiers })
     }
 
     /// An iterator over the functions in this SymCache.
