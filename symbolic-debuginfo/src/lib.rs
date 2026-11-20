@@ -53,8 +53,6 @@ pub mod dwarf;
 pub mod elf;
 #[cfg(any(feature = "dwarf", feature = "breakpad"))]
 pub mod function_builder;
-#[cfg(feature = "ms")]
-pub(crate) mod function_stack;
 #[cfg(feature = "js")]
 pub mod js;
 #[cfg(feature = "macho")]
