@@ -95,11 +95,11 @@ fn test_load_header_linux() -> Result<(), Error> {
         functions: 697,
         source_locations: 8431,
         ranges: 6975,
-        string_bytes: 53754,
-        variables: 548,
-        variable_locations: 1610,
-        types: 143,
-        structure_members: 186,
+        string_bytes: 58693,
+        variables: 4536,
+        variable_locations: 6604,
+        types: 313,
+        structure_members: 412,
     }
     "#);
     Ok(())
@@ -129,11 +129,11 @@ fn test_load_header_macos() -> Result<(), Error> {
         functions: 639,
         source_locations: 7382,
         ranges: 5965,
-        string_bytes: 46192,
-        variables: 477,
-        variable_locations: 1098,
-        types: 197,
-        structure_members: 246,
+        string_bytes: 51251,
+        variables: 1578,
+        variable_locations: 2316,
+        types: 368,
+        structure_members: 543,
     }
     "#);
     Ok(())
@@ -302,26 +302,49 @@ fn test_lookup_variables_inlined() -> Result<(), Error> {
     converter.serialize(&mut Cursor::new(&mut data))?;
     let symcache = SymCache::parse(&data)?;
 
-    // `inlined(int param)` inlined into `inlining(int outer)`. The variable DIEs of the inlined
-    // instance carry only a location plus a `DW_AT_abstract_origin` reference to the abstract
-    // instance, which holds their names and types.
-    let mut source_locations = symcache.lookup(0x1227);
+    // `inlining(int outer)` calls `inlined(int param)` twice and both calls are inlined. The
+    // variable DIEs of each inlined instance carry only a location plus a
+    // `DW_AT_abstract_origin` reference to the abstract instance, which holds their names and
+    // types.
+    //
+    // The two instances are siblings at the same inline depth, so the depth alone cannot tell their
+    // variables apart. A lookup in one call must return only the `param` and `doubled` of that
+    // call.
+    let mut first_call = symcache.lookup(0x1227);
 
-    let inlined = source_locations.next().unwrap();
+    let inlined = first_call.next().unwrap();
     assert_eq!(inlined.function().name(), "_Z7inlinedi");
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, inlined.variables()), @"
-    param (parameter, int): 0x1227..0x1238 cfa -24
-    doubled (local, int): 0x1227..0x1238 cfa -28
+    param (parameter, int): 0x1227..0x1238 cfa -32
+    doubled (local, int): 0x1227..0x1238 cfa -36
     ");
 
-    let inlining = source_locations.next().unwrap();
+    let inlining = first_call.next().unwrap();
     assert_eq!(inlining.function().name(), "_Z8inliningi");
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, inlining.variables()), @"
-    outer (parameter, int): 0x121a..0x123e cfa -36
-    result (local, int): 0x121a..0x123e cfa -20
+    outer (parameter, int): 0x121a..0x1258 cfa -52
+    result (local, int): 0x121a..0x1258 cfa -20
     ");
 
-    assert!(source_locations.next().is_none());
+    assert!(first_call.next().is_none());
+
+    let mut second_call = symcache.lookup(0x1241);
+
+    let inlined = second_call.next().unwrap();
+    assert_eq!(inlined.function().name(), "_Z7inlinedi");
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, inlined.variables()), @"
+    param (parameter, int): 0x1241..0x1252 cfa -24
+    doubled (local, int): 0x1241..0x1252 cfa -28
+    ");
+
+    let inlining = second_call.next().unwrap();
+    assert_eq!(inlining.function().name(), "_Z8inliningi");
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, inlining.variables()), @"
+    outer (parameter, int): 0x121a..0x1258 cfa -52
+    result (local, int): 0x121a..0x1258 cfa -20
+    ");
+
+    assert!(second_call.next().is_none());
 
     Ok(())
 }
@@ -361,7 +384,7 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     this (parameter, <unknown>*): 0xea0..0xed2 register rdi
     str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
     mdstring (parameter, <unknown>*): 0xea0..0xeb1 register rcx
-    out (local, <unknown>): 0xea0..0xfe7 cfa 16
+    out (local, <unknown>): 0xea0..0xfe7 memory at rsp +16
     out_size (local, <unknown>): <unavailable>
     ");
 
@@ -370,7 +393,7 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     this (parameter, <unknown>*): 0xea0..0xed2 register rdi
     str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
     mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
-    out (local, <unknown>): 0xea0..0xfe7 cfa 16
+    out (local, <unknown>): 0xea0..0xfe7 memory at rsp +16
     out_size (local, <unknown>): <unavailable>
     ");
 
@@ -379,7 +402,7 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     this (parameter, <unknown>*): <unavailable>
     str (parameter, <unknown>*): 0xeb6..0xf23 register rbx
     mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
-    out (local, <unknown>): 0xea0..0xfe7 cfa 16
+    out (local, <unknown>): 0xea0..0xfe7 memory at rsp +16
     out_size (local, <unknown>): <unavailable>
     ");
 

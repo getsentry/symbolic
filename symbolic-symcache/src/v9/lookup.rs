@@ -351,8 +351,13 @@ impl<'data, 'cache> Iterator for Variables<'data, 'cache> {
             match variable.depth.cmp(&self.depth) {
                 // We need to still search for the start of the variable block matching this depth.
                 Ordering::Less => continue,
-                // This is a match.
+                // This is a match if the owning instance covers the address. The variables of
+                // all inlined instances share this list, so the depth alone cannot tell apart
+                // instances inlined at the same depth into this function.
                 Ordering::Equal => {
+                    if self.addr.wrapping_sub(variable.range_start) >= variable.range_size {
+                        continue;
+                    }
                     return Some(Variable {
                         cache: self.cache,
                         variable,

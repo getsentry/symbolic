@@ -57,13 +57,18 @@ The snapshot deliberately includes types symbolic cannot resolve yet, which show
 That is what makes it useful: adding support for a type turns into a visible snapshot diff instead
 of requiring someone to remember to write a new test.
 
-Inlined variables come from `inlined()`. It is always inlined, so its call in `inlining()` becomes a
-`DW_TAG_inlined_subroutine` whose variable DIEs carry only a location plus a `DW_AT_abstract_origin`
-reference. Its address is also taken, so GCC emits a standalone copy as well: a concrete out-of-line
-`DW_TAG_subprogram` whose variables reference the same abstract instance. Symbolic follows the origin
-to the abstract DIE that holds the name and type, so `param` and `doubled` show up by name under both
-the inlined and the standalone `inlined` entries. At `-O2` the inlined copy only resolves `param`:
-GCC describes `doubled` there as a computed expression, which symbolic does not evaluate yet.
+Inlined variables come from `inlined()`. It is always inlined, so each of its two calls in
+`inlining()` becomes a `DW_TAG_inlined_subroutine` whose variable DIEs carry only a location plus a
+`DW_AT_abstract_origin` reference. Its address is also taken, so GCC emits a standalone copy as
+well: a concrete out-of-line `DW_TAG_subprogram` whose variables reference the same abstract
+instance. Symbolic follows the origin to the abstract DIE that holds the name and type, so `param`
+and `doubled` show up by name under the inlined and the standalone `inlined` entries. At `-O2` only
+the `param` of the first inlined copy resolves: GCC gives the other three an empty range or a
+computed expression, which symbolic does not evaluate yet.
+
+The two inlined copies are siblings at the same inline depth. The symcache records the address range
+of the copy a variable belongs to, so a lookup inside one copy returns only that copy's `param` and
+`doubled`. `test_lookup_variables_inlined` in `symbolic-symcache` checks this for both copies.
 
 `DW_AT_specification` on variables is handled by the same code path but is not in the fixture: in
 C it never occurs on function-scoped variables, and in C++ it only appears on static data members and
