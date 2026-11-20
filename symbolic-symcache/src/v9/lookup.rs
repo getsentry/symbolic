@@ -105,6 +105,7 @@ impl<'data> SymCache<'data> {
                     .into(),
                 })
             }
+            raw::ty::Enum::void(_) => Type::Void,
         })
     }
 

@@ -113,6 +113,8 @@ pub struct TypeId(pub(crate) u32);
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum Type<'data> {
+    /// A qualified `void`, such as `const void`.
+    Void,
     /// A primitive type.
     Primitive(PrimitiveType<'data>),
     /// A pointer type.

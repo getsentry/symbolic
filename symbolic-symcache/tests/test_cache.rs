@@ -95,11 +95,11 @@ fn test_load_header_linux() -> Result<(), Error> {
         functions: 697,
         source_locations: 8431,
         ranges: 6975,
-        string_bytes: 55328,
+        string_bytes: 56493,
         variables: 548,
         variable_locations: 1610,
-        types: 183,
-        structure_members: 257,
+        types: 254,
+        structure_members: 325,
     }
     "#);
     Ok(())
@@ -129,11 +129,11 @@ fn test_load_header_macos() -> Result<(), Error> {
         functions: 639,
         source_locations: 7382,
         ranges: 5965,
-        string_bytes: 50218,
+        string_bytes: 50320,
         variables: 477,
         variable_locations: 1098,
-        types: 299,
-        structure_members: 521,
+        types: 316,
+        structure_members: 526,
     }
     "#);
     Ok(())
@@ -195,8 +195,8 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
 
     let source_location = symcache.lookup(0xfe50).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
-    this (parameter, <unknown>): 0xfe50..0xfe86 register rdi
-    str (parameter, <unknown>*): 0xfe50..0xfe86 register rsi
+    this (parameter, <unknown>*): 0xfe50..0xfe86 register rdi
+    str (parameter, wchar_t*): 0xfe50..0xfe86 register rsi
     length (parameter, unsigned int): 0xfe50..0xfe86 register rdx
     mdstring (parameter, <unknown>*): 0xfe50..0xfe86 register rcx
     result (local, bool): <unavailable>
@@ -207,8 +207,8 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
 
     let source_location = symcache.lookup(0xfe90).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
-    this (parameter, <unknown>): <unavailable>
-    str (parameter, <unknown>*): 0xfe86..0xff02 register rbp
+    this (parameter, <unknown>*): <unavailable>
+    str (parameter, wchar_t*): 0xfe86..0xff02 register rbp
     length (parameter, unsigned int): 0xfe86..0xff02 register rbx
     mdstring (parameter, <unknown>*): 0xfe86..0xff02 register r13
     result (local, bool): <unavailable>
@@ -219,8 +219,8 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
 
     let source_location = symcache.lookup(0xfecb).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
-    this (parameter, <unknown>): <unavailable>
-    str (parameter, <unknown>*): 0xfe86..0xff02 register rbp
+    this (parameter, <unknown>*): <unavailable>
+    str (parameter, wchar_t*): 0xfe86..0xff02 register rbp
     length (parameter, unsigned int): 0xfe86..0xff02 register rbx
     mdstring (parameter, <unknown>*): 0xfe86..0xff02 register r13
     result (local, bool): <unavailable>
@@ -287,7 +287,7 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     let source_location = symcache.lookup(0xea0).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>*): 0xea0..0xed2 register rdi
-    str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
+    str (parameter, wchar_t*): 0xea0..0xeb6 register rsi
     mdstring (parameter, <unknown>*): 0xea0..0xeb1 register rcx
     out (local, <unknown>): 0xea0..0xfe7 memory at rsp +16
     out_size (local, <unknown>): <unavailable>
@@ -296,7 +296,7 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     let source_location = symcache.lookup(0xeb2).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>*): 0xea0..0xed2 register rdi
-    str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
+    str (parameter, wchar_t*): 0xea0..0xeb6 register rsi
     mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
     out (local, <unknown>): 0xea0..0xfe7 memory at rsp +16
     out_size (local, <unknown>): <unavailable>
@@ -305,7 +305,7 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     let source_location = symcache.lookup(0xed2).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>*): <unavailable>
-    str (parameter, <unknown>*): 0xeb6..0xf23 register rbx
+    str (parameter, wchar_t*): 0xeb6..0xf23 register rbx
     mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
     out (local, <unknown>): 0xea0..0xfe7 memory at rsp +16
     out_size (local, <unknown>): <unavailable>

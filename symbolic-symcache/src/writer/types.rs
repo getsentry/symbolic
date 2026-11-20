@@ -86,14 +86,13 @@ where
             Entry::Vacant(entry) => entry,
         };
 
-        // Qualifiers, and with them qualified `void`, are not stored in symcaches yet.
+        // Qualifiers are not stored in symcaches yet.
         let Some(ty) = self
             .session
             .lookup_type(&ty_ref)
             .ok()
             .flatten()
             .map(|ty| ty.kind)
-            .filter(|kind| !matches!(kind, di::TypeKind::Void))
         else {
             entry.insert(ResolvedState::Unknown);
             return Err(ResolvedState::Unknown);
@@ -118,12 +117,11 @@ where
         string_table: &mut StringTable,
     ) -> FwdResult {
         match ty {
+            di::TypeKind::Void => Ok(v9::raw::VoidType::default().into()),
             di::TypeKind::Primitive(ty) => self.ser_primitive(ty, string_table),
             di::TypeKind::Pointer(ty) => self.ser_pointer(ty),
             di::TypeKind::TypeDef(ty) => self.ser_typedef(ty, string_table),
             di::TypeKind::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
-            // Filtered out in `resolve`, qualified `void` is not stored in symcaches yet.
-            di::TypeKind::Void => unreachable!(),
         }
     }
 
@@ -564,6 +562,7 @@ mod tests {
                             Some(v9::raw::ty::Enum::structure(t)) => {
                                 format!("[{idx}] (struct:{})", name(t.name_offset))
                             }
+                            Some(v9::raw::ty::Enum::void(_)) => format!("[{idx}] (void)"),
                             None => format!("[{idx}] <ERROR>"),
                         },
                     };
@@ -599,6 +598,7 @@ mod tests {
                                 .field("members", &members)
                                 .finish()
                         }
+                        Some(v9::raw::ty::Enum::void(_)) => write!(f, "[{idx}] Void"),
                         None => f.write_str("<invalid type>"),
                     }
                 }

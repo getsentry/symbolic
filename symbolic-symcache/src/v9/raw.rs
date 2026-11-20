@@ -11,7 +11,7 @@ use symbolic_common::DebugId;
 /// The current [`Header::variable_header`] version.
 ///
 /// On a version mismatch, the sections referenced in the [`VariableHeader`] must not be parsed.
-pub const VARIABLE_HEADER_VERSION: u16 = 5;
+pub const VARIABLE_HEADER_VERSION: u16 = 6;
 
 /// This [`FunctionVariables`] is a sentinel for functions without variables.
 pub const NO_VARIABLES: FunctionVariables = FunctionVariables {
@@ -327,6 +327,14 @@ pub struct StructureType {
     pub num_members: u32,
 }
 
+/// A representation of a qualified `void`, such as `const void`.
+#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct VoidType {
+    /// Padding.
+    pub _reserved: [u8; 16],
+}
+
 /// A representation of a structure member.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 #[repr(C)]
@@ -353,6 +361,7 @@ pub mod ty {
         pointer: PointerType,
         typedef: TypeDefType,
         structure: StructureType,
+        void: VoidType,
     }
 }
 
@@ -444,6 +453,7 @@ unsafe impl Pod for PrimitiveType {}
 unsafe impl Pod for PointerType {}
 unsafe impl Pod for TypeDefType {}
 unsafe impl Pod for StructureType {}
+unsafe impl Pod for VoidType {}
 unsafe impl Pod for StructureMember {}
 unsafe impl Pod for Size {}
 unsafe impl Pod for ValueBits {}
