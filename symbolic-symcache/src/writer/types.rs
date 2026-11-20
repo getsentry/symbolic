@@ -121,6 +121,7 @@ where
         Ok(v9::raw::PrimitiveType {
             name_offset: ty.name.as_ref().map_or(u32::MAX, |n| st.insert(n) as u32),
             size: v9::raw::Size::from_di(Some(ty.size)),
+            value_bits: v9::raw::ValueBits::from_di(ty.value_bits),
             encoding: v9::convert::primitive_type_encoding_to_u8(ty.encoding),
             _reserved: [0; _],
         }
@@ -188,6 +189,7 @@ where
                 name_offset,
                 type_idx,
                 offset: v9::raw::Size::from_di(member.offset),
+                size: v9::raw::Size::from_di(member.size),
             });
         }
 

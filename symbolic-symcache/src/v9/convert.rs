@@ -24,6 +24,32 @@ impl raw::Size {
     }
 }
 
+impl raw::ValueBits {
+    #[inline(always)]
+    pub fn from_di(vb: Option<di::ValueBits>) -> Self {
+        match vb {
+            Some(vb) if let (Ok(size), Ok(offset)) = (vb.size.try_into(), vb.offset.try_into()) => {
+                raw::ValueBits { size, offset }
+            }
+            Some(_) | None => raw::ValueBits {
+                size: u16::MAX,
+                offset: u16::MAX,
+            },
+        }
+    }
+
+    #[inline(always)]
+    pub fn into_di(self) -> Option<di::ValueBits> {
+        match (self.offset, self.size) {
+            (u16::MAX, u16::MAX) => None,
+            (offset, size) => Some(di::ValueBits {
+                offset: offset.into(),
+                size: size.into(),
+            }),
+        }
+    }
+}
+
 /// Converts a `u8` back into a [`PrimitiveTypeEncoding`].
 ///
 /// The inverse of [`primitive_type_encoding_to_u8`]. Invalid inputs are returned as `None`.

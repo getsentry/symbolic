@@ -179,7 +179,7 @@ pub struct StructureMember<'data> {
     pub offset: Option<Size>,
     /// The size of this member's storage.
     ///
-    /// This is an optional override of type of this member.
+    /// If specified, this overrides the default size for the member's type.
     pub size: Option<Size>,
 }
 

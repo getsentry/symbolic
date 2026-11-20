@@ -11,7 +11,7 @@ use symbolic_common::DebugId;
 /// The current [`Header::variable_header`] version.
 ///
 /// On a version mismatch, the sections referenced in the [`VariableHeader`] must not be parsed.
-pub const VARIABLE_HEADER_VERSION: u16 = 4;
+pub const VARIABLE_HEADER_VERSION: u16 = 5;
 
 /// This [`FunctionVariables`] is a sentinel for functions without variables.
 pub const NO_VARIABLES: FunctionVariables = FunctionVariables {
@@ -266,10 +266,21 @@ pub struct PrimitiveType {
     pub name_offset: u32,
     /// The size of the type in memory.
     pub size: Size,
+    /// The meaningful value range within the primitive's storage.
+    pub value_bits: ValueBits,
     /// The encoding of the type.
     pub encoding: u8,
     /// Padding.
-    pub _reserved: [u8; 7],
+    pub _reserved: [u8; 3],
+}
+
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct ValueBits {
+    /// The actual size of the value in bits.
+    pub size: u16,
+    /// The bit offset of the value from the beginning of the storage.
+    pub offset: u16,
 }
 
 /// A representation of a pointer type.
@@ -328,6 +339,10 @@ pub struct StructureMember {
     ///
     /// The top bit is set for bit offsets and clear for byte offsets.
     pub offset: Size,
+    /// The size of this member's storage.
+    ///
+    /// If specified, this overrides the default size for the member's type.
+    pub size: Size,
 }
 
 pub mod ty {
@@ -431,6 +446,7 @@ unsafe impl Pod for TypeDefType {}
 unsafe impl Pod for StructureType {}
 unsafe impl Pod for StructureMember {}
 unsafe impl Pod for Size {}
+unsafe impl Pod for ValueBits {}
 
 #[cfg(test)]
 mod tests {
@@ -474,7 +490,7 @@ mod tests {
         assert_eq!(mem::size_of::<StructureType>(), 16);
         assert_eq!(mem::align_of::<StructureType>(), 4);
 
-        assert_eq!(mem::size_of::<StructureMember>(), 12);
+        assert_eq!(mem::size_of::<StructureMember>(), 16);
         assert_eq!(mem::align_of::<StructureMember>(), 4);
     }
 

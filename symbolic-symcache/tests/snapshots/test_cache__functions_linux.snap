@@ -19,10 +19,10 @@ expression: FunctionsDebug(&symcache)
             1e70 __do_global_dtors_aux
             1e90 frame_dummy
             1ec0 _ZN12_GLOBAL__N_18callbackERKN15google_breakpad18MinidumpDescriptorEPvb
-            1f00 _ZN15google_breakpad18MinidumpDescriptorD1Ev
+            1f00 _ZN15google_breakpad18MinidumpDescriptorD2Ev
             1f40 _ZN15google_breakpad16ExceptionHandler21InstallHandlersLockedEv
             2070 _ZN15google_breakpad16ExceptionHandler21RestoreHandlersLockedEv
-            20f0 _ZN15google_breakpad16ExceptionHandlerD1Ev
+            20f0 _ZN15google_breakpad16ExceptionHandlerD2Ev
             2440 _ZN15google_breakpad16ExceptionHandler25SendContinueSignalToChildEv
             2520 _ZN15google_breakpad16ExceptionHandler12GenerateDumpEPNS0_12CrashContextE
             29f0 _ZN15google_breakpad16ExceptionHandler12HandleSignalEiP9siginfo_tPv
@@ -37,9 +37,9 @@ expression: FunctionsDebug(&symcache)
             33a0 _ZN15google_breakpad16ExceptionHandler19UnregisterAppMemoryEPv
             3400 _ZN15google_breakpad16ExceptionHandler21WriteMinidumpForChildEiiRKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPFbRKNS_18MinidumpDescriptorEPvbESC_
             3660 _ZN15google_breakpad30SetFirstChanceExceptionHandlerEPFbiPvS0_E
-            3670 _ZN15google_breakpad16ExceptionHandlerC1ERKNS_18MinidumpDescriptorEPFbPvEPFbS3_S4_bES4_bi
+            3670 _ZN15google_breakpad16ExceptionHandlerC2ERKNS_18MinidumpDescriptorEPFbPvEPFbS3_S4_bES4_bi
             3a10 _ZN15google_breakpad16ExceptionHandler13WriteMinidumpERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPFbRKNS_18MinidumpDescriptorEPvbESC_
-            3cb0 _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE19_M_emplace_back_auxIIS2_EEEvDpOT_
+            3cb0 _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE19_M_emplace_back_auxIJS2_EEEvDpOT_
             3da0 _ZN15google_breakpad18MinidumpDescriptorC2ERKS0_
             3f20 _ZN15google_breakpad18MinidumpDescriptor10UpdatePathEv
             42f0 _ZN15google_breakpad18MinidumpDescriptoraSERKS0_
@@ -69,9 +69,9 @@ expression: FunctionsDebug(&symcache)
             94a0 _ZNK15google_breakpad17LinuxPtraceDumper12IsPostMortemEv
             94b0 _ZN15google_breakpad17LinuxPtraceDumper15CopyFromProcessEPviPKvm
             9640 _ZN15google_breakpad17LinuxPtraceDumper13ThreadsResumeEv
-            9700 _ZNK15google_breakpad17LinuxPtraceDumper13BuildProcPathEPciPKc.localalias.19
+            9700 _ZNK15google_breakpad17LinuxPtraceDumper13BuildProcPathEPciPKc
             97c0 _ZN15google_breakpad17LinuxPtraceDumper16EnumerateThreadsEv
-            9e50 _ZN15google_breakpad17LinuxPtraceDumperC1Ei
+            9e50 _ZN15google_breakpad17LinuxPtraceDumperC2Ei
             9e80 _ZN15google_breakpad17LinuxPtraceDumper15ReadRegisterSetEPNS_10ThreadInfoEi
             9f70 _ZN15google_breakpad17LinuxPtraceDumper13ReadRegistersEPNS_10ThreadInfoEi
             a050 _ZN15google_breakpad17LinuxPtraceDumper20GetThreadInfoByIndexEmPNS_10ThreadInfoE
@@ -92,9 +92,9 @@ expression: FunctionsDebug(&symcache)
             f3c0 _ZN15google_breakpad13WriteMinidumpEiliPKvmRKNSt7__cxx114listINS_12MappingEntryESaIS4_EEERKNS3_INS_9AppMemoryESaIS9_EEEbmb
             f400 _ZN15google_breakpad17ProcCpuInfoReader12GetNextFieldEPPKc
             f660 _ZNSt6vectorIcN15google_breakpad16PageStdAllocatorIcEEE6resizeEm
-            f8c0 _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE19_M_emplace_back_auxIIRKS0_EEEvDpOT_
+            f8c0 _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE19_M_emplace_back_auxIJRKS0_EEEvDpOT_
             fb10 _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm.isra.7.part.8
-            fb40 _ZN15google_breakpad18MinidumpFileWriterC1Ev
+            fb40 _ZN15google_breakpad18MinidumpFileWriterC2Ev
             fb60 _ZN15google_breakpad18MinidumpFileWriter4OpenEPKc
             fbe0 _ZN15google_breakpad18MinidumpFileWriter7SetFileEi
             fc10 _ZN15google_breakpad18MinidumpFileWriter5CloseEv
@@ -144,7 +144,7 @@ expression: FunctionsDebug(&symcache)
            13160 my_isspace
            13210 _ZN15google_breakpad16MemoryMappedFileC2Ev
            13220 _ZN15google_breakpad16MemoryMappedFile5UnmapEv
-           13270 _ZN15google_breakpad16MemoryMappedFileD1Ev
+           13270 _ZN15google_breakpad16MemoryMappedFileD2Ev
            13280 _ZN15google_breakpad16MemoryMappedFile3MapEPKcm
            13430 _ZN15google_breakpad16MemoryMappedFileC2EPKcm
            13450 _ZN15google_breakpad12SafeReadLinkEPKcPcm
