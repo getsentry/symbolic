@@ -120,7 +120,7 @@ where
     fn ser_primitive(&mut self, ty: &di::PrimitiveType<'_>, st: &mut StringTable) -> FwdResult {
         Ok(v9::raw::PrimitiveType {
             name_offset: ty.name.as_ref().map_or(u32::MAX, |n| st.insert(n) as u32),
-            size: size(ty.size),
+            size: v9::raw::Size::from_di(Some(ty.size)),
             encoding: v9::convert::primitive_type_encoding_to_u8(ty.encoding),
             _reserved: [0; _],
         }
@@ -133,7 +133,7 @@ where
                 Some(pointee) => self.try_lookup_type_idx(pointee)?,
                 None => v9::raw::Type::VOID,
             },
-            size: size(ty.size),
+            size: v9::raw::Size::from_di(Some(ty.size)),
             _reserved: [0; _],
         }
         .into())
@@ -164,7 +164,7 @@ where
                 .name
                 .as_ref()
                 .map_or(u32::MAX, |name| st.insert(name) as u32),
-            size: ty.size.map_or(u32::MAX, size),
+            size: v9::raw::Size::from_di(ty.size),
             member_idx,
             num_members,
         }
@@ -179,12 +179,6 @@ where
     ) -> FwdResult<(u32, u32)> {
         let mut serialized = Vec::with_capacity(members.len());
         for member in members {
-            let Some(offset) = member.offset else {
-                continue;
-            };
-            let Some(offset) = v9::convert::size_to_raw(offset) else {
-                continue;
-            };
             let type_idx = self.try_lookup_type_idx(&member.ty)?;
             let name_offset = member
                 .name
@@ -193,7 +187,7 @@ where
             serialized.push(v9::raw::StructureMember {
                 name_offset,
                 type_idx,
-                offset,
+                offset: v9::raw::Size::from_di(member.offset),
             });
         }
 
@@ -345,7 +339,7 @@ impl TypeWriter {
     // This really could be any type, we just need something to reserve an index in `types`.
     const PLACEHOLDER: v9::raw::PointerType = v9::raw::PointerType {
         pointee_idx: 0,
-        size: 0,
+        size: v9::raw::Size(0),
         _reserved: [0; _],
     };
 
@@ -423,13 +417,6 @@ impl TypeWriter {
 
         debug_assert!(u32::try_from(start + num_members).is_ok());
         (start as u32, num_members as u32)
-    }
-}
-
-fn size(s: di::Size) -> u32 {
-    match s {
-        di::Size::Bytes(bytes) => bytes as u32,
-        di::Size::Bits(bits) => (bits / 8) as u32,
     }
 }
 

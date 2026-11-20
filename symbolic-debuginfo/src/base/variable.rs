@@ -192,6 +192,12 @@ pub enum Size {
     Bits(u64),
 }
 
+impl Default for Size {
+    fn default() -> Self {
+        Size::Bytes(0)
+    }
+}
+
 impl fmt::Display for Size {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
