@@ -489,6 +489,23 @@ impl<'d> UnitRef<'d, '_> {
         }
     }
 
+    /// Returns the section offset of the DIE an attribute refers to, if it is a reference into
+    /// `.debug_info` or `.debug_types`.
+    ///
+    /// Two attributes referring to the same DIE yield equal offsets, also across units.
+    fn reference_offset(self, attr: Attribute<'d>) -> Option<(SectionId, UnitSectionOffset)> {
+        match attr.value() {
+            AttributeValue::UnitRef(offset) => Some((
+                self.unit.section(),
+                offset.to_unit_section_offset(self.unit),
+            )),
+            AttributeValue::DebugInfoRef(offset) => offset
+                .to_unit_section_offset(self.unit)
+                .map(|offset| (SectionId::DebugInfo, offset)),
+            _ => None,
+        }
+    }
+
     /// Resolves a attribute unit ref or debug info ref to a [`DwarfTypeRef`].
     ///
     /// Returns `None` for attributes not containing a reference or unsupported references.
@@ -562,6 +579,57 @@ impl<'d> UnitRef<'d, '_> {
             });
         }
         Ok(None)
+    }
+
+    /// Fills in the name and type of a variable from the DIE referenced by its
+    /// `DW_AT_abstract_origin` or `DW_AT_specification` attribute.
+    ///
+    /// A concrete inlined or out-of-line instance of a variable only carries what is specific to
+    /// that instance, typically its location, and references the abstract instance for everything
+    /// else (DWARF 5, section 3.3.8.2). Likewise, a definition completing an earlier declaration
+    /// does not need to repeat the declaration's attributes (section 2.13.2). The referenced DIE
+    /// may itself defer to yet another DIE, so chains are followed up to `depth` levels.
+    ///
+    /// Attributes already present in `variable` take precedence over those found on referenced
+    /// DIEs, and lookup stops as soon as both name and type are known.
+    fn resolve_variable_origin(
+        &self,
+        attr: Attribute<'d>,
+        variable: &mut VariableOrigin<'d>,
+        depth: u8,
+    ) -> Result<(), DwarfError> {
+        if depth == 0 {
+            return Ok(());
+        }
+
+        self.resolve_reference(attr, |ref_unit, ref_entry| {
+            let mut reference = None;
+
+            for attr in ref_entry.attrs() {
+                match attr.name() {
+                    constants::DW_AT_name if variable.name.is_none() => {
+                        variable.name = ref_unit.string_value(attr.value());
+                    }
+                    constants::DW_AT_type if variable.ty.is_none() => {
+                        variable.ty = ref_unit.to_type_ref(*attr).map(TypeRef::from);
+                    }
+                    constants::DW_AT_abstract_origin | constants::DW_AT_specification => {
+                        reference = Some(attr);
+                    }
+                    _ => {}
+                }
+            }
+
+            if let Some(attr) = reference {
+                if variable.name.is_none() || variable.ty.is_none() {
+                    ref_unit.resolve_variable_origin(*attr, variable, depth - 1)?;
+                }
+            }
+
+            Ok(Some(()))
+        })?;
+
+        Ok(())
     }
 
     /// Resolves the function name of a debug entry.
@@ -787,11 +855,31 @@ impl<'a> InProgressSubProgram<'a> {
         }
     }
 
+    /// Adds a variable to this function.
+    ///
+    /// GCC may describe one source variable several times within a single function, for example
+    /// a parameter once at the top and again inside a `DW_TAG_lexical_block` with a narrower
+    /// location list. All of these refer to the same abstract instance through
+    /// `DW_AT_abstract_origin`. Lexical blocks are not tracked, so such entries are merged into
+    /// one variable here instead of showing up as duplicates.
+    ///
+    /// Only entries of the same function, inlined or not, are merged. Two inlined copies of the
+    /// same function share an origin but are separate frames with separate variables.
     fn push_variable(&mut self, variable: ParsedVariable<'a>) {
-        match self {
-            InProgressSubProgram::Deadcode(_) => {}
-            InProgressSubProgram::Regular(p) => p.variables.push(variable),
-            InProgressSubProgram::Inlined(p) => p.variables.push(variable),
+        let variables = match self {
+            InProgressSubProgram::Deadcode(_) => return,
+            InProgressSubProgram::Regular(p) => &mut p.variables,
+            InProgressSubProgram::Inlined(p) => &mut p.variables,
+        };
+
+        let existing = match variable.origin {
+            Some(_) => variables.iter_mut().find(|v| v.origin == variable.origin),
+            None => None,
+        };
+
+        match existing {
+            Some(existing) => existing.locations.merge(variable.locations),
+            None => variables.push(variable),
         }
     }
 
@@ -1381,8 +1469,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         abbrev: &gimli::Abbreviation,
         frame_base: Option<FrameBase>,
     ) -> Result<Option<ParsedVariable<'d>>, DwarfError> {
-        let mut ty = None;
-        let mut name = None;
+        let mut variable = VariableOrigin::default();
+        let mut origin = None;
         let mut locations = None;
         let mut is_declaration = false;
 
@@ -1390,7 +1478,12 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let attr = entries.read_attribute(spec)?;
             match attr.name() {
                 constants::DW_AT_name => {
-                    name = self.inner.string_value(attr.value());
+                    variable.name = self.inner.string_value(attr.value());
+                }
+                constants::DW_AT_abstract_origin | constants::DW_AT_specification => {
+                    // Concrete instances of inlined variables and definitions completing a
+                    // declaration carry their name and type on the referenced DIE instead.
+                    origin = Some(attr);
                 }
                 constants::DW_AT_declaration if attr.value() == AttributeValue::Flag(true) => {
                     // We don't care about declarations, we only care about actual definitions of
@@ -1403,7 +1496,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     locations = self.parse_locations(attr.value(), frame_base)?;
                 }
                 constants::DW_AT_type => {
-                    ty = self.inner.to_type_ref(attr).map(TypeRef::from);
+                    variable.ty = self.inner.to_type_ref(attr).map(TypeRef::from);
                 }
                 // No location means optimized out, so we do not store the variable for now.
                 _ => {}
@@ -1414,9 +1507,26 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             return Ok(None);
         }
 
-        let (Some(name), Some(locations)) = (name, locations) else {
+        let origin_offset = origin.and_then(|attr| self.inner.reference_offset(attr));
+
+        if let Some(attr) = origin {
+            if variable.name.is_none() || variable.ty.is_none() {
+                // A reference that cannot be followed only costs us this variable's name or
+                // type, like a missing attribute would; it should not fail the whole unit.
+                self.inner
+                    .resolve_variable_origin(
+                        attr,
+                        &mut variable,
+                        UnitRef::MAX_ABSTRACT_ORIGIN_DEPTH,
+                    )
+                    .ok();
+            }
+        }
+
+        let (Some(name), Some(locations)) = (variable.name, locations) else {
             return Ok(None);
         };
+        let ty = variable.ty;
 
         let kind = match abbrev.tag() {
             constants::DW_TAG_formal_parameter => VariableKind::Parameter,
@@ -1428,6 +1538,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             ty,
             kind,
             locations,
+            origin: origin_offset,
         }))
     }
 
@@ -1592,6 +1703,19 @@ struct ParsedVariable<'data> {
     ty: Option<TypeRef>,
     kind: VariableKind,
     locations: Locations,
+    /// The DIE referenced by `DW_AT_abstract_origin` or `DW_AT_specification`, if any.
+    ///
+    /// Variables of the same function with the same origin describe the same source variable
+    /// and are merged, see [`InProgressSubProgram::push_variable`].
+    origin: Option<(SectionId, UnitSectionOffset)>,
+}
+
+/// The name and type of a variable, collected across the DIE and its abstract origin or
+/// specification. See [`UnitRef::resolve_variable_origin`].
+#[derive(Default)]
+struct VariableOrigin<'data> {
+    name: Option<Cow<'data, str>>,
+    ty: Option<TypeRef>,
 }
 
 /// Return value of [`DwarfUnit::parse_locations`].
@@ -1600,6 +1724,63 @@ enum Locations {
     Single(VariableLocation),
     /// Many locations, dependent on the PC at runtime.
     Many(Vec<(Range, VariableLocationInfo)>),
+}
+
+impl Locations {
+    /// Merges the locations of another description of the same variable into `self`.
+    ///
+    /// Where both describe the same addresses, the existing locations win, so only the parts of
+    /// `other` that `self` does not cover yet are added. This keeps the ranges sorted and free
+    /// of overlaps.
+    ///
+    /// A [`Locations::Single`] applies to the whole enclosing function (see
+    /// `DwarfUnit::variable_for_range`), so it already covers everything when it is `self`, and
+    /// cannot be placed precisely when it is `other`. Both cases keep `self` unchanged.
+    fn merge(&mut self, other: Locations) {
+        let (Locations::Many(existing), Locations::Many(other)) = (&mut *self, other) else {
+            return;
+        };
+
+        let mut added = Vec::new();
+        for (range, info) in other {
+            let mut cursor = range.begin;
+            for (covered, _) in existing.iter() {
+                if cursor >= range.end || covered.begin >= range.end {
+                    break;
+                }
+                if covered.end <= cursor {
+                    continue;
+                }
+                if covered.begin > cursor {
+                    added.push(sub_location(range, &info, cursor, covered.begin));
+                }
+                cursor = cursor.max(covered.end);
+            }
+            if cursor < range.end {
+                added.push(sub_location(range, &info, cursor, range.end));
+            }
+        }
+
+        if !added.is_empty() {
+            existing.extend(added);
+            existing.sort_unstable_by_key(|(r, _)| *r);
+        }
+    }
+}
+
+/// Returns the part `begin..end` of a location entry that covers `range`.
+fn sub_location(
+    range: Range,
+    info: &VariableLocationInfo,
+    begin: u64,
+    end: u64,
+) -> (Range, VariableLocationInfo) {
+    let info = VariableLocationInfo {
+        address: info.address + (begin - range.begin),
+        size: end - begin,
+        location: info.location.clone(),
+    };
+    (Range { begin, end }, info)
 }
 
 /// The state we pass around during function parsing.

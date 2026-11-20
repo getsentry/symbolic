@@ -245,11 +245,83 @@ fn test_lookup_variables_register_offset() -> Result<(), Error> {
     let symcache = SymCache::parse(&data)?;
 
     // `through_pointer(Point *out, int value)`, after `value` was stored to `out->y`.
-    let source_location = symcache.lookup(0x12cc).last().unwrap();
+    let source_location = symcache.lookup(0x12dc).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
-    out (parameter, <unknown>*): 0x12c0..0x12d4 register rdi
-    value (parameter, int): 0x12cb..0x12d4 memory at rdi +4
+    out (parameter, <unknown>*): 0x12d0..0x12e4 register rdi
+    value (parameter, int): 0x12db..0x12e4 memory at rdi +4
     ");
+
+    Ok(())
+}
+
+#[test]
+fn test_lookup_variables_lexical_block_merged() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("linux/crash.debug"))?;
+    let object = Object::parse(&buffer)?;
+
+    let mut converter = SymCacheConverter::new();
+    converter.set_collect_variables(true);
+    converter.process_object(&object)?;
+    let mut data = Vec::new();
+    converter.serialize(&mut Cursor::new(&mut data))?;
+    let symcache = SymCache::parse(&data)?;
+
+    // GCC describes the parameters of `callback` once for the whole function and again in a
+    // `DW_TAG_lexical_block` at 0x1ee0..0x1ef7, with narrower location lists and the same
+    // `DW_AT_abstract_origin`. They must be merged into one variable each: as duplicates, the
+    // block copy has no location before the block and can shadow the real value in consumers
+    // that key variables by name.
+    let before_block = symcache.lookup(0x1ec5).last().unwrap();
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, before_block.variables()), @r"
+    descriptor (parameter, <unknown>): 0x1ec0..0x1ed3 register rdi
+    context (parameter, void*): 0x1ec0..0x1ece register rsi
+    succeeded (parameter, bool): 0x1ec0..0x1ed9 register rdx
+    ");
+
+    let in_block = symcache.lookup(0x1ee5).last().unwrap();
+    // `succeeded` is the constant 1 inside the block (`DW_AT_const_value`), which is not
+    // extracted yet.
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, in_block.variables()), @r"
+    descriptor (parameter, <unknown>): 0x1ede..0x1ef0 register rdi
+    context (parameter, void*): 0x1ede..0x1eeb register rsi
+    succeeded (parameter, bool): <unavailable>
+    ");
+
+    Ok(())
+}
+
+#[test]
+fn test_lookup_variables_inlined() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("linux/variables/variables"))?;
+    let object = Object::parse(&buffer)?;
+
+    let mut converter = SymCacheConverter::new();
+    converter.set_collect_variables(true);
+    converter.process_object(&object)?;
+    let mut data = Vec::new();
+    converter.serialize(&mut Cursor::new(&mut data))?;
+    let symcache = SymCache::parse(&data)?;
+
+    // `inlined(int param)` inlined into `inlining(int outer)`. The variable DIEs of the inlined
+    // instance carry only a location plus a `DW_AT_abstract_origin` reference to the abstract
+    // instance, which holds their names and types.
+    let mut source_locations = symcache.lookup(0x1227);
+
+    let inlined = source_locations.next().unwrap();
+    assert_eq!(inlined.function().name(), "_Z7inlinedi");
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, inlined.variables()), @"
+    param (parameter, int): 0x1227..0x1238 cfa -24
+    doubled (local, int): 0x1227..0x1238 cfa -28
+    ");
+
+    let inlining = source_locations.next().unwrap();
+    assert_eq!(inlining.function().name(), "_Z8inliningi");
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, inlining.variables()), @"
+    outer (parameter, int): 0x121a..0x123e cfa -36
+    result (local, int): 0x121a..0x123e cfa -20
+    ");
+
+    assert!(source_locations.next().is_none());
 
     Ok(())
 }
