@@ -23,12 +23,14 @@ use symbolic_common::{
 };
 
 use crate::base::*;
-use crate::function_stack::FunctionStack;
+use crate::pdb::function_stack::FunctionStack;
 use crate::pdb::srcsrv::{SourceServerInfo, SourceServerMappings};
 use crate::sourcebundle::SourceFileDescriptor;
 use crate::{ParseObjectOptions, Type, TypeRef};
 
+mod function_stack;
 mod srcsrv;
+mod variables;
 
 type Pdb<'data> = pdb::PDB<'data, Cursor<&'data [u8]>>;
 
@@ -115,6 +117,10 @@ impl From<pdb_addr2line::Error> for PdbError {
         }
     }
 }
+
+/// A reference to a type in the DWARF file.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PdbTypeRef(TypeIndex);
 
 /// Program Database, the debug companion format on Windows.
 ///
@@ -813,30 +819,6 @@ impl<'s> Unit<'s> {
         Ok(lines)
     }
 
-    /// Sanitize the collected lines.
-    ///
-    /// This essentially filters out all the lines that lay outside of the function range.
-    ///
-    /// For example we have observed in a real-world pdb that has:
-    /// - A function 0x33ea50 (size 0xc)
-    /// - With one line record: 0x33e850 (size 0x26)
-    ///
-    /// The line record is completely outside the range of the function.
-    fn sanitize_lines(func: &mut Function) {
-        let fn_start = func.address;
-        let fn_end = func.end_address();
-        func.lines.retain(|line| {
-            if line.address >= fn_end {
-                return false;
-            }
-            let line_end = match line.size {
-                Some(size) => line.address.saturating_add(size),
-                None => return true,
-            };
-            line_end > fn_start
-        });
-    }
-
     fn handle_function(
         &self,
         offset: PdbInternalSectionOffset,
@@ -1005,14 +987,16 @@ impl<'s> Unit<'s> {
             let function = match symbol.parse() {
                 Ok(SymbolData::Procedure(proc)) => {
                     proc_offsets.push((depth, proc.offset));
-                    let function = self.handle_procedure(&proc, &program)?;
+                    let function = self
+                        .handle_procedure(&proc, &program)?
+                        .map(|func| stack.standalone(depth, func));
                     last_proc = Some(proc);
                     function
                 }
                 Ok(SymbolData::SeparatedCode(sepcode)) => match last_proc.as_ref() {
-                    Some(last_proc) if last_proc.offset == sepcode.parent_offset => {
-                        self.handle_separated_code(last_proc, &sepcode, &program)?
-                    }
+                    Some(last_proc) if last_proc.offset == sepcode.parent_offset => self
+                        .handle_separated_code(last_proc, &sepcode, &program)?
+                        .map(|func| stack.standalone(depth, func)),
                     _ => continue,
                 },
                 Ok(SymbolData::InlineSite(site)) => {
@@ -1024,21 +1008,28 @@ impl<'s> Unit<'s> {
                     // We can assume that inlinees will be listed in the inlinee table. If missing,
                     // skip silently instead of erroring out. Missing a single inline function is
                     // more acceptable in such a case than halting iteration completely.
-                    if let Some(inlinee) = inlinees.get(&site.inlinee) {
-                        // We have seen that the MSVC Compiler `19.16` (VS 2017) can output
-                        // `ChangeFile` annotations which are not properly aligned to the beginning
-                        // of a file checksum, leading to `UnimplementedFileChecksumKind` errors.
-                        // Investigation showed that this can happen for inlined `{ctor}` functions,
-                        // but there are no clear leads to why that might have happened, and how to
-                        // recover from these broken annotations.
-                        // For that reason, we skip these inlinees completely so we do not fail
-                        // processing the complete pdb file.
-                        self.handle_inlinee(site, parent_offset, inlinee, &program)
-                            .ok()
-                            .flatten()
-                    } else {
-                        None
+                    inlinees
+                        .get(&site.inlinee)
+                        .and_then(|inlinee| {
+                            // We have seen that the MSVC Compiler `19.16` (VS 2017) can output
+                            // `ChangeFile` annotations which are not properly aligned to the beginning
+                            // of a file checksum, leading to `UnimplementedFileChecksumKind` errors.
+                            // Investigation showed that this can happen for inlined `{ctor}` functions,
+                            // but there are no clear leads to why that might have happened, and how to
+                            // recover from these broken annotations.
+                            // For that reason, we skip these inlinees completely so we do not fail
+                            // processing the complete pdb file.
+                            self.handle_inlinee(site, parent_offset, inlinee, &program)
+                                .ok()
+                                .flatten()
+                        })
+                        .map(|func| stack.inlinee(depth, func))
+                }
+                Ok(symbol) => {
+                    if let Some(top) = stack.top_mut() {
+                        top.variables(depth, &symbol, &self.debug_info.address_map);
                     }
+                    continue;
                 }
                 // We need to ignore errors here since the PDB crate does not yet implement all
                 // symbol types. Instead of erroring too often, it's better to swallow these.
@@ -1046,12 +1037,7 @@ impl<'s> Unit<'s> {
             };
 
             match function {
-                Some(mut function) => {
-                    Self::sanitize_lines(&mut function);
-                    // TODO: figure out what to do with functions that have no more lines
-                    // after sanitization
-                    stack.push(depth, function)
-                }
+                Some(function) => stack.push(function),
                 None => skipped_depth = Some(depth),
             }
         }
