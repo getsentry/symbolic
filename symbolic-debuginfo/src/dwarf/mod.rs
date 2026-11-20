@@ -1454,7 +1454,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     VariableLocationInfo {
                         address: offset(address, self.inner.info.address_offset),
                         size: lr.end.min(range.end) - address,
-                        location: location.location.clone(),
+                        location: location.clone(),
                     }
                 })
                 .collect(),
@@ -1486,25 +1486,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         let mut result = Vec::new();
         let locations = self.inner.attr_locations(value)?.into_iter().flatten();
-        for location in locations {
-            let location = location?;
-
-            let range = location.range;
-            let address = offset(range.begin, self.inner.info.address_offset);
-            let Some(size) = range.end.checked_sub(range.begin) else {
-                // Invalid range, end before start.
-                continue;
-            };
-
-            let location = VariableLocationInfo {
-                address,
-                size,
-                location: match self.parse_location_expression(location.data, frame_base) {
-                    Some(location) => location,
-                    None => continue,
-                },
-            };
-            result.push((range, location));
+        for entry in locations {
+            let entry = entry?;
+            if let Some(location) = self.parse_location_expression(entry.data, frame_base) {
+                result.push((entry.range, location));
+            }
         }
 
         result.sort_unstable_by_key(|(r, _)| *r);
@@ -1599,7 +1585,7 @@ enum Locations {
     /// A single location.
     Single(VariableLocation),
     /// Many locations, dependent on the PC at runtime.
-    Many(Vec<(Range, VariableLocationInfo)>),
+    Many(Vec<(Range, VariableLocation)>),
 }
 
 /// The state we pass around during function parsing.
