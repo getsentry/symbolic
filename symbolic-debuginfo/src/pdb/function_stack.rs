@@ -1,31 +1,38 @@
 use pdb_addr2line::pdb::{AddressMap, SymbolData};
+use symbolic_common::CpuFamily;
 
 use crate::{base::Function, pdb::variables};
 
 /// A stack for assembling function trees from lists of nested functions.
-pub struct FunctionStack<'a>(Vec<FunctionBuilder<'a>>);
+pub struct FunctionStack<'a> {
+    cpu: CpuFamily,
+    stack: Vec<FunctionBuilder<'a>>,
+}
 
 impl<'a> FunctionStack<'a> {
     /// Creates a new function stack.
-    pub fn new() -> Self {
-        FunctionStack(Vec::with_capacity(16))
+    pub fn new(cpu: CpuFamily) -> Self {
+        FunctionStack {
+            cpu,
+            stack: Vec::with_capacity(16),
+        }
     }
 
     /// Creates a [`FunctionBuilder`] inheriting information from this [`FunctionStack`] for
     /// procedures and standalone code.
     pub fn standalone(&self, depth: isize, function: Function<'a>) -> FunctionBuilder<'a> {
-        FunctionBuilder::new(depth, function)
+        FunctionBuilder::new(self.cpu, depth, function)
     }
 
     /// Creates a [`FunctionBuilder`] inheriting information from this [`FunctionStack`] for in-lined
     /// functions.
     pub fn inlinee(&self, depth: isize, function: Function<'a>) -> FunctionBuilder<'a> {
-        FunctionBuilder::new(depth, function)
+        FunctionBuilder::new(self.cpu, depth, function)
     }
 
     /// Returns the top of the stack.
     pub fn top_mut(&mut self) -> Option<&mut FunctionBuilder<'a>> {
-        self.0.last_mut()
+        self.stack.last_mut()
     }
 
     /// Finalizes and pushes a new function onto the stack at the given depth.
@@ -36,7 +43,7 @@ impl<'a> FunctionStack<'a> {
         // after sanitization
         sanitize_lines(&mut function.function);
 
-        self.0.push(function);
+        self.stack.push(function);
     }
 
     /// Flushes all functions up to the given depth into the destination.
@@ -53,7 +60,7 @@ impl<'a> FunctionStack<'a> {
         // transitively, while regular functions are pushed to `destination`.
         // This also works when functions and inlinees are interleaved.
         let mut inlinee: Option<Function> = None;
-        while let Some(mut builder) = self.0.pop() {
+        while let Some(mut builder) = self.stack.pop() {
             if let Some(inlinee) = inlinee.take() {
                 builder.function.inlinees.push(inlinee);
             }
@@ -62,11 +69,11 @@ impl<'a> FunctionStack<'a> {
                     builder.variables.push(scope);
                     break;
                 }
-                builder.function.variables.extend(scope.into_locals());
+                builder.function.variables.extend(scope.into_variables());
             }
             // we reached the intended depth, so re-push the function and stop
             if builder.depth < depth {
-                self.0.push(builder);
+                self.stack.push(builder);
                 return;
             }
 
@@ -120,12 +127,12 @@ impl<'a> FunctionBuilder<'a> {
         }
     }
 
-    fn new(depth: isize, function: Function<'a>) -> Self {
+    fn new(cpu: CpuFamily, depth: isize, function: Function<'a>) -> Self {
         let bounds = function.address..function.address + function.size;
         Self {
             depth,
             function,
-            variables: vec![variables::Scope::new(depth, Some(bounds))],
+            variables: vec![variables::Scope::new(cpu, depth, Some(bounds))],
         }
     }
 }

@@ -29,6 +29,7 @@ use crate::sourcebundle::SourceFileDescriptor;
 use crate::{ParseObjectOptions, Type, TypeRef};
 
 mod function_stack;
+mod register;
 mod srcsrv;
 mod variables;
 
@@ -560,6 +561,8 @@ impl<'d> pdb_addr2line::ModuleProvider<'d> for PdbStreams<'d> {
 }
 
 struct PdbDebugInfo<'d> {
+    /// The CPU family of the PDB.
+    cpu: CpuFamily,
     /// The streams, to load module streams on demand.
     streams: &'d PdbStreams<'d>,
     /// OMAP structure to map reordered sections to RVAs.
@@ -568,6 +571,7 @@ struct PdbDebugInfo<'d> {
     string_table: Option<&'d pdb::StringTable<'d>>,
     /// Type formatter for function name strings.
     type_formatter: pdb_addr2line::TypeFormatter<'d, 'd>,
+    /// Source Server mappings.
     srcsrv: Option<SourceServerMappings<'d>>,
 }
 
@@ -592,6 +596,7 @@ impl<'d> PdbDebugInfo<'d> {
             .and_then(|stream| SourceServerMappings::parse(stream).ok());
 
         Ok(PdbDebugInfo {
+            cpu: pdb.arch().cpu_family(),
             address_map,
             streams,
             string_table: streams.string_table.as_ref(),
@@ -951,7 +956,7 @@ impl<'s> Unit<'s> {
         let mut skipped_depth = None;
 
         let mut functions = Vec::new();
-        let mut stack = FunctionStack::new();
+        let mut stack = FunctionStack::new(self.debug_info.cpu);
         let mut proc_offsets = SmallVec::<[_; 3]>::new();
         let mut last_proc = None;
 
