@@ -289,8 +289,8 @@ pub struct ValueBits {
 pub struct PointerType {
     /// The type this pointer points to (reference to a [`Type`]).
     ///
-    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown, while [`Type::VOID`]
-    /// indicates that the pointer has no referenced type (e.g. `void*`).
+    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown. A `void*` points to a
+    /// [`VoidType`].
     pub pointee_idx: u32,
     /// The size/width of the pointer.
     pub size: Size,
@@ -306,8 +306,8 @@ pub struct TypeDefType {
     pub name_offset: u32,
     /// The type this pointer points to (reference to a [`Type`]).
     ///
-    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown, while [`Type::VOID`]
-    /// indicates that the `typedef` has no associated type.
+    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown. A `typedef` without an
+    /// associated type refers to a [`VoidType`].
     pub ty_idx: u32,
     /// Padding.
     pub _reserved: [u8; 8],
@@ -327,7 +327,7 @@ pub struct StructureType {
     pub num_members: u32,
 }
 
-/// A representation of a qualified `void`, such as `const void`.
+/// A representation of `void`, including a qualified `void`, such as `const void`.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
 #[repr(C)]
 pub struct VoidType {
@@ -382,9 +382,6 @@ pub struct Type {
 impl Type {
     /// Sentinel value for a [`Type`] index indicating that the type is unknown.
     pub const UNKNOWN: u32 = u32::MAX;
-
-    /// Sentinel value for a [`Type`] index indicating the absence of a type (`void`).
-    pub const VOID: u32 = u32::MAX - 1;
 
     pub fn as_enum(&self) -> Option<ty::Enum> {
         self.ty.into_enum(self.kind)

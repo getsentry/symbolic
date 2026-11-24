@@ -28,12 +28,9 @@ impl fmt::Debug for TypeDebug<'_, '_> {
             TypeKind::Primitive(primitive) => {
                 write!(f, "{}{qualifiers}", primitive.name().unwrap_or("<unknown>"))
             }
-            TypeKind::Pointer(pointer) => match pointer.pointee() {
-                Some(ty) => match self.0.lookup_type(ty) {
-                    Some(pointee) => write!(f, "{:?}*{qualifiers}", TypeDebug(self.0, pointee)),
-                    None => write!(f, "<unknown>*{qualifiers}"),
-                },
-                None => write!(f, "void*{qualifiers}"),
+            TypeKind::Pointer(pointer) => match self.0.lookup_type(pointer.pointee()) {
+                Some(pointee) => write!(f, "{:?}*{qualifiers}", TypeDebug(self.0, pointee)),
+                None => write!(f, "<unknown>*{qualifiers}"),
             },
             _ => f.write_str("<unknown>"),
         }
@@ -111,7 +108,7 @@ fn test_load_header_linux() -> Result<(), Error> {
         string_bytes: 56493,
         variables: 548,
         variable_locations: 1610,
-        types: 313,
+        types: 314,
         structure_members: 325,
     }
     "#);
@@ -145,7 +142,7 @@ fn test_load_header_macos() -> Result<(), Error> {
         string_bytes: 50320,
         variables: 477,
         variable_locations: 1098,
-        types: 344,
+        types: 345,
         structure_members: 526,
     }
     "#);

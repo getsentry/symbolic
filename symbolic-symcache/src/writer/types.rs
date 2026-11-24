@@ -112,8 +112,8 @@ where
         let mut raw = match &ty.kind {
             di::TypeKind::Void => Ok(v9::raw::VoidType::default().into()),
             di::TypeKind::Primitive(ty) => self.ser_primitive(ty, string_table),
-            di::TypeKind::Pointer(ty) => self.ser_pointer(ty),
-            di::TypeKind::TypeDef(ty) => self.ser_typedef(ty, string_table),
+            di::TypeKind::Pointer(ty) => self.ser_pointer(ty, type_writer),
+            di::TypeKind::TypeDef(ty) => self.ser_typedef(ty, type_writer, string_table),
             di::TypeKind::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
         }?;
         raw.qualifiers = ty.qualifiers.bits();
@@ -131,25 +131,36 @@ where
         .into())
     }
 
-    fn ser_pointer(&mut self, ty: &di::PointerType) -> FwdResult {
+    /// Returns the index of the type `ty_ref` refers to, or of `void` if there is no `ty_ref`.
+    fn try_lookup_type_idx_or_void(
+        &self,
+        ty_ref: Option<&TypeRef>,
+        tw: &mut TypeWriter,
+    ) -> FwdResult<u32> {
+        match ty_ref {
+            Some(ty_ref) => self.try_lookup_type_idx(ty_ref),
+            None => Ok(tw.push_type(v9::raw::VoidType::default().into())),
+        }
+    }
+
+    fn ser_pointer(&mut self, ty: &di::PointerType, tw: &mut TypeWriter) -> FwdResult {
         Ok(v9::raw::PointerType {
-            pointee_idx: match ty.pointee.as_ref() {
-                Some(pointee) => self.try_lookup_type_idx(pointee)?,
-                None => v9::raw::Type::VOID,
-            },
+            pointee_idx: self.try_lookup_type_idx_or_void(ty.pointee.as_ref(), tw)?,
             size: v9::raw::Size::from_di(Some(ty.size)),
             _reserved: [0; _],
         }
         .into())
     }
 
-    fn ser_typedef(&mut self, ty: &di::TypeDefType<'_>, st: &mut StringTable) -> FwdResult {
+    fn ser_typedef(
+        &mut self,
+        ty: &di::TypeDefType<'_>,
+        tw: &mut TypeWriter,
+        st: &mut StringTable,
+    ) -> FwdResult {
         Ok(v9::raw::TypeDefType {
             name_offset: st.insert(&ty.name) as u32,
-            ty_idx: match ty.ty.as_ref() {
-                Some(ty) => self.try_lookup_type_idx(ty)?,
-                None => v9::raw::Type::VOID,
-            },
+            ty_idx: self.try_lookup_type_idx_or_void(ty.ty.as_ref(), tw)?,
             _reserved: [0; _],
         }
         .into())
@@ -544,7 +555,6 @@ mod tests {
                     };
 
                     let refs = |idx: u32| match idx {
-                        v9::raw::Type::VOID => "void".to_owned(),
                         v9::raw::Type::UNKNOWN => "<unknown>".to_owned(),
                         _ => match types.types.get(idx as usize).and_then(|t| t.as_enum()) {
                             Some(v9::raw::ty::Enum::primitive(t)) => {
@@ -700,26 +710,27 @@ mod tests {
         session.register(TypeRef::generic(6), ty_u32());
 
         assert_ty!(run_test(session), @r#"
-        [0, 1, 2, 3, 5, 4]
+        [0, 2, 3, 4, 6, 5]
         [
             [0] Pointer {
                 pointee: "<unknown>",
             },
-            [1] Pointer {
-                pointee: "void",
+            [1] Void,
+            [2] Pointer {
+                pointee: "[1] (void)",
             },
-            [2] TypeDef {
+            [3] TypeDef {
                 name: "Missing",
                 ty: "<unknown>",
             },
-            [3] TypeDef {
+            [4] TypeDef {
                 name: "Void",
-                ty: "void",
+                ty: "[1] (void)",
             },
-            [4] Primitive {
+            [5] Primitive {
                 name: "u32",
             },
-            [5] Structure {
+            [6] Structure {
                 name: "Partial",
                 members: [
                     Member {
@@ -728,7 +739,7 @@ mod tests {
                     },
                     Member {
                         name: "value",
-                        ty: "[4] (primitive:u32)",
+                        ty: "[5] (primitive:u32)",
                     },
                 ],
             },

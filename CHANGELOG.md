@@ -6,7 +6,7 @@
 
 - Rename `VariableLocation::FrameOffset` to `VariableLocation::CfaOffset`. It now only describes variables at an offset from the CFA. ([#1168](https://github.com/getsentry/symbolic/pull/1168))
 - `Type` is now a struct with the type's `qualifiers` and its `kind`. The previous `Type` enum is renamed to `TypeKind`. The new `TypeKind::Void` variant represents a qualified `void`, such as `const void`. ([#1176](https://github.com/getsentry/symbolic/pull/1176))
-- The symcache `Type` is now a struct with the type's `qualifiers()` and its `kind()`. The previous enum is renamed to `TypeKind`. ([#1177](https://github.com/getsentry/symbolic/pull/1177))
+- The symcache `Type` is now a struct with the type's `qualifiers()` and its `kind()`. The previous enum is renamed to `TypeKind`. The symcache `PointerType::pointee()` and `TypeDefType::ty()` now return a `TypeId` instead of an `Option<TypeId>`, and `void` is stored as a `TypeKind::Void` type. ([#1177](https://github.com/getsentry/symbolic/pull/1177))
 
 **Features**
 
