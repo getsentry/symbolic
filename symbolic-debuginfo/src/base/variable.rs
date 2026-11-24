@@ -193,8 +193,6 @@ pub struct ValueBits {
 #[derive(Debug, Clone)]
 pub struct PointerType {
     /// The type the pointer references.
-    ///
-    /// For a `void*`, this is [`TypeRef::void`].
     pub pointee: TypeRef,
     /// The size of a pointer.
     pub size: Size,
