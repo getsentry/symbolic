@@ -325,6 +325,20 @@ pub struct StructureType {
     pub num_members: u32,
 }
 
+/// A representation of a qualified type, such as `const int`.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct QualifiedType {
+    /// The qualified type (reference to a [`Type`]).
+    ///
+    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown.
+    pub ty_idx: u32,
+    /// The bits of [`Qualifiers`](symbolic_debuginfo::Qualifiers).
+    pub qualifiers: u8,
+    /// Padding.
+    pub _reserved: [u8; 11],
+}
+
 /// A representation of `void`.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
 #[repr(C)]
@@ -360,6 +374,7 @@ pub mod ty {
         typedef: TypeDefType,
         structure: StructureType,
         void: VoidType,
+        qualified: QualifiedType,
     }
 }
 
@@ -449,6 +464,7 @@ unsafe impl Pod for PointerType {}
 unsafe impl Pod for TypeDefType {}
 unsafe impl Pod for StructureType {}
 unsafe impl Pod for VoidType {}
+unsafe impl Pod for QualifiedType {}
 unsafe impl Pod for StructureMember {}
 unsafe impl Pod for Size {}
 unsafe impl Pod for ValueBits {}

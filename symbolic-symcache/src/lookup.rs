@@ -6,7 +6,7 @@ use symbolic_debuginfo::ValueBits;
 use crate::SymCache;
 
 pub use symbolic_debuginfo::{
-    PrimitiveTypeEncoding, Size, VariableKind, VariableLocation, VariableLocationInfo,
+    PrimitiveTypeEncoding, Qualifiers, Size, VariableKind, VariableLocation, VariableLocationInfo,
 };
 
 /// A source File included in the SymCache.
@@ -123,6 +123,8 @@ pub enum Type<'data> {
     TypeDef(TypeDefType<'data>),
     /// A structure type.
     StructureType(StructureType<'data>),
+    /// A type with qualifiers, such as `const`, applied to it.
+    Qualified(QualifiedType),
 }
 
 /// A primitive type contained in the SymCache.
@@ -197,6 +199,28 @@ impl<'data> TypeDefType<'data> {
     ///
     /// This is a [`Type::Void`] if the debug information provides no underlying type
     /// reference, for example an alias to `void` or a type declaration without a definition.
+    pub fn ty(&self) -> TypeId {
+        self.ty
+    }
+}
+
+/// A qualified type contained in the SymCache, such as `const int`.
+#[derive(Clone, Debug)]
+pub struct QualifiedType {
+    pub(crate) qualifiers: Qualifiers,
+    pub(crate) ty: TypeId,
+}
+
+impl QualifiedType {
+    /// The qualifiers applied to [`ty`](Self::ty).
+    pub fn qualifiers(&self) -> Qualifiers {
+        self.qualifiers
+    }
+
+    /// The qualified type.
+    ///
+    /// This is never another [`Type::Qualified`]. If the qualified type could not be resolved,
+    /// [`SymCache::lookup_type`] returns `None` for this [`TypeId`].
     pub fn ty(&self) -> TypeId {
         self.ty
     }

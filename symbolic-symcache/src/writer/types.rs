@@ -86,14 +86,7 @@ where
             Entry::Vacant(entry) => entry,
         };
 
-        // Qualified types are not stored in symcaches yet, so they are unknown.
-        let Some(ty) = self
-            .session
-            .lookup_type(&ty_ref)
-            .ok()
-            .flatten()
-            .filter(|ty| !matches!(ty, di::Type::Qualified(_)))
-        else {
+        let Some(ty) = self.session.lookup_type(&ty_ref).ok().flatten() else {
             entry.insert(ResolvedState::Unknown);
             return Err(ResolvedState::Unknown);
         };
@@ -122,7 +115,7 @@ where
             di::Type::Pointer(ty) => self.ser_pointer(ty),
             di::Type::TypeDef(ty) => self.ser_typedef(ty, string_table),
             di::Type::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
-            di::Type::Qualified(_) => unreachable!("`resolve` treats qualified types as unknown"),
+            di::Type::Qualified(ty) => self.ser_qualified(ty),
         }
     }
 
@@ -150,6 +143,15 @@ where
         Ok(v9::raw::TypeDefType {
             name_offset: st.insert(&ty.name) as u32,
             ty_idx: self.try_lookup_type_idx(&ty.ty)?,
+            _reserved: [0; _],
+        }
+        .into())
+    }
+
+    fn ser_qualified(&mut self, ty: &di::QualifiedType) -> FwdResult {
+        Ok(v9::raw::QualifiedType {
+            ty_idx: self.try_lookup_type_idx(&ty.ty)?,
+            qualifiers: ty.qualifiers.bits(),
             _reserved: [0; _],
         }
         .into())
@@ -305,6 +307,7 @@ impl<'a> Resolved<'a> {
         let next = match &self.ty {
             di::Type::Pointer(t) if self.child_offset == 0 => Some(t.pointee.clone()),
             di::Type::TypeDef(t) if self.child_offset == 0 => Some(t.ty.clone()),
+            di::Type::Qualified(t) if self.child_offset == 0 => Some(t.ty.clone()),
             di::Type::StructureType(t) => t
                 .members
                 .get(self.child_offset)
@@ -557,6 +560,7 @@ mod tests {
                                 format!("[{idx}] (struct:{})", name(t.name_offset))
                             }
                             Some(v9::raw::ty::Enum::void(_)) => format!("[{idx}] (void)"),
+                            Some(v9::raw::ty::Enum::qualified(_)) => format!("[{idx}] (qualified)"),
                             None => format!("[{idx}] <ERROR>"),
                         },
                     };
@@ -593,6 +597,11 @@ mod tests {
                                 .finish()
                         }
                         Some(v9::raw::ty::Enum::void(_)) => write!(f, "[{idx}] Void"),
+                        Some(v9::raw::ty::Enum::qualified(t)) => f
+                            .debug_struct(&format!("[{idx}] Qualified"))
+                            .field("qualifiers", &t.qualifiers)
+                            .field("ty", &refs(t.ty_idx))
+                            .finish(),
                         None => f.write_str("<invalid type>"),
                     }
                 }
