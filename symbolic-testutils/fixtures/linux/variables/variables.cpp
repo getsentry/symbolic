@@ -270,3 +270,12 @@ int main(void)
     class_members();
     return 0;
 }
+
+/*
+ * Qualifiers on more than one pointer level: `strs` points to a `const`
+ * pointer to `const char`. Defined after `main` so that adding it does not
+ * shift the addresses of the other functions.
+ */
+NOINLINE void mixed_qualifiers(const char *const *strs)
+{
+}

@@ -2,6 +2,16 @@
 source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug::new(&session, &functions)"
 ---
+> 0x1300: _Z16mixed_qualifiersPKPKc (0x1)
+  0x1300: variables.cpp:281 (/fixture)
+  variables:
+    strs (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Pointer const (8 bytes)
+            > Primitive: char const (SignedChar, 1 byte)
+      0x1300..0x1301: register rdi
+
 > 0x1040: main (0x97)
   0x1040: variables.cpp:256 (/fixture)
   0x1045: variables.cpp:262 (/fixture)
