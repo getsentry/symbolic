@@ -61,7 +61,9 @@ pub struct SessionTypeSerializer<'data, S> {
     /// - De-duplicate type refs by remembering where they have been stored.
     /// - Cycle detection.
     /// - Remembering resolved types as `unknown`.
-    resolved: IndexMap<TypeRef, ResolvedState>,
+    ///
+    /// The `None` key is `void`, which has no type ref.
+    resolved: IndexMap<Option<TypeRef>, ResolvedState>,
 }
 
 impl<'data, S> SessionTypeSerializer<'data, S> {
@@ -78,7 +80,7 @@ impl<'data, S> SessionTypeSerializer<'data, S>
 where
     S: DebugSession<'data>,
 {
-    fn resolve(&mut self, ty_ref: TypeRef) -> Result<Resolved<'data>, ResolvedState> {
+    fn resolve(&mut self, ty_ref: Option<TypeRef>) -> Result<Resolved<'data>, ResolvedState> {
         use indexmap::map::Entry;
 
         let entry = match self.resolved.entry(ty_ref.clone()) {
@@ -86,7 +88,11 @@ where
             Entry::Vacant(entry) => entry,
         };
 
-        let Some(ty) = self.session.lookup_type(&ty_ref).ok().flatten() else {
+        let ty = match &ty_ref {
+            Some(ty_ref) => self.session.lookup_type(ty_ref).ok().flatten(),
+            None => Some(di::TypeKind::Void.into()),
+        };
+        let Some(ty) = ty else {
             entry.insert(ResolvedState::Unknown);
             return Err(ResolvedState::Unknown);
         };
@@ -95,7 +101,7 @@ where
         Ok(Resolved::new(ty_ref, ty))
     }
 
-    fn try_lookup_type_idx(&self, ty_ref: &TypeRef) -> FwdResult<u32> {
+    fn try_lookup_type_idx(&self, ty_ref: &Option<TypeRef>) -> FwdResult<u32> {
         match self.resolved.get(ty_ref) {
             Some(ResolvedState::Stored(idx)) => Ok(*idx),
             Some(ResolvedState::Unknown) => Ok(v9::raw::Type::UNKNOWN),
@@ -112,8 +118,8 @@ where
         let mut raw = match &ty.kind {
             di::TypeKind::Void => Ok(v9::raw::VoidType::default().into()),
             di::TypeKind::Primitive(ty) => self.ser_primitive(ty, string_table),
-            di::TypeKind::Pointer(ty) => self.ser_pointer(ty, type_writer),
-            di::TypeKind::TypeDef(ty) => self.ser_typedef(ty, type_writer, string_table),
+            di::TypeKind::Pointer(ty) => self.ser_pointer(ty),
+            di::TypeKind::TypeDef(ty) => self.ser_typedef(ty, string_table),
             di::TypeKind::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
         }?;
         raw.qualifiers = ty.qualifiers.bits();
@@ -131,36 +137,19 @@ where
         .into())
     }
 
-    /// Returns the index of the type `ty_ref` refers to, or of `void` if there is no `ty_ref`.
-    fn try_lookup_type_idx_or_void(
-        &self,
-        ty_ref: Option<&TypeRef>,
-        tw: &mut TypeWriter,
-    ) -> FwdResult<u32> {
-        match ty_ref {
-            Some(ty_ref) => self.try_lookup_type_idx(ty_ref),
-            None => Ok(tw.push_type(v9::raw::VoidType::default().into())),
-        }
-    }
-
-    fn ser_pointer(&mut self, ty: &di::PointerType, tw: &mut TypeWriter) -> FwdResult {
+    fn ser_pointer(&mut self, ty: &di::PointerType) -> FwdResult {
         Ok(v9::raw::PointerType {
-            pointee_idx: self.try_lookup_type_idx_or_void(ty.pointee.as_ref(), tw)?,
+            pointee_idx: self.try_lookup_type_idx(&ty.pointee)?,
             size: v9::raw::Size::from_di(Some(ty.size)),
             _reserved: [0; _],
         }
         .into())
     }
 
-    fn ser_typedef(
-        &mut self,
-        ty: &di::TypeDefType<'_>,
-        tw: &mut TypeWriter,
-        st: &mut StringTable,
-    ) -> FwdResult {
+    fn ser_typedef(&mut self, ty: &di::TypeDefType<'_>, st: &mut StringTable) -> FwdResult {
         Ok(v9::raw::TypeDefType {
             name_offset: st.insert(&ty.name) as u32,
-            ty_idx: self.try_lookup_type_idx_or_void(ty.ty.as_ref(), tw)?,
+            ty_idx: self.try_lookup_type_idx(&ty.ty)?,
             _reserved: [0; _],
         }
         .into())
@@ -194,7 +183,7 @@ where
     ) -> FwdResult<(u32, u32)> {
         let mut serialized = Vec::with_capacity(members.len());
         for member in members {
-            let type_idx = self.try_lookup_type_idx(&member.ty)?;
+            let type_idx = self.try_lookup_type_idx(&Some(member.ty.clone()))?;
             let name_offset = member
                 .name
                 .as_deref()
@@ -221,7 +210,7 @@ where
         type_writer: &mut TypeWriter,
         string_table: &mut StringTable,
     ) -> Option<u32> {
-        let resolved = match self.resolve(ty_ref.clone()) {
+        let resolved = match self.resolve(Some(ty_ref.clone())) {
             Ok(resolved) => resolved,
             Err(ResolvedState::Stored(idx)) => return Some(idx),
             Err(ResolvedState::Unknown) => return None,
@@ -293,18 +282,18 @@ where
             }
         }
 
-        self.try_lookup_type_idx(ty_ref).ok()
+        self.try_lookup_type_idx(&Some(ty_ref.clone())).ok()
     }
 }
 
 struct Resolved<'a> {
-    ty_ref: TypeRef,
+    ty_ref: Option<TypeRef>,
     ty: di::Type<'a>,
     child_offset: usize,
 }
 
 impl<'a> Resolved<'a> {
-    fn new(ty_ref: TypeRef, ty: di::Type<'a>) -> Self {
+    fn new(ty_ref: Option<TypeRef>, ty: di::Type<'a>) -> Self {
         Self {
             ty_ref,
             ty,
@@ -312,14 +301,15 @@ impl<'a> Resolved<'a> {
         }
     }
 
-    fn next_child(&mut self) -> Option<TypeRef> {
+    /// Returns the next child type ref, where `Some(None)` is `void`.
+    fn next_child(&mut self) -> Option<Option<TypeRef>> {
         let next = match &self.ty.kind {
-            di::TypeKind::Pointer(t) if self.child_offset == 0 => t.pointee.clone(),
-            di::TypeKind::TypeDef(t) if self.child_offset == 0 => t.ty.clone(),
+            di::TypeKind::Pointer(t) if self.child_offset == 0 => Some(t.pointee.clone()),
+            di::TypeKind::TypeDef(t) if self.child_offset == 0 => Some(t.ty.clone()),
             di::TypeKind::StructureType(t) => t
                 .members
                 .get(self.child_offset)
-                .map(|member| member.ty.clone()),
+                .map(|member| Some(member.ty.clone())),
             _ => None,
         };
         self.child_offset += 1;
