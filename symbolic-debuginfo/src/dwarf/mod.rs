@@ -2098,19 +2098,18 @@ impl<'data> DwarfDebugSession<'data> {
         ///
         /// Modifier chains in valid DWARF are short (e.g. `const volatile`), this limit only
         /// protects against cycles in malformed debug information.
-        const MAX_MODIFIER_DEPTH: usize = 16;
+        const MAX_MODIFIER_DEPTH: u8 = 16;
 
-        let Some(DwarfTypeRef(ty)) = ty.as_dwarf() else {
-            return Ok(None);
-        };
-
-        let info = self.cell.get();
-        let mut ty = ty.clone();
-        let mut qualifiers = Qualifiers::empty();
-
-        // Adjacent modifier entries, such as `const volatile`, merge into one `QualifiedType`.
-        for _ in 0..MAX_MODIFIER_DEPTH {
-            let unit = match &ty {
+        /// Looks up a DWARF type. Adjacent modifier entries, such as `const volatile`, are merged
+        /// into one [`QualifiedType`]: `qualifiers` holds the qualifiers of the modifier entries
+        /// already followed, and `depth` limits how many more are followed.
+        fn lookup<'d>(
+            info: &DwarfInfo<'d>,
+            ty: &DwarfTypeRefInner,
+            qualifiers: Qualifiers,
+            depth: u8,
+        ) -> Result<Option<Type<'d>>, DwarfError> {
+            let unit = match ty {
                 DwarfTypeRefInner::Offset {
                     section: SectionId::DebugInfo,
                     offset,
@@ -2128,31 +2127,34 @@ impl<'data> DwarfDebugSession<'data> {
                 return Ok(None);
             };
 
-            let (modifier, modified) = match self::types::parse_modifier(unit, offset)? {
-                Some(modifier) => modifier,
-                None if qualifiers.is_empty() => return self::types::parse_type(unit, offset),
-                None => {
-                    return Ok(Some(Type::Qualified(QualifiedType {
-                        qualifiers,
-                        ty: DwarfTypeRef(ty).into(),
-                    })));
-                }
-            };
-
-            qualifiers |= modifier;
-            match modified {
-                Some(DwarfTypeRef(modified)) => ty = modified,
+            match types::parse_modifier(unit, offset)? {
+                // Not a modifier and not qualified: the entry is the type itself.
+                None if qualifiers.is_empty() => types::parse_type(unit, offset),
+                // Not a modifier: the entry is the type that the followed modifiers qualify.
+                None => Ok(Some(Type::Qualified(QualifiedType {
+                    qualifiers,
+                    ty: DwarfTypeRef(ty.clone()).into(),
+                }))),
                 // A modifier without a modified type qualifies `void`.
-                None => {
-                    return Ok(Some(Type::Qualified(QualifiedType {
-                        qualifiers,
-                        ty: DwarfTypeRef::void().into(),
-                    })));
+                Some((modifier, None)) => Ok(Some(Type::Qualified(QualifiedType {
+                    qualifiers: qualifiers | modifier,
+                    ty: DwarfTypeRef::void().into(),
+                }))),
+                // A modifier chain longer than the depth limit.
+                Some(_) if depth == 0 => Ok(None),
+                // Recursive case: follow the modifier and add its qualifier.
+                Some((modifier, Some(DwarfTypeRef(modified)))) => {
+                    lookup(info, &modified, qualifiers | modifier, depth - 1)
                 }
             }
         }
 
-        Ok(None)
+        match ty.as_dwarf() {
+            Some(DwarfTypeRef(ty)) => {
+                lookup(self.cell.get(), ty, Qualifiers::empty(), MAX_MODIFIER_DEPTH)
+            }
+            None => Ok(None),
+        }
     }
 
     /// See [`DebugSession::source_by_path`] for more information.
