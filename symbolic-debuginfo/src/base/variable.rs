@@ -30,12 +30,21 @@ enum NativeTypeRef {
     Generic(u64),
     #[cfg(feature = "dwarf")]
     Dwarf(crate::dwarf::DwarfTypeRef),
+    #[cfg(feature = "ms")]
+    Pdb(crate::pdb::PdbTypeRef),
 }
 
 #[cfg(feature = "dwarf")]
 impl From<crate::dwarf::DwarfTypeRef> for TypeRef {
     fn from(value: crate::dwarf::DwarfTypeRef) -> Self {
         Self(NativeTypeRef::Dwarf(value))
+    }
+}
+
+#[cfg(feature = "ms")]
+impl From<crate::pdb::PdbTypeRef> for TypeRef {
+    fn from(value: crate::pdb::PdbTypeRef) -> Self {
+        Self(NativeTypeRef::Pdb(value))
     }
 }
 
