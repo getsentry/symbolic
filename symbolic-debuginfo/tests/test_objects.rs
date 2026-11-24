@@ -186,7 +186,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
         if !seen_types.insert(type_ref.clone()) {
             let name = match &ty {
                 Type::Primitive(ty) => ty.name.as_deref(),
-                Type::Pointer(_) | Type::Void => None,
+                Type::Pointer(_) | Type::Void | Type::Qualified(_) => None,
                 Type::TypeDef(ty) => Some(ty.name.as_ref()),
                 Type::StructureType(ty) => ty.name.as_deref(),
             };
@@ -314,6 +314,30 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                 }
 
                 Ok(())
+            }
+            Type::Qualified(ty) => {
+                let qualifiers: Vec<_> = ty
+                    .qualifiers
+                    .iter_names()
+                    .map(|(name, _)| name.to_lowercase())
+                    .collect();
+                writeln!(
+                    f,
+                    "{:indent$}> Qualified: {}",
+                    "",
+                    qualifiers.join(" "),
+                    indent = self.depth * 2
+                )?;
+                write!(
+                    f,
+                    "{:?}",
+                    TypeDebug {
+                        session: self.session,
+                        ty: &ty.ty,
+                        depth: self.depth + 1,
+                        seen_types: &seen_types,
+                    }
+                )
             }
         }
     }

@@ -83,6 +83,7 @@ js = ["dep:memchr"]
 wasm = ["dwarf", "wasmparser"]
 
 [dependencies]
+bitflags = { workspace = true }
 debugid = { workspace = true }
 elementtree = { workspace = true, optional = true }
 elsa = { workspace = true, optional = true }

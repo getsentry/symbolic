@@ -75,6 +75,12 @@ fn print_type(session: &ObjectDebugSession<'_>, ty: &TypeRef, max_depth: usize) 
             }
             print!("}}");
         }
+        Type::Qualified(t) => {
+            print_type(session, &t.ty, max_depth - 1)?;
+            for (name, _) in t.qualifiers.iter_names() {
+                print!(" {}", name.to_lowercase());
+            }
+        }
     }
 
     Ok(())

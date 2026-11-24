@@ -34,7 +34,10 @@ mod types;
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::{Type, TypeRef, Variable, VariableKind, VariableLocation, VariableLocationInfo};
+use crate::{
+    QualifiedType, Qualifiers, Type, TypeRef, Variable, VariableKind, VariableLocation,
+    VariableLocationInfo,
+};
 
 /// This is a fake BcSymbolMap used when macho support is turned off since they are unfortunately
 /// part of the dwarf interface
@@ -2090,29 +2093,66 @@ impl<'data> DwarfDebugSession<'data> {
     ///
     /// See also: [`DebugSession::lookup_type`].
     pub fn lookup_type(&self, ty: &TypeRef) -> Result<Option<Type<'_>>, DwarfError> {
+        /// The maximum number of adjacent type modifier entries merged into one
+        /// [`QualifiedType`].
+        ///
+        /// Modifier chains in valid DWARF are short (e.g. `const volatile`), this limit only
+        /// protects against cycles in malformed debug information.
+        const MAX_MODIFIER_DEPTH: usize = 16;
+
         let Some(DwarfTypeRef(ty)) = ty.as_dwarf() else {
             return Ok(None);
         };
 
         let info = self.cell.get();
-        let unit = match ty {
-            DwarfTypeRefInner::Offset {
-                section: SectionId::DebugInfo,
-                offset,
-            } => Some(info.find_info_unit_offset(gimli::DebugInfoOffset(offset.0))?),
-            DwarfTypeRefInner::Offset {
-                section: SectionId::DebugTypes,
-                offset,
-            } => Some(info.find_types_unit_offset(*offset)?),
-            DwarfTypeRefInner::Signature(signature) => info.find_type_signature(*signature)?,
-            DwarfTypeRefInner::Offset { .. } => None,
-            DwarfTypeRefInner::Void => return Ok(Some(Type::Void)),
-        };
-        let Some((unit, offset)) = unit else {
-            return Ok(None);
-        };
+        let mut ty = ty.clone();
+        let mut qualifiers = Qualifiers::empty();
 
-        self::types::parse_type(unit, offset)
+        // Adjacent modifier entries, such as `const volatile`, merge into one `QualifiedType`.
+        for _ in 0..MAX_MODIFIER_DEPTH {
+            let unit = match &ty {
+                DwarfTypeRefInner::Offset {
+                    section: SectionId::DebugInfo,
+                    offset,
+                } => Some(info.find_info_unit_offset(gimli::DebugInfoOffset(offset.0))?),
+                DwarfTypeRefInner::Offset {
+                    section: SectionId::DebugTypes,
+                    offset,
+                } => Some(info.find_types_unit_offset(*offset)?),
+                DwarfTypeRefInner::Signature(signature) => info.find_type_signature(*signature)?,
+                DwarfTypeRefInner::Offset { .. } => None,
+                // A modifier of `void` has no `DW_AT_type`, so `void` is only reached unqualified.
+                DwarfTypeRefInner::Void => return Ok(Some(Type::Void)),
+            };
+            let Some((unit, offset)) = unit else {
+                return Ok(None);
+            };
+
+            let (modifier, modified) = match self::types::parse_modifier(unit, offset)? {
+                Some(modifier) => modifier,
+                None if qualifiers.is_empty() => return self::types::parse_type(unit, offset),
+                None => {
+                    return Ok(Some(Type::Qualified(QualifiedType {
+                        qualifiers,
+                        ty: DwarfTypeRef(ty).into(),
+                    })));
+                }
+            };
+
+            qualifiers |= modifier;
+            match modified {
+                Some(DwarfTypeRef(modified)) => ty = modified,
+                // A modifier without a modified type qualifies `void`.
+                None => {
+                    return Ok(Some(Type::Qualified(QualifiedType {
+                        qualifiers,
+                        ty: DwarfTypeRef::void().into(),
+                    })));
+                }
+            }
+        }
+
+        Ok(None)
     }
 
     /// See [`DebugSession::source_by_path`] for more information.

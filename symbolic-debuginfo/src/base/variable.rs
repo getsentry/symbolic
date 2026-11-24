@@ -69,6 +69,33 @@ pub enum Type<'data> {
     TypeDef(TypeDefType<'data>),
     /// A structure type.
     StructureType(StructureType<'data>),
+    /// A type with qualifiers, such as `const`, applied to it.
+    Qualified(QualifiedType),
+}
+
+bitflags::bitflags! {
+    /// Type qualifiers, such as `const` or `volatile`.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct Qualifiers: u8 {
+        /// The `const` qualifier.
+        const CONST = 1 << 0;
+        /// The `volatile` qualifier.
+        const VOLATILE = 1 << 1;
+        /// The `restrict` qualifier.
+        const RESTRICT = 1 << 2;
+    }
+}
+
+/// A type with qualifiers, such as `const` or `volatile`, applied to it.
+///
+/// All qualifiers applied directly to a type are merged into a single [`QualifiedType`], so
+/// [`ty`](Self::ty) never refers to another [`Type::Qualified`].
+#[derive(Debug, Clone)]
+pub struct QualifiedType {
+    /// The qualifiers applied to [`ty`](Self::ty).
+    pub qualifiers: Qualifiers,
+    /// The qualified type.
+    pub ty: TypeRef,
 }
 
 impl<'data> From<PrimitiveType<'data>> for Type<'data> {
@@ -92,6 +119,12 @@ impl<'data> From<TypeDefType<'data>> for Type<'data> {
 impl<'data> From<StructureType<'data>> for Type<'data> {
     fn from(value: StructureType<'data>) -> Self {
         Self::StructureType(value)
+    }
+}
+
+impl<'data> From<QualifiedType> for Type<'data> {
+    fn from(value: QualifiedType) -> Self {
+        Self::Qualified(value)
     }
 }
 

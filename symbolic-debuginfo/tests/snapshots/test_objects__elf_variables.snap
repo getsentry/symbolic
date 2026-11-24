@@ -2,6 +2,25 @@
 source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug::new(&session, &functions)"
 ---
+> 0x1507: _Z16mixed_qualifiersPKPKcPVKi (0xf)
+  0x1507: variables.cpp:281 (/fixture)
+  0x1513: variables.cpp:282 (/fixture)
+  variables:
+    strs (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Qualified: const
+            > Pointer (8 bytes)
+              > Qualified: const
+                > Primitive: char (SignedChar, 1 byte)
+      0x1507..0x1516: cfa -24
+    cv (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Qualified: const volatile
+            > Primitive: int (SignedInt, 4 bytes)
+      0x1507..0x1516: cfa -32
+
 > 0x1412: main (0xf5)
   0x1412: variables.cpp:256 (/fixture)
   0x141b: variables.cpp:257 (/fixture)
@@ -112,7 +131,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x1327..0x133c: cfa -36
     slot (local)
       type:
-        > Unknown
+        > Qualified: volatile
+          > Primitive: int (SignedInt, 4 bytes)
       0x1327..0x133c: cfa -20
 
 > 0x130f: _Z13optimized_outi (0x18)
@@ -290,7 +310,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x11ae..0x121a: cfa -52
     constant (local)
       type:
-        > Unknown
+        > Qualified: const
+          > Primitive: int (SignedInt, 4 bytes)
       0x11ae..0x121a: cfa -24
 
 > 0x1193: _Z8pointersPiPS_PKcPvPFiiE (0x1b)
@@ -311,7 +332,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
     str (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Qualified: const
+            > Primitive: char (SignedChar, 1 byte)
       0x1193..0x11ae: cfa -40
     any (parameter)
       type:
