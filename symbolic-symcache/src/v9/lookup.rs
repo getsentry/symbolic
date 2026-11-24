@@ -83,12 +83,11 @@ impl<'data> SymCache<'data> {
             }),
             raw::ty::Enum::pointer(pointer) => Type::Pointer(PointerType {
                 size: pointer.size.into_di().unwrap_or_default(),
-                pointee: (pointer.pointee_idx != raw::Type::VOID)
-                    .then_some(TypeId(pointer.pointee_idx)),
+                pointee: TypeId(pointer.pointee_idx),
             }),
             raw::ty::Enum::typedef(td) => Type::TypeDef(TypeDefType {
                 name: self.get_string(td.name_offset).unwrap_or("?"),
-                ty: (td.ty_idx != raw::Type::VOID).then_some(TypeId(td.ty_idx)),
+                ty: TypeId(td.ty_idx),
             }),
             raw::ty::Enum::structure(structure) => {
                 let start = structure.member_idx as usize;
@@ -105,6 +104,7 @@ impl<'data> SymCache<'data> {
                     .into(),
                 })
             }
+            raw::ty::Enum::void(_) => Type::Void,
         })
     }
 

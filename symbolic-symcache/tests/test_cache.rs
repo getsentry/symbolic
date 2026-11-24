@@ -14,13 +14,11 @@ struct TypeDebug<'data, 'cache>(&'cache SymCache<'data>, Type<'data>);
 impl fmt::Debug for TypeDebug<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.1 {
+            Type::Void => f.write_str("void"),
             Type::Primitive(primitive) => f.write_str(primitive.name().unwrap_or("<unknown>")),
-            Type::Pointer(pointer) => match pointer.pointee() {
-                Some(ty) => match self.0.lookup_type(ty) {
-                    Some(pointee) => write!(f, "{:?}*", TypeDebug(self.0, pointee)),
-                    None => f.write_str("<unknown>*"),
-                },
-                None => f.write_str("void*"),
+            Type::Pointer(pointer) => match self.0.lookup_type(pointer.pointee()) {
+                Some(pointee) => write!(f, "{:?}*", TypeDebug(self.0, pointee)),
+                None => f.write_str("<unknown>*"),
             },
             _ => f.write_str("<unknown>"),
         }
@@ -98,7 +96,7 @@ fn test_load_header_linux() -> Result<(), Error> {
         string_bytes: 55328,
         variables: 548,
         variable_locations: 1610,
-        types: 183,
+        types: 184,
         structure_members: 257,
     }
     "#);
@@ -132,7 +130,7 @@ fn test_load_header_macos() -> Result<(), Error> {
         string_bytes: 50218,
         variables: 477,
         variable_locations: 1098,
-        types: 299,
+        types: 300,
         structure_members: 521,
     }
     "#);

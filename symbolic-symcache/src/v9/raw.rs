@@ -11,7 +11,7 @@ use symbolic_common::DebugId;
 /// The current [`Header::variable_header`] version.
 ///
 /// On a version mismatch, the sections referenced in the [`VariableHeader`] must not be parsed.
-pub const VARIABLE_HEADER_VERSION: u16 = 5;
+pub const VARIABLE_HEADER_VERSION: u16 = 6;
 
 /// This [`FunctionVariables`] is a sentinel for functions without variables.
 pub const NO_VARIABLES: FunctionVariables = FunctionVariables {
@@ -289,8 +289,8 @@ pub struct ValueBits {
 pub struct PointerType {
     /// The type this pointer points to (reference to a [`Type`]).
     ///
-    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown, while [`Type::VOID`]
-    /// indicates that the pointer has no referenced type (e.g. `void*`).
+    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown. A `void*` points to a
+    /// [`VoidType`].
     pub pointee_idx: u32,
     /// The size/width of the pointer.
     pub size: Size,
@@ -306,8 +306,8 @@ pub struct TypeDefType {
     pub name_offset: u32,
     /// The type this pointer points to (reference to a [`Type`]).
     ///
-    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown, while [`Type::VOID`]
-    /// indicates that the `typedef` has no associated type.
+    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown. A `typedef` without an
+    /// associated type refers to a [`VoidType`].
     pub ty_idx: u32,
     /// Padding.
     pub _reserved: [u8; 8],
@@ -325,6 +325,14 @@ pub struct StructureType {
     pub member_idx: u32,
     /// The number of members in the structure.
     pub num_members: u32,
+}
+
+/// A representation of `void`.
+#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct VoidType {
+    /// Padding.
+    pub _reserved: [u8; 16],
 }
 
 /// A representation of a structure member.
@@ -353,6 +361,7 @@ pub mod ty {
         pointer: PointerType,
         typedef: TypeDefType,
         structure: StructureType,
+        void: VoidType,
     }
 }
 
@@ -370,9 +379,6 @@ pub struct Type {
 impl Type {
     /// Sentinel value for a [`Type`] index indicating that the type is unknown.
     pub const UNKNOWN: u32 = u32::MAX;
-
-    /// Sentinel value for a [`Type`] index indicating the absence of a type (`void`).
-    pub const VOID: u32 = u32::MAX - 1;
 
     pub fn as_enum(&self) -> Option<ty::Enum> {
         self.ty.into_enum(self.kind)
@@ -444,6 +450,7 @@ unsafe impl Pod for PrimitiveType {}
 unsafe impl Pod for PointerType {}
 unsafe impl Pod for TypeDefType {}
 unsafe impl Pod for StructureType {}
+unsafe impl Pod for VoidType {}
 unsafe impl Pod for StructureMember {}
 unsafe impl Pod for Size {}
 unsafe impl Pod for ValueBits {}
