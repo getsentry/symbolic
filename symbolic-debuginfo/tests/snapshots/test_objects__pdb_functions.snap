@@ -40,10 +40,11 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         variables:
           _Ptr (parameter)
             type:
-              > Unknown
+              > Pointer (4 bytes)
+                > Void
           _Bytes (parameter)
             type:
-              > Unknown
+              > Primitive: unsigned int (UnsignedInt, 4 bytes)
 
         > 0x113c: std::_Adjust_manually_vector_aligned(void*&, unsigned int&) (0x37)
           0x113c: xmemory0:119 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -101,7 +102,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     variables:
       result (local)
         type:
-          > Unknown
+          > Primitive: unsigned long (UnsignedInt, 4 bytes)
       wait_handles (local)
         type:
           > Unknown
@@ -140,7 +141,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     variables:
       _Result (local)
         type:
-          > Unknown
+          > Pointer (4 bytes)
+            > Primitive: wchar_t (UnsignedChar, 2 bytes)
 
     > 0x11a2: std::_String_val<std::_Simple_types<wchar_t> >::_Large_string_engaged() const (0x3)
       0x11a2: xstring:1802 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -223,7 +225,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
           variables:
             _Block_size (local)
               type:
-                > Unknown
+                > Primitive: unsigned int (UnsignedInt, 4 bytes)
             _Ptr_container (local)
               type:
                 > Unknown
@@ -244,7 +246,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         variables:
           _Result (local)
             type:
-              > Unknown
+              > Primitive: unsigned int (UnsignedInt, 4 bytes)
 
     > 0x11dd: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Calculate_growth(const unsigned int) const (0x32)
       0x11dd: xstring:3784 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -274,10 +276,11 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         variables:
           _Ptr (parameter)
             type:
-              > Unknown
+              > Pointer (4 bytes)
+                > Void
           _Bytes (parameter)
             type:
-              > Unknown
+              > Primitive: unsigned int (UnsignedInt, 4 bytes)
 
         > 0x12a0: std::_Adjust_manually_vector_aligned(void*&, unsigned int&) (0x12)
           0x12a0: xmemory0:119 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -336,10 +339,11 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         variables:
           _Ptr (parameter)
             type:
-              > Unknown
+              > Pointer (4 bytes)
+                > Void
           _Bytes (parameter)
             type:
-              > Unknown
+              > Primitive: unsigned int (UnsignedInt, 4 bytes)
 
         > 0x1305: std::_Adjust_manually_vector_aligned(void*&, unsigned int&) (0x59)
           0x1305: xmemory0:119 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -488,7 +492,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         variables:
           _Block_size (local)
             type:
-              > Unknown
+              > Primitive: unsigned int (UnsignedInt, 4 bytes)
           _Ptr_container (local)
             type:
               > Unknown
@@ -509,7 +513,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       variables:
         _Result (local)
           type:
-            > Unknown
+            > Primitive: unsigned int (UnsignedInt, 4 bytes)
 
   > 0x2614: std::_Default_allocator_traits<std::allocator<google_breakpad::ExceptionHandler *> >::construct(std::allocator<google_breakpad::ExceptionHandler *>&, google_breakpad::ExceptionHandler** const, google_breakpad::ExceptionHandler*&&) (0x9)
     0x2614: xmemory0:917 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -562,10 +566,11 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         variables:
           _Ptr (parameter)
             type:
-              > Unknown
+              > Pointer (4 bytes)
+                > Void
           _Bytes (parameter)
             type:
-              > Unknown
+              > Primitive: unsigned int (UnsignedInt, 4 bytes)
 
         > 0x2646: std::_Adjust_manually_vector_aligned(void*&, unsigned int&) (0x12)
           0x2646: xmemory0:119 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -598,7 +603,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         > Unknown
     google_breakpad::ExceptionHandler::handler_stack_index_ (local)
       type:
-        > Unknown
+        > Primitive: long (SignedInt, 4 bytes)
 
   > 0x1b9f: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::size() const (0x1b)
     0x1b9f: vector:1775 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
