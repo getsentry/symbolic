@@ -173,8 +173,8 @@ impl PointerType {
 
     /// The referenced type.
     ///
-    /// For a `void*`, this is a [`Type::Void`]. If the pointer references a type that could
-    /// not be resolved, [`SymCache::lookup_type`] returns `None` for this [`TypeId`].
+    /// If the pointer references a type that could not be resolved, [`SymCache::lookup_type`]
+    /// returns `None` for this [`TypeId`].
     pub fn pointee(&self) -> TypeId {
         self.pointee
     }

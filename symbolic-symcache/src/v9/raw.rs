@@ -289,8 +289,7 @@ pub struct ValueBits {
 pub struct PointerType {
     /// The type this pointer points to (reference to a [`Type`]).
     ///
-    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown. A `void*` points to a
-    /// [`VoidType`].
+    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown.
     pub pointee_idx: u32,
     /// The size/width of the pointer.
     pub size: Size,
@@ -306,8 +305,7 @@ pub struct TypeDefType {
     pub name_offset: u32,
     /// The type this pointer points to (reference to a [`Type`]).
     ///
-    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown. A `typedef` without an
-    /// associated type refers to a [`VoidType`].
+    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown.
     pub ty_idx: u32,
     /// Padding.
     pub _reserved: [u8; 8],
