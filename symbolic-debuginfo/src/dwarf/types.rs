@@ -39,7 +39,7 @@ pub fn parse_type<'d>(
 /// Returns the qualifier and the reference to the modified type. The reference is `None` if the
 /// entry has no `DW_AT_type`, which means it qualifies `void`. Returns `None` if the entry is not a
 /// supported modifier, or if its `DW_AT_type` cannot be resolved.
-pub(super) fn parse_modifier(
+pub fn parse_modifier(
     unit: UnitRef<'_, '_>,
     offset: UnitOffset,
 ) -> Result<Option<(Qualifiers, Option<DwarfTypeRef>)>, DwarfError> {
