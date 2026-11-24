@@ -6,7 +6,7 @@ use symbolic_common::register::Register;
 ///
 /// Links a variable to a concrete type.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeRef(NativeTypeRef);
+pub struct TypeRef(pub(crate) NativeTypeRef);
 
 impl TypeRef {
     /// Creates a new generic [`TypeRef`] from a number.
@@ -23,23 +23,10 @@ impl TypeRef {
     pub fn void() -> Self {
         TypeRef(NativeTypeRef::Void)
     }
-
-    /// Returns `true` if this is `void`.
-    pub(crate) fn is_void(&self) -> bool {
-        matches!(self.0, NativeTypeRef::Void)
-    }
-
-    #[cfg(feature = "dwarf")]
-    pub(crate) fn as_dwarf(&self) -> Option<&crate::dwarf::DwarfTypeRef> {
-        match &self.0 {
-            NativeTypeRef::Dwarf(dwarf) => Some(dwarf),
-            _ => None,
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum NativeTypeRef {
+pub(crate) enum NativeTypeRef {
     Generic(u64),
     /// `void` in debug formats without an entry for it, such as DWARF, where a missing
     /// `DW_AT_type` means `void`.

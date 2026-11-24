@@ -2131,15 +2131,13 @@ impl<'data> DwarfDebugSession<'data> {
             }
         }
 
-        if ty.is_void() {
-            return Ok(Some(TypeKind::Void.into()));
+        match &ty.0 {
+            NativeTypeRef::Void => Ok(Some(TypeKind::Void.into())),
+            NativeTypeRef::Dwarf(DwarfTypeRef(ty)) => {
+                lookup(self.cell.get(), ty, MAX_MODIFIER_DEPTH)
+            }
+            _ => Ok(None),
         }
-
-        let Some(DwarfTypeRef(ty)) = ty.as_dwarf() else {
-            return Ok(None);
-        };
-
-        lookup(self.cell.get(), ty, MAX_MODIFIER_DEPTH)
     }
 
     /// See [`DebugSession::source_by_path`] for more information.
