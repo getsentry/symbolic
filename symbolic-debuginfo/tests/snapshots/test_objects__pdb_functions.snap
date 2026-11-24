@@ -96,9 +96,11 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     ex_info (parameter)
       type:
         > Unknown
+      0x1000..0x1001: memory at esp +4
     assert_info (parameter)
       type:
         > Unknown
+      0x1000..0x1001: memory at esp +8
       0x103d..0x1051: register esi
       0x1054..0x106e: register esi
 
@@ -151,12 +153,14 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     _Ptr (parameter)
       type:
         > Unknown
+      0x1180..0x1181: memory at esp +4
       0x1187..0x11bc: register eax
       0x11d1..0x11f8: register eax
       0x12ca..0x12cf: register eax
     _Count (parameter)
       type:
         > Unknown
+      0x1180..0x1181: memory at esp +8
       0x118d..0x11ca: register ebp
       0x11d1..0x12c3: register ebp
       0x12ca..0x12cf: register ebp
@@ -369,6 +373,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     _Right (parameter)
       type:
         > Unknown
+      0x12e0..0x12e1: memory at esp +4
       0x12e6..0x1352: register edi
       0x1358..0x135e: register edi
 
@@ -451,12 +456,15 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     _Next (parameter)
       type:
         > Unknown
+      0x27d0..0x27d1: memory at esp +4
     _Prev (parameter)
       type:
         > Unknown
+      0x27d0..0x27d1: memory at esp +8
     <_Val_0> (parameter)
       type:
         > Unknown
+      0x27d0..0x27d1: memory at esp +12
     _Pnode (local)
       type:
         > Unknown
@@ -501,6 +509,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     <_Val_0> (parameter)
       type:
         > Unknown
+      0x2560..0x2561: memory at esp +4
     _Newcapacity (local)
       type:
         > Unknown

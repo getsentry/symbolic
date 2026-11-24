@@ -4,8 +4,9 @@ use std::ops::Range;
 
 use hashbrown::{DefaultHashBuilder, HashTable};
 use pdb_addr2line::pdb::{
-    AddressGap, AddressMap, AddressRange, DefRangeRegisterSymbol, PdbInternalRva, RawString,
-    RegisterRelativeSymbol, RegisterVariableSymbol, Rva, SymbolData, TypeIndex,
+    AddressGap, AddressMap, AddressRange, DefRangeRegisterRelativeSymbol, DefRangeRegisterSymbol,
+    PdbInternalRva, RawString, RegisterRelativeSymbol, RegisterVariableSymbol, Rva, SymbolData,
+    TypeIndex,
 };
 use symbolic_common::CpuFamily;
 
@@ -120,8 +121,8 @@ impl<'a> Scope<'a> {
                 });
             }
             DefRangeRegister(symbol) => self.add_def_range(symbol),
-            DefRangeRegisterRelative(_)
-            | DefRangeFramePointerRelative(_)
+            DefRangeRegisterRelative(symbol) => self.add_def_range(symbol),
+            DefRangeFramePointerRelative(_)
             | DefRangeFramePointerRelativeFullScope(_)
             | DefRange(_)
             | DefRangeSubField(_)
@@ -292,6 +293,35 @@ impl DefRangeSymbol for DefRangeRegisterSymbol {
     fn location(&self, cpu: CpuFamily) -> Option<VariableLocation> {
         let register = crate::pdb::register::to_symbolic(cpu, self.register)?;
         Some(VariableLocation::Register { register })
+    }
+}
+
+impl DefRangeSymbol for DefRangeRegisterRelativeSymbol {
+    fn range(&self) -> AddressRange {
+        self.range
+    }
+    fn gaps(&self) -> &[AddressGap] {
+        &self.gaps
+    }
+
+    fn location(&self, cpu: CpuFamily) -> Option<VariableLocation> {
+        // This indicates that a user defined type (e.g. a struct) is stored in multiple different locations.
+        //
+        // For example `struct Pair { int x, y; };` the two members `x` and `y` may be stored in
+        // different registers instead of continous memory.
+        //
+        // In DWARF this corresponds to `DW_OP_piece` operations.
+        //
+        // Symbolic currently does not support such constructs.
+        if self.spilled_udt_member != 0 {
+            return None;
+        }
+
+        let register = crate::pdb::register::to_symbolic(cpu, self.base_register)?;
+        Some(VariableLocation::RegisterOffset {
+            register,
+            offset: self.offset_base_pointer.into(),
+        })
     }
 }
 
