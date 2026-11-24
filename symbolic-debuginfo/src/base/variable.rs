@@ -41,7 +41,8 @@ impl TypeRef {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum NativeTypeRef {
     Generic(u64),
-    /// `void`, which has no entry in any debug format.
+    /// `void` in debug formats without an entry for it, such as DWARF, where a missing
+    /// `DW_AT_type` means `void`.
     Void,
     #[cfg(feature = "dwarf")]
     Dwarf(crate::dwarf::DwarfTypeRef),
