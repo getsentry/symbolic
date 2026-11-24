@@ -24,7 +24,7 @@ impl TypeRef {
         TypeRef(NativeTypeRef::Void)
     }
 
-    /// Returns `true` if this is a reference to `void`.
+    /// Returns `true` if this is `void`.
     pub(crate) fn is_void(&self) -> bool {
         matches!(self.0, NativeTypeRef::Void)
     }
