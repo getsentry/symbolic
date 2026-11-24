@@ -1,19 +1,19 @@
-use pdb_addr2line::pdb::{AddressMap, SymbolData};
-use symbolic_common::CpuFamily;
+use pdb_addr2line::pdb::SymbolData;
 
-use crate::{base::Function, pdb::variables};
+use crate::base::Function;
+use crate::pdb::{PdbDebugInfo, variables};
 
 /// A stack for assembling function trees from lists of nested functions.
 pub struct FunctionStack<'a> {
-    cpu: CpuFamily,
+    debug_info: &'a PdbDebugInfo<'a>,
     stack: Vec<FunctionBuilder<'a>>,
 }
 
 impl<'a> FunctionStack<'a> {
     /// Creates a new function stack.
-    pub fn new(cpu: CpuFamily) -> Self {
+    pub fn new(debug_info: &'a PdbDebugInfo<'a>) -> Self {
         FunctionStack {
-            cpu,
+            debug_info,
             stack: Vec::with_capacity(16),
         }
     }
@@ -21,13 +21,13 @@ impl<'a> FunctionStack<'a> {
     /// Creates a [`FunctionBuilder`] inheriting information from this [`FunctionStack`] for
     /// procedures and standalone code.
     pub fn standalone(&self, depth: isize, function: Function<'a>) -> FunctionBuilder<'a> {
-        FunctionBuilder::new(self.cpu, depth, function)
+        FunctionBuilder::new(self.debug_info, depth, function)
     }
 
     /// Creates a [`FunctionBuilder`] inheriting information from this [`FunctionStack`] for in-lined
     /// functions.
     pub fn inlinee(&self, depth: isize, function: Function<'a>) -> FunctionBuilder<'a> {
-        FunctionBuilder::new(self.cpu, depth, function)
+        FunctionBuilder::new(self.debug_info, depth, function)
     }
 
     /// Returns the top of the stack.
@@ -92,6 +92,7 @@ impl<'a> FunctionStack<'a> {
 
 /// A function being built and used withing a [`FunctionStack`].
 pub struct FunctionBuilder<'a> {
+    debug_info: &'a PdbDebugInfo<'a>,
     depth: isize,
     function: Function<'a>,
     variables: Vec<variables::Scope<'a>>,
@@ -99,12 +100,7 @@ pub struct FunctionBuilder<'a> {
 
 impl<'a> FunctionBuilder<'a> {
     /// Visitor for each symbol which is parsed within the scope of the function.
-    pub fn visit_for_variables(
-        &mut self,
-        depth: isize,
-        symbol: &SymbolData<'a>,
-        address_map: &AddressMap<'_>,
-    ) {
+    pub fn visit_for_variables(&mut self, depth: isize, symbol: &SymbolData<'a>) {
         let Some(vars) = self.variables.last_mut() else {
             return;
         };
@@ -119,7 +115,7 @@ impl<'a> FunctionBuilder<'a> {
 
         match symbol {
             SymbolData::Block(block) => {
-                let rva = block.offset.to_rva(address_map);
+                let rva = block.offset.to_rva(&self.debug_info.address_map);
                 let nested = vars.nested(rva, block.len.into());
                 self.variables.push(nested);
             }
@@ -127,12 +123,13 @@ impl<'a> FunctionBuilder<'a> {
         }
     }
 
-    fn new(cpu: CpuFamily, depth: isize, function: Function<'a>) -> Self {
+    fn new(debug_info: &'a PdbDebugInfo<'a>, depth: isize, function: Function<'a>) -> Self {
         let bounds = function.address..function.address + function.size;
         Self {
+            debug_info,
             depth,
             function,
-            variables: vec![variables::Scope::new(cpu, depth, Some(bounds))],
+            variables: vec![variables::Scope::new(debug_info, depth, Some(bounds))],
         }
     }
 }
