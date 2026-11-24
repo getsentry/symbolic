@@ -1,7 +1,12 @@
-use pdb_addr2line::pdb::SymbolData;
+use std::collections::VecDeque;
 
-use crate::base::Function;
-use crate::pdb::{PdbDebugInfo, variables};
+use fallible_iterator::FallibleIterator;
+use pdb_addr2line::pdb::{self, FrameProcedureFlags, ModuleInfo, SymbolData, SymbolIndex};
+use smallvec::SmallVec;
+use symbolic_common::{CpuFamily, register::Register};
+
+use crate::base::{Function, VariableKind};
+use crate::pdb::{PdbDebugInfo, register, variables};
 
 /// A stack for assembling function trees from lists of nested functions.
 pub struct FunctionStack<'a> {
@@ -20,14 +25,20 @@ impl<'a> FunctionStack<'a> {
 
     /// Creates a [`FunctionBuilder`] inheriting information from this [`FunctionStack`] for
     /// procedures and standalone code.
-    pub fn standalone(&self, depth: isize, function: Function<'a>) -> FunctionBuilder<'a> {
-        FunctionBuilder::new(self.debug_info, depth, function)
+    pub fn standalone(
+        &self,
+        depth: isize,
+        function: Function<'a>,
+        frame: Frame,
+    ) -> FunctionBuilder<'a> {
+        FunctionBuilder::new(self.debug_info, depth, function, frame)
     }
 
     /// Creates a [`FunctionBuilder`] inheriting information from this [`FunctionStack`] for in-lined
     /// functions.
     pub fn inlinee(&self, depth: isize, function: Function<'a>) -> FunctionBuilder<'a> {
-        FunctionBuilder::new(self.debug_info, depth, function)
+        let frame = self.stack.last().map(|f| f.frame).unwrap_or_default();
+        FunctionBuilder::new(self.debug_info, depth, function, frame)
     }
 
     /// Returns the top of the stack.
@@ -95,6 +106,7 @@ pub struct FunctionBuilder<'a> {
     debug_info: &'a PdbDebugInfo<'a>,
     depth: isize,
     function: Function<'a>,
+    frame: Frame,
     variables: Vec<variables::Scope<'a>>,
 }
 
@@ -123,14 +135,136 @@ impl<'a> FunctionBuilder<'a> {
         }
     }
 
-    fn new(debug_info: &'a PdbDebugInfo<'a>, depth: isize, function: Function<'a>) -> Self {
+    fn new(
+        debug_info: &'a PdbDebugInfo<'a>,
+        depth: isize,
+        function: Function<'a>,
+        frame: Frame,
+    ) -> Self {
         let bounds = function.address..function.address + function.size;
         Self {
             debug_info,
             depth,
             function,
-            variables: vec![variables::Scope::new(debug_info, depth, Some(bounds))],
+            frame,
+            variables: vec![variables::Scope::new(
+                debug_info,
+                depth,
+                Some(bounds),
+                frame,
+            )],
         }
+    }
+}
+
+/// Information associated with a function frame.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Frame {
+    local_base: Option<Register>,
+    param_base: Option<Register>,
+}
+
+impl Frame {
+    fn new(cpu: CpuFamily, flags: FrameProcedureFlags) -> Self {
+        Self {
+            local_base: register::frame_base(cpu, flags.encoded_local_base_pointer),
+            param_base: register::frame_base(cpu, flags.encoded_param_base_pointer),
+        }
+    }
+
+    pub fn base_register(self, kind: VariableKind) -> Option<Register> {
+        match kind {
+            VariableKind::Local => self.local_base,
+            VariableKind::Parameter => self.param_base,
+        }
+    }
+}
+
+/// Lazily reads procedure frames in symbol-stream order.
+pub struct ProcedureFrames<'s> {
+    symbols: pdb::SymbolIter<'s>,
+    cpu: CpuFamily,
+    frames: VecDeque<(SymbolIndex, Frame)>,
+}
+
+impl<'s> ProcedureFrames<'s> {
+    /// Creates a new [`ProcedureFrames`] for the specified `module`.
+    pub fn new(module: &'s ModuleInfo<'_>, cpu: CpuFamily) -> pdb::Result<Self> {
+        Ok(Self {
+            symbols: module.symbols()?,
+            cpu,
+            frames: VecDeque::new(),
+        })
+    }
+
+    /// Advances the internal state of [`ProcedureFrames`] to the specified `symbol` and returns its
+    /// related [`Frame`].
+    pub fn take(&mut self, symbol: SymbolIndex, end: SymbolIndex) -> pdb::Result<Frame> {
+        // Remove all frames which are before `symbol`.
+        while self
+            .frames
+            .pop_front_if(|(start, _)| *start < symbol)
+            .is_some()
+        {}
+
+        // If there are no frames left, we need to collect more.
+        if self.frames.is_empty() {
+            self.scan_next(symbol, end)?;
+        }
+
+        Ok(self
+            .frames
+            .pop_front_if(|(start, _)| *start == symbol)
+            .map(|(_, frame)| frame)
+            .unwrap_or_default())
+    }
+
+    /// Scans ahead until the requested frame is found or its scope closes.
+    fn scan_next(&mut self, index: SymbolIndex, end: SymbolIndex) -> pdb::Result<()> {
+        const S_FRAMEPROC: u16 = 0x1012;
+
+        self.symbols.skip_to(index)?;
+
+        let mut scopes = SmallVec::<[_; 5]>::new();
+        scopes.push(Some((self.frames.len(), end)));
+        self.frames.push_back((index, Frame::default()));
+
+        while let Some(symbol) = self.symbols.next()? {
+            if symbol.starts_scope() {
+                let slot = if let Ok(SymbolData::Procedure(procedure)) = symbol.parse() {
+                    let slot = self.frames.len();
+                    self.frames.push_back((symbol.index(), Frame::default()));
+                    Some((slot, procedure.end))
+                } else {
+                    None
+                };
+                scopes.push(slot);
+            } else if symbol.ends_scope() {
+                scopes.pop();
+                if scopes.is_empty() {
+                    break;
+                }
+            } else if symbol.raw_kind() == S_FRAMEPROC {
+                let Some(scope) = scopes.last_mut() else {
+                    continue;
+                };
+                let Some((slot, end)) = *scope else {
+                    continue;
+                };
+                if symbol.index() >= end {
+                    continue;
+                }
+                if let Ok(SymbolData::FrameProcedure(frame)) = symbol.parse() {
+                    self.frames[slot].1 = Frame::new(self.cpu, frame.flags);
+                    *scope = None;
+                    if scopes.len() == 1 {
+                        break;
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 

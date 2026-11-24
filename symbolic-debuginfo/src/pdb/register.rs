@@ -1,6 +1,28 @@
 use pdb_addr2line::pdb::{self, register as codeview};
 use symbolic_common::{CpuFamily, register as symbolic};
 
+/// Decodes an `S_FRAMEPROC` base as a physical register.
+pub fn frame_base(cpu: CpuFamily, encoded: u8) -> Option<symbolic::Register> {
+    use symbolic::{Amd64Register, Arm32Register, Arm64Register, Intel32Register};
+
+    Some(match (cpu, encoded) {
+        // VFRAME register is currently not supported. This will require an extension to
+        // `VariableLocation` similar to what we have for CFA. For now we just return `None` here.
+        (CpuFamily::Intel32, 1) => return None,
+        (CpuFamily::Intel32, 2) => Intel32Register::Ebp.into(),
+        (CpuFamily::Intel32, 3) => Intel32Register::Ebx.into(),
+        (CpuFamily::Amd64, 1) => Amd64Register::Rsp.into(),
+        (CpuFamily::Amd64, 2) => Amd64Register::Rbp.into(),
+        (CpuFamily::Amd64, 3) => Amd64Register::R13.into(),
+        (CpuFamily::Arm32, 1) => Arm32Register::R13.into(),
+        (CpuFamily::Arm32, 2) => Arm32Register::R7.into(),
+        (CpuFamily::Arm64, 1) => Arm64Register::Sp.into(),
+        (CpuFamily::Arm64, 2) => Arm64Register::X29.into(),
+        (CpuFamily::Arm64, 3) => Arm64Register::X27.into(),
+        _ => return None,
+    })
+}
+
 /// Translates a CodeView register number using the CPU family's register set.
 pub fn to_symbolic(cpu: CpuFamily, register: pdb::Register) -> Option<symbolic::Register> {
     match cpu {

@@ -4,13 +4,14 @@ use std::ops::Range;
 
 use hashbrown::{DefaultHashBuilder, HashTable};
 use pdb_addr2line::pdb::{
-    AddressGap, AddressMap, AddressRange, DefRangeRegisterRelativeSymbol, DefRangeRegisterSymbol,
+    AddressGap, AddressMap, AddressRange, DefRangeFramePointerRelativeFullScopeSymbol,
+    DefRangeFramePointerRelativeSymbol, DefRangeRegisterRelativeSymbol, DefRangeRegisterSymbol,
     PdbInternalRva, RawString, RegisterRelativeSymbol, RegisterVariableSymbol, Rva, SymbolData,
     TypeIndex,
 };
-use symbolic_common::CpuFamily;
+use symbolic_common::{CpuFamily, register::Register};
 
-use crate::pdb::{PdbDebugInfo, PdbTypeRef};
+use crate::pdb::{PdbDebugInfo, PdbTypeRef, function_stack};
 use crate::{TypeRef, Variable, VariableKind, VariableLocation, VariableLocationInfo};
 
 /// A key which identifies a local variable.
@@ -41,6 +42,8 @@ pub struct Scope<'a> {
     ///
     /// For a function it matches the function's scope.
     bounds: Option<Range<u64>>,
+    /// Frame information from the current frame.
+    frame: function_stack::Frame,
     /// Whether [`Self::add`] expects a range specifier and can attribute it to the latest variable.
     expect_range_symbol: bool,
     /// Append only list of locals discovered from `S_LOCAL` symbols.
@@ -56,11 +59,17 @@ pub struct Scope<'a> {
 
 impl<'a> Scope<'a> {
     /// Creates a new scope.
-    pub fn new(debug_info: &'a PdbDebugInfo<'a>, depth: isize, bounds: Option<Range<u64>>) -> Self {
+    pub fn new(
+        debug_info: &'a PdbDebugInfo<'a>,
+        depth: isize,
+        bounds: Option<Range<u64>>,
+        frame: function_stack::Frame,
+    ) -> Self {
         Self {
             debug_info,
             depth,
             bounds,
+            frame,
             expect_range_symbol: false,
             locals: Vec::new(),
             locals_by_key: HashTable::new(),
@@ -80,7 +89,7 @@ impl<'a> Scope<'a> {
             }
             bounds
         });
-        Self::new(self.debug_info, self.depth + 1, bounds)
+        Self::new(self.debug_info, self.depth + 1, bounds, self.frame)
     }
 
     /// Returns the depth of this [`Scope`].
@@ -122,11 +131,9 @@ impl<'a> Scope<'a> {
             }
             DefRangeRegister(symbol) => self.add_def_range(symbol),
             DefRangeRegisterRelative(symbol) => self.add_def_range(symbol),
-            DefRangeFramePointerRelative(_)
-            | DefRangeFramePointerRelativeFullScope(_)
-            | DefRange(_)
-            | DefRangeSubField(_)
-            | DefRangeSubFieldRegister(_) => {}
+            DefRangeFramePointerRelative(symbol) => self.add_def_range(symbol),
+            DefRangeFramePointerRelativeFullScope(symbol) => self.add_def_range(symbol),
+            DefRange(_) | DefRangeSubField(_) | DefRangeSubFieldRegister(_) => {}
             _ => {
                 self.expect_range_symbol = false;
             }
@@ -161,23 +168,35 @@ impl<'a> Scope<'a> {
         if !self.expect_range_symbol {
             return;
         }
+
         let Some(local) = self.locals.last_mut() else {
             return;
         };
+        let Some(bounds) = &self.bounds else {
+            return;
+        };
 
-        let addr_map = &self.debug_info.address_map;
-        let locations = LiveRanges::mapped(symbol, addr_map).filter_map(|range| {
-            let bounds = self.bounds.as_ref()?;
+        let frame_base = self.frame.base_register(local.kind);
+        let Some(location) = symbol.location(self.debug_info.cpu, frame_base) else {
+            return;
+        };
 
-            let start = u64::from(range.start.0).max(bounds.start);
-            let end = u64::from(range.end.0).min(bounds.end);
-            Some(VariableLocationInfo {
-                address: start,
-                size: end.checked_sub(start).filter(|s| *s > 0)?,
-                location: symbol.location(self.debug_info.cpu)?,
-            })
-        });
-        local.locations.extend(locations);
+        let mut add_location = |range: Range<u64>| {
+            let start = range.start.max(bounds.start);
+            let end = range.end.min(bounds.end);
+            if start < end {
+                local.locations.push(VariableLocationInfo {
+                    address: start,
+                    size: end - start,
+                    location: location.clone(),
+                });
+            }
+        };
+
+        match symbol.range() {
+            Some(r) => LiveRanges::mapped(r, &self.debug_info.address_map).for_each(add_location),
+            None => add_location(bounds.clone()),
+        }
     }
 
     fn add_single_record_variable<T>(&mut self, var: &T)
@@ -276,35 +295,31 @@ impl<'a> SingleRecordVariable<'a> for RegisterRelativeSymbol<'a> {
     }
 }
 
+type RangeWithGaps<'a> = (AddressRange, &'a [AddressGap]);
+
 trait DefRangeSymbol {
-    fn range(&self) -> AddressRange;
-    fn gaps(&self) -> &[AddressGap];
-    fn location(&self, cpu: CpuFamily) -> Option<VariableLocation>;
+    /// The explicit range and its gaps, or `None` when the location spans its scope.
+    fn range(&self) -> Option<RangeWithGaps<'_>>;
+    fn location(&self, cpu: CpuFamily, frame_base: Option<Register>) -> Option<VariableLocation>;
 }
 
 impl DefRangeSymbol for DefRangeRegisterSymbol {
-    fn range(&self) -> AddressRange {
-        self.range
-    }
-    fn gaps(&self) -> &[AddressGap] {
-        &self.gaps
+    fn range(&self) -> Option<RangeWithGaps<'_>> {
+        Some((self.range, &self.gaps))
     }
 
-    fn location(&self, cpu: CpuFamily) -> Option<VariableLocation> {
+    fn location(&self, cpu: CpuFamily, _frame_base: Option<Register>) -> Option<VariableLocation> {
         let register = crate::pdb::register::to_symbolic(cpu, self.register)?;
         Some(VariableLocation::Register { register })
     }
 }
 
 impl DefRangeSymbol for DefRangeRegisterRelativeSymbol {
-    fn range(&self) -> AddressRange {
-        self.range
-    }
-    fn gaps(&self) -> &[AddressGap] {
-        &self.gaps
+    fn range(&self) -> Option<RangeWithGaps<'_>> {
+        Some((self.range, &self.gaps))
     }
 
-    fn location(&self, cpu: CpuFamily) -> Option<VariableLocation> {
+    fn location(&self, cpu: CpuFamily, _frame_base: Option<Register>) -> Option<VariableLocation> {
         // This indicates that a user defined type (e.g. a struct) is stored in multiple different locations.
         //
         // For example `struct Pair { int x, y; };` the two members `x` and `y` may be stored in
@@ -325,6 +340,32 @@ impl DefRangeSymbol for DefRangeRegisterRelativeSymbol {
     }
 }
 
+impl DefRangeSymbol for DefRangeFramePointerRelativeSymbol {
+    fn range(&self) -> Option<(AddressRange, &[AddressGap])> {
+        Some((self.range, &self.gaps))
+    }
+
+    fn location(&self, _cpu: CpuFamily, frame_base: Option<Register>) -> Option<VariableLocation> {
+        Some(VariableLocation::RegisterOffset {
+            register: frame_base?,
+            offset: self.offset.into(),
+        })
+    }
+}
+
+impl DefRangeSymbol for DefRangeFramePointerRelativeFullScopeSymbol {
+    fn range(&self) -> Option<(AddressRange, &[AddressGap])> {
+        None
+    }
+
+    fn location(&self, _cpu: CpuFamily, frame_base: Option<Register>) -> Option<VariableLocation> {
+        Some(VariableLocation::RegisterOffset {
+            register: frame_base?,
+            offset: self.offset.into(),
+        })
+    }
+}
+
 /// Iterates over non-empty parts of a def-range in the PDB-internal address space.
 struct LiveRanges<'a> {
     range_start: PdbInternalRva,
@@ -336,15 +377,16 @@ struct LiveRanges<'a> {
 impl<'a> LiveRanges<'a> {
     /// Iterates over live ranges translated to executable RVAs.
     fn mapped(
-        symbol: &'a impl DefRangeSymbol,
+        range: RangeWithGaps<'a>,
         address_map: &'a AddressMap<'_>,
-    ) -> impl Iterator<Item = Range<Rva>> + 'a {
-        let range = symbol.range();
+    ) -> impl Iterator<Item = Range<u64>> + 'a {
+        let (range, gaps) = range;
         let start = range.offset.to_internal_rva(address_map);
         start
             .into_iter()
-            .flat_map(move |start| Self::new(start, range.cb_range, symbol.gaps()))
+            .flat_map(move |start| Self::new(start, range.cb_range, gaps))
             .flat_map(move |range| address_map.rva_ranges(range))
+            .map(|range| u64::from(range.start.0)..u64::from(range.end.0))
     }
 
     fn new(start: PdbInternalRva, length: u16, gaps: &'a [AddressGap]) -> Self {
@@ -399,7 +441,7 @@ impl Iterator for LiveRanges<'_> {
 
 #[cfg(test)]
 mod tests {
-    use pdb_addr2line::pdb::{PdbInternalSectionOffset, RangeFlags, Register};
+    use pdb_addr2line::pdb::PdbInternalSectionOffset;
 
     use super::*;
 
@@ -410,21 +452,6 @@ mod tests {
                 cb_range: length,
             })
             .collect()
-    }
-
-    fn def_range(length: u16, gaps: &[(u16, u16)]) -> DefRangeRegisterSymbol {
-        DefRangeRegisterSymbol {
-            register: Register(0),
-            flags: RangeFlags { maybe: false },
-            range: AddressRange {
-                offset: PdbInternalSectionOffset {
-                    offset: 50,
-                    section: 1,
-                },
-                cb_range: length,
-            },
-            gaps: address_gaps(gaps),
-        }
     }
 
     #[test]
@@ -476,8 +503,14 @@ mod tests {
 
     #[test]
     fn test_live_ranges_skip_unmapped_sections() {
-        let symbol = def_range(50, &[]);
+        let range = AddressRange {
+            offset: PdbInternalSectionOffset {
+                offset: 50,
+                section: 1,
+            },
+            cb_range: 50,
+        };
         let address_map = AddressMap::default();
-        assert_eq!(LiveRanges::mapped(&symbol, &address_map).next(), None);
+        assert_eq!(LiveRanges::mapped((range, &[]), &address_map).next(), None);
     }
 }
