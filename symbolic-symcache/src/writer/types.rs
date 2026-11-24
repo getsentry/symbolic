@@ -61,9 +61,7 @@ pub struct SessionTypeSerializer<'data, S> {
     /// - De-duplicate type refs by remembering where they have been stored.
     /// - Cycle detection.
     /// - Remembering resolved types as `unknown`.
-    ///
-    /// The `None` key is `void`, which has no type ref.
-    resolved: IndexMap<Option<TypeRef>, ResolvedState>,
+    resolved: IndexMap<TypeRef, ResolvedState>,
 }
 
 impl<'data, S> SessionTypeSerializer<'data, S> {
@@ -80,7 +78,7 @@ impl<'data, S> SessionTypeSerializer<'data, S>
 where
     S: DebugSession<'data>,
 {
-    fn resolve(&mut self, ty_ref: Option<TypeRef>) -> Result<Resolved<'data>, ResolvedState> {
+    fn resolve(&mut self, ty_ref: TypeRef) -> Result<Resolved<'data>, ResolvedState> {
         use indexmap::map::Entry;
 
         let entry = match self.resolved.entry(ty_ref.clone()) {
@@ -88,11 +86,7 @@ where
             Entry::Vacant(entry) => entry,
         };
 
-        let ty = match &ty_ref {
-            Some(ty_ref) => self.session.lookup_type(ty_ref).ok().flatten(),
-            None => Some(di::TypeKind::Void.into()),
-        };
-        let Some(ty) = ty else {
+        let Some(ty) = self.session.lookup_type(&ty_ref).ok().flatten() else {
             entry.insert(ResolvedState::Unknown);
             return Err(ResolvedState::Unknown);
         };
@@ -101,7 +95,7 @@ where
         Ok(Resolved::new(ty_ref, ty))
     }
 
-    fn try_lookup_type_idx(&self, ty_ref: &Option<TypeRef>) -> FwdResult<u32> {
+    fn try_lookup_type_idx(&self, ty_ref: &TypeRef) -> FwdResult<u32> {
         match self.resolved.get(ty_ref) {
             Some(ResolvedState::Stored(idx)) => Ok(*idx),
             Some(ResolvedState::Unknown) => Ok(v9::raw::Type::UNKNOWN),
@@ -183,7 +177,7 @@ where
     ) -> FwdResult<(u32, u32)> {
         let mut serialized = Vec::with_capacity(members.len());
         for member in members {
-            let type_idx = self.try_lookup_type_idx(&Some(member.ty.clone()))?;
+            let type_idx = self.try_lookup_type_idx(&member.ty)?;
             let name_offset = member
                 .name
                 .as_deref()
@@ -210,7 +204,7 @@ where
         type_writer: &mut TypeWriter,
         string_table: &mut StringTable,
     ) -> Option<u32> {
-        let resolved = match self.resolve(Some(ty_ref.clone())) {
+        let resolved = match self.resolve(ty_ref.clone()) {
             Ok(resolved) => resolved,
             Err(ResolvedState::Stored(idx)) => return Some(idx),
             Err(ResolvedState::Unknown) => return None,
@@ -282,18 +276,18 @@ where
             }
         }
 
-        self.try_lookup_type_idx(&Some(ty_ref.clone())).ok()
+        self.try_lookup_type_idx(ty_ref).ok()
     }
 }
 
 struct Resolved<'a> {
-    ty_ref: Option<TypeRef>,
+    ty_ref: TypeRef,
     ty: di::Type<'a>,
     child_offset: usize,
 }
 
 impl<'a> Resolved<'a> {
-    fn new(ty_ref: Option<TypeRef>, ty: di::Type<'a>) -> Self {
+    fn new(ty_ref: TypeRef, ty: di::Type<'a>) -> Self {
         Self {
             ty_ref,
             ty,
@@ -301,15 +295,14 @@ impl<'a> Resolved<'a> {
         }
     }
 
-    /// Returns the next child type ref, where `Some(None)` is `void`.
-    fn next_child(&mut self) -> Option<Option<TypeRef>> {
+    fn next_child(&mut self) -> Option<TypeRef> {
         let next = match &self.ty.kind {
             di::TypeKind::Pointer(t) if self.child_offset == 0 => Some(t.pointee.clone()),
             di::TypeKind::TypeDef(t) if self.child_offset == 0 => Some(t.ty.clone()),
             di::TypeKind::StructureType(t) => t
                 .members
                 .get(self.child_offset)
-                .map(|member| Some(member.ty.clone())),
+                .map(|member| member.ty.clone()),
             _ => None,
         };
         self.child_offset += 1;
@@ -459,6 +452,9 @@ mod tests {
         }
 
         fn lookup_type(&'s self, r: &TypeRef) -> Result<Option<di::Type<'s>>, Self::Error> {
+            if *r == TypeRef::void() {
+                return Ok(Some(di::TypeKind::Void.into()));
+            }
             Ok(self.0.get(r).cloned())
         }
 
@@ -499,15 +495,15 @@ mod tests {
 
     fn ptr(pointee: TypeRef) -> di::PointerType {
         di::PointerType {
-            pointee: Some(pointee),
+            pointee,
             size: di::Size::Bytes(8),
         }
     }
 
-    fn tydef(name: &str, ty: impl Into<Option<TypeRef>>) -> di::TypeDefType<'_> {
+    fn tydef(name: &str, ty: TypeRef) -> di::TypeDefType<'_> {
         di::TypeDefType {
             name: name.into(),
-            ty: ty.into(),
+            ty,
         }
     }
 
@@ -670,12 +666,12 @@ mod tests {
         session.register(
             TypeRef::generic(2),
             di::PointerType {
-                pointee: None,
+                pointee: TypeRef::void(),
                 size: di::Size::Bytes(8),
             },
         );
         session.register(TypeRef::generic(3), tydef("Missing", TypeRef::generic(100)));
-        session.register(TypeRef::generic(4), tydef("Void", None));
+        session.register(TypeRef::generic(4), tydef("Void", TypeRef::void()));
         session.register(
             TypeRef::generic(5),
             di::StructureType {
