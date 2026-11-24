@@ -1341,14 +1341,14 @@ where
     {
         let result = self.add_file(&path, file, info);
 
-        if let Err(e) = &result {
-            if e.kind == SourceBundleErrorKind::ReadFailed {
-                let reason = e.to_string();
-                let skipped_info = SkippedFileInfo::new(path.as_ref(), &reason);
-                (self.skipped_file_callback)(skipped_info);
+        if let Err(e) = &result
+            && e.kind == SourceBundleErrorKind::ReadFailed
+        {
+            let reason = e.to_string();
+            let skipped_info = SkippedFileInfo::new(path.as_ref(), &reason);
+            (self.skipped_file_callback)(skipped_info);
 
-                return Ok(());
-            }
+            return Ok(());
         }
 
         result
@@ -1573,12 +1573,11 @@ fn collect_il2cpp_sources(source: &[u8], referenced_files: &mut BTreeSet<String>
         for line in source.lines() {
             let line = line.trim();
 
-            if let Some(source_ref) = line.strip_prefix("//<source_info:") {
-                if let Some((file, _line)) = source_ref.rsplit_once(':') {
-                    if !referenced_files.contains(file) {
-                        referenced_files.insert(file.to_string());
-                    }
-                }
+            if let Some(source_ref) = line.strip_prefix("//<source_info:")
+                && let Some((file, _line)) = source_ref.rsplit_once(':')
+                && !referenced_files.contains(file)
+            {
+                referenced_files.insert(file.to_string());
             }
         }
     }

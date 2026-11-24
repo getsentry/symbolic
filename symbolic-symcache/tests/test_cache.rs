@@ -345,11 +345,11 @@ fn test_malformed_section_relationship_rejected() {
         }
         let mut corrupted = buf.clone();
         corrupted[i + 12..i + 16].copy_from_slice(&(num_source_locations + 1).to_le_bytes());
-        if let Err(err) = SymCache::parse(&corrupted) {
-            if matches!(err.kind(), ErrorKind::InvalidRanges) {
-                rejected = true;
-                break;
-            }
+        if let Err(err) = SymCache::parse(&corrupted)
+            && matches!(err.kind(), ErrorKind::InvalidRanges)
+        {
+            rejected = true;
+            break;
         }
     }
     assert!(

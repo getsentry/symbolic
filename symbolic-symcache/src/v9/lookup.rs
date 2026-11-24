@@ -36,10 +36,10 @@ impl<'data> SymCache<'data> {
             Err(idx) => source_location_start + idx as u32 - 1,
         };
 
-        if let Some(source_location) = self.source_locations.get(source_location_idx as usize) {
-            if *source_location == raw::NO_SOURCE_LOCATION {
-                source_location_idx = u32::MAX;
-            }
+        if let Some(source_location) = self.source_locations.get(source_location_idx as usize)
+            && *source_location == raw::NO_SOURCE_LOCATION
+        {
+            source_location_idx = u32::MAX;
         }
 
         SourceLocations {

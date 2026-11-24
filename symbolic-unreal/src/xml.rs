@@ -103,10 +103,10 @@ impl<'a> XMLReader<'a> {
 
                     if let Ok(Some(ch)) = bytes_text.resolve_char_ref() {
                         val.push(ch);
-                    } else if let Ok(decoded) = bytes_text.xml10_content() {
-                        if let Some(resolved) = resolve_xml_entity(&decoded) {
-                            val += resolved;
-                        }
+                    } else if let Ok(decoded) = bytes_text.xml10_content()
+                        && let Some(resolved) = resolve_xml_entity(&decoded)
+                    {
+                        val += resolved;
                     }
                 }
 

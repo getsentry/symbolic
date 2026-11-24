@@ -295,10 +295,11 @@ impl InstructionInfo {
         // the top of the stack trace, if the crash was caused by certain
         // signals. However, that means that the top-most frame contains a
         // return address just like any other and needs to be adjusted.
-        if let Some(ip) = self.ip_reg {
-            if ip != self.addr && self.is_crash_signal() {
-                return true;
-            }
+        if let Some(ip) = self.ip_reg
+            && ip != self.addr
+            && self.is_crash_signal()
+        {
+            return true;
         }
 
         // The crashing frame usually contains the actual register contents,
