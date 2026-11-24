@@ -2081,10 +2081,12 @@ impl<'data> DwarfDebugSession<'data> {
     ///
     /// See also: [`DebugSession::lookup_type`].
     pub fn lookup_type(&self, ty: &TypeRef) -> Result<Option<Type<'_>>, DwarfError> {
-        let ty = match &ty.0 {
-            NativeTypeRef::Void => return Ok(Some(Type::Void)),
-            NativeTypeRef::Dwarf(DwarfTypeRef(ty)) => ty,
-            _ => return Ok(None),
+        if ty.is_void() {
+            return Ok(Some(Type::Void));
+        }
+
+        let Some(DwarfTypeRef(ty)) = ty.as_dwarf() else {
+            return Ok(None);
         };
 
         let info = self.cell.get();
