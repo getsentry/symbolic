@@ -302,10 +302,10 @@ impl<'d> DwarfLineProgram<'d> {
                 continue;
             }
 
-            if let Some(last_row) = sequence_rows.last_mut() {
-                if address >= last_row.address {
-                    last_row.size = Some(address - last_row.address);
-                }
+            if let Some(last_row) = sequence_rows.last_mut()
+                && address >= last_row.address
+            {
+                last_row.size = Some(address - last_row.address);
             }
 
             if program_row.end_sequence() {
@@ -336,12 +336,12 @@ impl<'d> DwarfLineProgram<'d> {
                 let file_index = program_row.file_index();
                 let line = program_row.line().map(|v| v.get());
                 let mut duplicate = false;
-                if let Some(last_row) = sequence_rows.last_mut() {
-                    if last_row.address == address {
-                        last_row.file_index = file_index;
-                        last_row.line = line;
-                        duplicate = true;
-                    }
+                if let Some(last_row) = sequence_rows.last_mut()
+                    && last_row.address == address
+                {
+                    last_row.file_index = file_index;
+                    last_row.line = line;
+                    duplicate = true;
                 }
                 if !duplicate {
                     sequence_rows.push(DwarfRow {
@@ -959,10 +959,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             call_line,
         };
 
-        if range_buf.is_empty() {
-            if let Some(range) = Self::convert_pc_range(low_pc, high_pc, high_pc_rel, kind)? {
-                range_buf.push(range);
-            }
+        if range_buf.is_empty()
+            && let Some(range) = Self::convert_pc_range(low_pc, high_pc, high_pc_rel, kind)?
+        {
+            range_buf.push(range);
         }
 
         // Filter out invalid (empty and reverse) ranges.
@@ -1356,10 +1356,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     let frame_base = function_stack
                         .last()
                         .and_then(|f| f.frame_base(&function_stack));
-                    if let Some(variable) = self.parse_variable(entries, abbrev, frame_base)? {
-                        if let Some(last_function) = function_stack.last_mut() {
-                            last_function.push_variable(variable);
-                        }
+                    if let Some(variable) = self.parse_variable(entries, abbrev, frame_base)?
+                        && let Some(last_function) = function_stack.last_mut()
+                    {
+                        last_function.push_variable(variable);
                     }
                 }
                 _ => {
@@ -1801,10 +1801,10 @@ impl<'data> DwarfUnitTable<'data> {
             Err(next_index) => next_index - 1,
         };
 
-        if let Some(unit) = self.get_unit(index, inner)? {
-            if let Some(unit_offset) = offset.to_unit_offset(unit) {
-                return Ok((unit, unit_offset));
-            }
+        if let Some(unit) = self.get_unit(index, inner)?
+            && let Some(unit_offset) = offset.to_unit_offset(unit)
+        {
+            return Ok((unit, unit_offset));
         }
 
         Err(DwarfErrorKind::InvalidUnitRef(offset.0).into())

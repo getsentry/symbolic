@@ -299,23 +299,22 @@ impl<'data> ElfObject<'data> {
         // See https://refspecs.linuxfoundation.org/LSB_2.1.0/LSB-Core-generic/LSB-Core-generic/elftypes.html:
         //
         // > This section holds a minimal set of symbols adequate for dynamic linking. See also SHT_SYMTAB. Currently, an object file may have either a section of SHT_SYMTAB type or a section of SHT_DYNSYM type, but not both.
-        if obj.dynsyms.is_empty() {
-            if let Some(shdr) = obj
+        if obj.dynsyms.is_empty()
+            && let Some(shdr) = obj
                 .section_headers
                 .iter()
                 .find(|h| h.sh_type == elf::section_header::SHT_DYNSYM)
-            {
-                let count = shdr.sh_size.checked_div(shdr.sh_entsize).unwrap_or(0);
-                obj.dynsyms = return_partial_on_err!(elf::Symtab::parse(
-                    data,
-                    shdr.sh_offset as usize,
-                    count as usize,
-                    ctx
-                ));
+        {
+            let count = shdr.sh_size.checked_div(shdr.sh_entsize).unwrap_or(0);
+            obj.dynsyms = return_partial_on_err!(elf::Symtab::parse(
+                data,
+                shdr.sh_offset as usize,
+                count as usize,
+                ctx
+            ));
 
-                obj.dynstrtab =
-                    return_partial_on_err!(get_strtab(&obj.section_headers, shdr.sh_link as usize));
-            }
+            obj.dynstrtab =
+                return_partial_on_err!(get_strtab(&obj.section_headers, shdr.sh_link as usize));
         }
 
         obj.shdr_relocs = vec![];

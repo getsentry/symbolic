@@ -521,13 +521,11 @@ impl<W: Write> AsciiCfiWriter<W> {
             Ok(())
         };
 
-        if !skip_eh_frame {
-            if let Some(section) = object.section("eh_frame") {
-                // Independently, Linux C++ exception handling information can also provide unwind info.
-                let frame = EhFrame::new(&section.data, endian);
-                let info = UnwindInfo::new(object, section.address, frame);
-                self.read_cfi(&info)?;
-            }
+        if !skip_eh_frame && let Some(section) = object.section("eh_frame") {
+            // Independently, Linux C++ exception handling information can also provide unwind info.
+            let frame = EhFrame::new(&section.data, endian);
+            let info = UnwindInfo::new(object, section.address, frame);
+            self.read_cfi(&info)?;
         }
 
         debug_frame_result
@@ -750,10 +748,10 @@ impl<W: Write> AsciiCfiWriter<W> {
             // The iterator yields partial FDEs which need their associated CIE passed in via a
             // callback. This function is provided by the UnwindSection (frame), which then parses
             // the CIE and returns it for the FDE.
-            if let CieOrFde::Fde(partial_fde) = entry {
-                if let Ok(fde) = partial_fde.parse(U::cie_from_offset) {
-                    self.process_fde(info, &mut ctx, &fde)?
-                }
+            if let CieOrFde::Fde(partial_fde) = entry
+                && let Ok(fde) = partial_fde.parse(U::cie_from_offset)
+            {
+                self.process_fde(info, &mut ctx, &fde)?;
             }
         }
 
@@ -869,10 +867,9 @@ impl<W: Write> AsciiCfiWriter<W> {
                             | CpuFamily::Mips64
                             | CpuFamily::Ppc32
                             | CpuFamily::Ppc64
-                    ) {
-                        if let Some(reg) = cfi_register_name(cpu_family, ra.0) {
-                            write!(line, " .ra: {reg}")?;
-                        }
+                    ) && let Some(reg) = cfi_register_name(cpu_family, ra.0)
+                    {
+                        write!(line, " .ra: {reg}")?;
                     }
                 }
 
@@ -974,14 +971,13 @@ impl<W: Write> AsciiCfiWriter<W> {
             // surprisingly common (especially in system library PDBs) for DIA to return a series of
             // identical IDiaFrameData objects. For kernel32.pdb from Windows XP SP2 on x86, this
             // check reduces the size of the dumped symbol file by a third.
-            if let Some(ref last) = last_frame {
-                if frame.ty == last.ty
-                    && frame.code_start == last.code_start
-                    && frame.code_size == last.code_size
-                    && frame.prolog_size == last.prolog_size
-                {
-                    continue;
-                }
+            if let Some(ref last) = last_frame
+                && frame.ty == last.ty
+                && frame.code_start == last.code_start
+                && frame.code_size == last.code_size
+                && frame.prolog_size == last.prolog_size
+            {
+                continue;
             }
 
             // Address ranges need to be translated to the RVA address space. The prolog and the

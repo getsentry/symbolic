@@ -666,10 +666,9 @@ impl<'a> SymCacheConverter<'a> {
                 .address
                 .checked_add(symbol.size)
                 .and_then(|end| u32::try_from(end).ok())
+                && let btree_map::Entry::Vacant(vacant_entry) = self.ranges.entry(end_address)
             {
-                if let btree_map::Entry::Vacant(vacant_entry) = self.ranges.entry(end_address) {
-                    vacant_entry.insert(v9::raw::NO_SOURCE_LOCATION);
-                }
+                vacant_entry.insert(v9::raw::NO_SOURCE_LOCATION);
             }
         }
     }
@@ -872,19 +871,19 @@ fn undecorate_win_symbol(name: &str) -> &str {
     }
 
     // Parse __vectorcall.
-    if let Some((name, param_size)) = name.rsplit_once("@@") {
-        if param_size.parse::<u32>().is_ok() {
-            return name;
-        }
+    if let Some((name, param_size)) = name.rsplit_once("@@")
+        && param_size.parse::<u32>().is_ok()
+    {
+        return name;
     }
 
     // Parse the other three.
     if let Some(rest) = name.strip_prefix(['@', '_']) {
-        if let Some((name, param_size)) = rest.rsplit_once('@') {
-            if param_size.parse::<u32>().is_ok() {
-                // __stdcall or __fastcall
-                return name;
-            }
+        if let Some((name, param_size)) = rest.rsplit_once('@')
+            && param_size.parse::<u32>().is_ok()
+        {
+            // __stdcall or __fastcall
+            return name;
         }
         if let Some(name) = name.strip_prefix('_') {
             // __cdecl
