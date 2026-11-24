@@ -154,7 +154,7 @@ impl<'a> Scope<'a> {
         let location = self.bounds.clone().and_then(|bounds| {
             Some(VariableLocationInfo {
                 address: bounds.start,
-                size: bounds.end - bounds.start,
+                size: bounds.end.checked_sub(bounds.start)?,
                 location: var.location(self.cpu)?,
             })
         });
@@ -166,7 +166,7 @@ impl<'a> Scope<'a> {
         self.single_record_variables.push(Variable {
             name,
             ty: Some(ty),
-            kind: VariableKind::Local,
+            kind: var.kind(),
             locations: vec![location],
         });
     }
@@ -175,6 +175,7 @@ impl<'a> Scope<'a> {
 trait SingleRecordVariable<'a> {
     fn name(&self) -> RawString<'a>;
     fn type_index(&self) -> TypeIndex;
+    fn kind(&self) -> VariableKind;
     fn location(&self, cpu: CpuFamily) -> Option<VariableLocation>;
 }
 
@@ -185,6 +186,13 @@ impl<'a> SingleRecordVariable<'a> for &RegisterVariableSymbol<'a> {
 
     fn type_index(&self) -> TypeIndex {
         self.type_index
+    }
+
+    fn kind(&self) -> VariableKind {
+        match self.slot.is_some_and(|s| s > 0) {
+            true => VariableKind::Parameter,
+            false => VariableKind::Local,
+        }
     }
 
     fn location(&self, cpu: CpuFamily) -> Option<VariableLocation> {
@@ -200,6 +208,13 @@ impl<'a> SingleRecordVariable<'a> for &RegisterRelativeSymbol<'a> {
 
     fn type_index(&self) -> TypeIndex {
         self.type_index
+    }
+
+    fn kind(&self) -> VariableKind {
+        match self.slot.is_some_and(|s| s > 0) {
+            true => VariableKind::Parameter,
+            false => VariableKind::Local,
+        }
     }
 
     fn location(&self, cpu: CpuFamily) -> Option<VariableLocation> {
