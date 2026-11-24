@@ -387,6 +387,10 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     _Pnode (local)
       type:
         > Unknown
+    this (local)
+      type:
+        > Unknown
+      0x27d0..0x27eb: memory at esp +0
 
   > 0x27dd: std::_Default_allocator_traits<std::allocator<std::_List_node<google_breakpad::AppMemory,void *> > >::construct(std::allocator<std::_List_node<google_breakpad::AppMemory,void *> >&, google_breakpad::AppMemory* const, google_breakpad::AppMemory const&) (0xb)
     0x27dd: xmemory0:917 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
