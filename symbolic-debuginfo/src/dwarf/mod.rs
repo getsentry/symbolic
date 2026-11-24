@@ -2131,6 +2131,10 @@ impl<'data> DwarfDebugSession<'data> {
             }
         }
 
+        if ty.is_void() {
+            return Ok(Some(TypeKind::Void.into()));
+        }
+
         let Some(DwarfTypeRef(ty)) = ty.as_dwarf() else {
             return Ok(None);
         };

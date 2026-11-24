@@ -104,6 +104,11 @@ where
     }
 
     fn try_lookup_type_idx(&self, ty_ref: &TypeRef) -> FwdResult<u32> {
+        // `void` is not stored as a type in symcaches yet.
+        if *ty_ref == TypeRef::void() {
+            return Ok(v9::raw::Type::VOID);
+        }
+
         match self.resolved.get(ty_ref) {
             Some(ResolvedState::Stored(idx)) => Ok(*idx),
             Some(ResolvedState::Unknown) => Ok(v9::raw::Type::UNKNOWN),
@@ -140,10 +145,7 @@ where
 
     fn ser_pointer(&mut self, ty: &di::PointerType) -> FwdResult {
         Ok(v9::raw::PointerType {
-            pointee_idx: match ty.pointee.as_ref() {
-                Some(pointee) => self.try_lookup_type_idx(pointee)?,
-                None => v9::raw::Type::VOID,
-            },
+            pointee_idx: self.try_lookup_type_idx(&ty.pointee)?,
             size: v9::raw::Size::from_di(Some(ty.size)),
             _reserved: [0; _],
         }
@@ -153,10 +155,7 @@ where
     fn ser_typedef(&mut self, ty: &di::TypeDefType<'_>, st: &mut StringTable) -> FwdResult {
         Ok(v9::raw::TypeDefType {
             name_offset: st.insert(&ty.name) as u32,
-            ty_idx: match ty.ty.as_ref() {
-                Some(ty) => self.try_lookup_type_idx(ty)?,
-                None => v9::raw::Type::VOID,
-            },
+            ty_idx: self.try_lookup_type_idx(&ty.ty)?,
             _reserved: [0; _],
         }
         .into())
@@ -310,8 +309,8 @@ impl<'a> Resolved<'a> {
 
     fn next_child(&mut self) -> Option<TypeRef> {
         let next = match &self.ty {
-            di::TypeKind::Pointer(t) if self.child_offset == 0 => t.pointee.clone(),
-            di::TypeKind::TypeDef(t) if self.child_offset == 0 => t.ty.clone(),
+            di::TypeKind::Pointer(t) if self.child_offset == 0 => Some(t.pointee.clone()),
+            di::TypeKind::TypeDef(t) if self.child_offset == 0 => Some(t.ty.clone()),
             di::TypeKind::StructureType(t) => t
                 .members
                 .get(self.child_offset)
@@ -505,15 +504,15 @@ mod tests {
 
     fn ptr(pointee: TypeRef) -> di::PointerType {
         di::PointerType {
-            pointee: Some(pointee),
+            pointee,
             size: di::Size::Bytes(8),
         }
     }
 
-    fn tydef(name: &str, ty: impl Into<Option<TypeRef>>) -> di::TypeDefType<'_> {
+    fn tydef(name: &str, ty: TypeRef) -> di::TypeDefType<'_> {
         di::TypeDefType {
             name: name.into(),
-            ty: ty.into(),
+            ty,
         }
     }
 
@@ -675,12 +674,12 @@ mod tests {
         session.register(
             TypeRef::generic(2),
             di::PointerType {
-                pointee: None,
+                pointee: TypeRef::void(),
                 size: di::Size::Bytes(8),
             },
         );
         session.register(TypeRef::generic(3), tydef("Missing", TypeRef::generic(100)));
-        session.register(TypeRef::generic(4), tydef("Void", None));
+        session.register(TypeRef::generic(4), tydef("Void", TypeRef::void()));
         session.register(
             TypeRef::generic(5),
             di::StructureType {

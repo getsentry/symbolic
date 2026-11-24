@@ -16,6 +16,19 @@ impl TypeRef {
         TypeRef(NativeTypeRef::Generic(id))
     }
 
+    /// Creates a [`TypeRef`] to `void`.
+    ///
+    /// [`DebugSession::lookup_type`](crate::DebugSession::lookup_type) resolves it to
+    /// [`TypeKind::Void`].
+    pub fn void() -> Self {
+        TypeRef(NativeTypeRef::Void)
+    }
+
+    /// Returns `true` if this is a reference to `void`.
+    pub(crate) fn is_void(&self) -> bool {
+        matches!(self.0, NativeTypeRef::Void)
+    }
+
     #[cfg(feature = "dwarf")]
     pub(crate) fn as_dwarf(&self) -> Option<&crate::dwarf::DwarfTypeRef> {
         match &self.0 {
@@ -28,6 +41,9 @@ impl TypeRef {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum NativeTypeRef {
     Generic(u64),
+    /// `void` in debug formats without an entry for it, such as DWARF, where a missing
+    /// `DW_AT_type` means `void`.
+    Void,
     #[cfg(feature = "dwarf")]
     Dwarf(crate::dwarf::DwarfTypeRef),
     #[cfg(feature = "ms")]
@@ -72,10 +88,7 @@ where
 /// The kind of a [`Type`].
 #[derive(Debug, Clone)]
 pub enum TypeKind<'data> {
-    /// A qualified `void`, such as `const void`.
-    ///
-    /// An unqualified `void` has no type of its own. It is represented by a missing type
-    /// reference, for example [`PointerType::pointee`].
+    /// `void`, including a qualified `void`, such as `const void`.
     Void,
     /// A primitive type.
     Primitive(PrimitiveType<'data>),
@@ -181,8 +194,8 @@ pub struct ValueBits {
 pub struct PointerType {
     /// The type the pointer references.
     ///
-    /// A value of `None` indicates that the pointer has no referenced type, e.g. for `void*`.
-    pub pointee: Option<TypeRef>,
+    /// For a `void*`, this is [`TypeRef::void`].
+    pub pointee: TypeRef,
     /// The size of a pointer.
     pub size: Size,
 }
@@ -194,9 +207,9 @@ pub struct TypeDefType<'data> {
     pub name: Cow<'data, str>,
     /// The linked type.
     ///
-    /// This may be `None` if the debug information provides no underlying type reference,
+    /// This is [`TypeRef::void`] if the debug information provides no underlying type reference,
     /// for example an alias to `void` or a type declaration without a definition.
-    pub ty: Option<TypeRef>,
+    pub ty: TypeRef,
 }
 
 /// A structure type.
