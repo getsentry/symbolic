@@ -41,19 +41,15 @@ fn print_type(session: &ObjectDebugSession<'_>, ty: &TypeRef, max_depth: usize) 
     };
 
     match ty {
+        Type::Void => print!("void"),
         Type::Primitive(t) => print!("{}", t.name.as_deref().unwrap_or("?")),
-        Type::Pointer(t) => match t.pointee {
-            Some(pointee) => {
-                print_type(session, &pointee, max_depth - 1)?;
-                print!("*")
-            }
-            None => print!("void*"),
-        },
+        Type::Pointer(t) => {
+            print_type(session, &t.pointee, max_depth - 1)?;
+            print!("*")
+        }
         Type::TypeDef(t) => {
             print!("typedef ");
-            if let Some(ty) = &t.ty {
-                print_type(session, ty, max_depth - 1)?;
-            }
+            print_type(session, &t.ty, max_depth - 1)?;
             print!(" {};", t.name);
         }
         Type::StructureType(t) => {

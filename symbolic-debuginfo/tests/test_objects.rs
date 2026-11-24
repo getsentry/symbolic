@@ -115,7 +115,7 @@ impl fmt::Debug for FunctionsDebug<'_, '_> {
                         "{:?}",
                         TypeDebug {
                             session: self.session,
-                            ty: Some(ty),
+                            ty,
                             depth: self.depth + 4,
                             seen_types: &HashSet::new(),
                         }
@@ -169,16 +169,14 @@ impl fmt::Debug for FunctionsDebug<'_, '_> {
 
 struct TypeDebug<'data, 'session, 'type_ref> {
     session: &'session ObjectDebugSession<'data>,
-    ty: Option<&'type_ref TypeRef>,
+    ty: &'type_ref TypeRef,
     depth: usize,
     seen_types: &'type_ref HashSet<TypeRef>,
 }
 
 impl fmt::Debug for TypeDebug<'_, '_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Some(type_ref) = self.ty else {
-            return writeln!(f, "{:indent$}> Void", "", indent = self.depth * 2);
-        };
+        let type_ref = self.ty;
 
         let Some(ty) = self.session.lookup_type(type_ref).unwrap() else {
             return writeln!(f, "{:indent$}> Unknown", "", indent = self.depth * 2);
@@ -188,7 +186,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
         if !seen_types.insert(type_ref.clone()) {
             let name = match &ty {
                 Type::Primitive(ty) => ty.name.as_deref(),
-                Type::Pointer(_) => None,
+                Type::Pointer(_) | Type::Void => None,
                 Type::TypeDef(ty) => Some(ty.name.as_ref()),
                 Type::StructureType(ty) => ty.name.as_deref(),
             };
@@ -204,6 +202,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
         }
 
         match ty {
+            Type::Void => writeln!(f, "{:indent$}> Void", "", indent = self.depth * 2),
             Type::Primitive(ty) => {
                 let name = ty.name.as_deref().unwrap_or("<unknown>");
 
@@ -248,7 +247,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                     "{:?}",
                     TypeDebug {
                         session: self.session,
-                        ty: ty.pointee.as_ref(),
+                        ty: &ty.pointee,
                         depth: self.depth + 1,
                         seen_types: &seen_types,
                     }
@@ -267,7 +266,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                     "{:?}",
                     TypeDebug {
                         session: self.session,
-                        ty: ty.ty.as_ref(),
+                        ty: &ty.ty,
                         depth: self.depth + 1,
                         seen_types: &seen_types,
                     }
@@ -307,7 +306,7 @@ impl fmt::Debug for TypeDebug<'_, '_, '_> {
                         "{:?}",
                         TypeDebug {
                             session: self.session,
-                            ty: Some(&member.ty),
+                            ty: &member.ty,
                             depth: self.depth + 2,
                             seen_types: &seen_types,
                         }
