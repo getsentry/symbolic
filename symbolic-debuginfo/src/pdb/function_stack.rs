@@ -92,7 +92,7 @@ pub struct FunctionBuilder<'a> {
 
 impl<'a> FunctionBuilder<'a> {
     /// Visitor for each symbol which is parsed within the scope of the function.
-    pub fn variables(
+    pub fn visit_for_variables(
         &mut self,
         depth: isize,
         symbol: &SymbolData<'a>,

@@ -1027,7 +1027,7 @@ impl<'s> Unit<'s> {
                 }
                 Ok(symbol) => {
                     if let Some(top) = stack.top_mut() {
-                        top.variables(depth, &symbol, &self.debug_info.address_map);
+                        top.visit_for_variables(depth, &symbol, &self.debug_info.address_map);
                     }
                     continue;
                 }
