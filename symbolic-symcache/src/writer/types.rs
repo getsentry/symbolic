@@ -96,11 +96,6 @@ where
     }
 
     fn try_lookup_type_idx(&self, ty_ref: &TypeRef) -> FwdResult<u32> {
-        // `void` is not stored as a type in symcaches yet.
-        if *ty_ref == TypeRef::void() {
-            return Ok(v9::raw::Type::VOID);
-        }
-
         match self.resolved.get(ty_ref) {
             Some(ResolvedState::Stored(idx)) => Ok(*idx),
             Some(ResolvedState::Unknown) => Ok(v9::raw::Type::UNKNOWN),
@@ -457,6 +452,9 @@ mod tests {
         }
 
         fn lookup_type(&'s self, r: &TypeRef) -> Result<Option<di::Type<'s>>, Self::Error> {
+            if *r == TypeRef::void() {
+                return Ok(Some(di::TypeKind::Void.into()));
+            }
             Ok(self.0.get(r).cloned())
         }
 
@@ -543,7 +541,6 @@ mod tests {
                     };
 
                     let refs = |idx: u32| match idx {
-                        v9::raw::Type::VOID => "void".to_owned(),
                         v9::raw::Type::UNKNOWN => "<unknown>".to_owned(),
                         _ => match types.types.get(idx as usize).and_then(|t| t.as_enum()) {
                             Some(v9::raw::ty::Enum::primitive(t)) => {
@@ -699,26 +696,27 @@ mod tests {
         session.register(TypeRef::generic(6), ty_u32());
 
         assert_ty!(run_test(session), @r#"
-        [0, 1, 2, 3, 5, 4]
+        [0, 2, 3, 4, 6, 5]
         [
             [0] Pointer {
                 pointee: "<unknown>",
             },
-            [1] Pointer {
-                pointee: "void",
+            [1] Void,
+            [2] Pointer {
+                pointee: "[1] (void)",
             },
-            [2] TypeDef {
+            [3] TypeDef {
                 name: "Missing",
                 ty: "<unknown>",
             },
-            [3] TypeDef {
+            [4] TypeDef {
                 name: "Void",
-                ty: "void",
+                ty: "[1] (void)",
             },
-            [4] Primitive {
+            [5] Primitive {
                 name: "u32",
             },
-            [5] Structure {
+            [6] Structure {
                 name: "Partial",
                 members: [
                     Member {
@@ -727,7 +725,7 @@ mod tests {
                     },
                     Member {
                         name: "value",
-                        ty: "[4] (primitive:u32)",
+                        ty: "[5] (primitive:u32)",
                     },
                 ],
             },

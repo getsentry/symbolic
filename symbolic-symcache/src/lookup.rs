@@ -132,7 +132,7 @@ impl<'data> Type<'data> {
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum TypeKind<'data> {
-    /// A qualified `void`, such as `const void`.
+    /// `void`, including a qualified `void`, such as `const void`.
     Void,
     /// A primitive type.
     Primitive(PrimitiveType<'data>),
@@ -181,7 +181,7 @@ impl<'data> PrimitiveType<'data> {
 #[derive(Clone, Debug)]
 pub struct PointerType {
     pub(crate) size: Size,
-    pub(crate) pointee: Option<TypeId>,
+    pub(crate) pointee: TypeId,
 }
 
 impl PointerType {
@@ -192,10 +192,9 @@ impl PointerType {
 
     /// The referenced type.
     ///
-    /// This returns `None` for pointers without a referenced type, like `void*`.
-    /// If the pointer references a type that could not be resolved, this returns `Some` with a
-    /// [`TypeId`] for which [`SymCache::lookup_type`] returns `None`.
-    pub fn pointee(&self) -> Option<TypeId> {
+    /// For a `void*`, this is a [`TypeKind::Void`]. If the pointer references a type that could
+    /// not be resolved, [`SymCache::lookup_type`] returns `None` for this [`TypeId`].
+    pub fn pointee(&self) -> TypeId {
         self.pointee
     }
 }
@@ -204,7 +203,7 @@ impl PointerType {
 #[derive(Clone, Debug)]
 pub struct TypeDefType<'data> {
     pub(crate) name: &'data str,
-    pub(crate) ty: Option<TypeId>,
+    pub(crate) ty: TypeId,
 }
 
 impl<'data> TypeDefType<'data> {
@@ -215,10 +214,9 @@ impl<'data> TypeDefType<'data> {
 
     /// The linked type.
     ///
-    /// This may be `None` if the debug information provides no underlying type reference,
-    /// for example an alias to `void` or a type declaration without a definition.
-    /// The referenced type.
-    pub fn ty(&self) -> Option<TypeId> {
+    /// This is a [`TypeKind::Void`] if the debug information provides no underlying type
+    /// reference, for example an alias to `void` or a type declaration without a definition.
+    pub fn ty(&self) -> TypeId {
         self.ty
     }
 }
