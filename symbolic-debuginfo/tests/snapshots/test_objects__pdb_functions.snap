@@ -287,7 +287,7 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
             _Ptr (local)
               type:
                 > Pointer (4 bytes)
-                  > Unknown
+                  > Void
               0x1241..0x1247: register ebx
               0x124d..0x1250: register ebx
 
