@@ -3,12 +3,13 @@ use std::cmp::Ordering;
 use std::collections::HashSet;
 
 use symbolic_common::{Arch, CpuFamily, Language};
+use symbolic_debuginfo::Qualifiers;
 use watto::StringTable;
 
 use crate::v9::{SymCache, convert, raw};
 use crate::{
-    File, Function, PointerType, PrimitiveType, StructureMember, StructureType, Type, TypeDefType,
-    TypeId, VariableKind, VariableLocation, VariableLocationInfo,
+    File, Function, PointerType, PrimitiveType, QualifiedType, StructureMember, StructureType,
+    Type, TypeDefType, TypeId, VariableKind, VariableLocation, VariableLocationInfo,
 };
 
 impl<'data> SymCache<'data> {
@@ -105,6 +106,10 @@ impl<'data> SymCache<'data> {
                 })
             }
             raw::ty::Enum::void(_) => Type::Void,
+            raw::ty::Enum::qualified(qualified) => Type::Qualified(QualifiedType {
+                qualifiers: Qualifiers::from_bits_truncate(qualified.qualifiers),
+                ty: TypeId(qualified.ty_idx),
+            }),
         })
     }
 
