@@ -10,7 +10,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   variables:
     this (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x1120..0x1123: register ecx
       0x1123..0x116c: register esi
       0x116d..0x1173: register esi
@@ -89,17 +90,20 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   variables:
     this (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x1000..0x1011: register ecx
       0x1011..0x101a: register ebx
       0x102b..0x1104: register ebx
     ex_info (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x1000..0x1001: memory at esp +4
     assert_info (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x1000..0x1001: memory at esp +8
       0x103d..0x1051: register esi
       0x1054..0x106e: register esi
@@ -145,14 +149,16 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   variables:
     this (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x1180..0x1191: register ecx
       0x1191..0x11c8: register edi
       0x11d1..0x12c1: register edi
       0x12ca..0x12cf: register edi
     _Ptr (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x1180..0x1181: memory at esp +4
       0x1187..0x11bc: register eax
       0x11d1..0x11f8: register eax
@@ -216,7 +222,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         0x1247..0x126f: register esi
       _New_ptr (local)
         type:
-          > Unknown
+          > Pointer (4 bytes)
+            > Primitive: wchar_t (UnsignedChar, 2 bytes)
         0x1241..0x1247: register ebx
         0x1261..0x1263: register ebx
         0x1265..0x12c4: register ebx
@@ -279,7 +286,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
               0x1247..0x1250: register eax
             _Ptr (local)
               type:
-                > Unknown
+                > Pointer (4 bytes)
+                  > Unknown
               0x1241..0x1247: register ebx
               0x124d..0x1250: register ebx
 
@@ -366,13 +374,15 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   variables:
     this (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x12e0..0x12e8: register ecx
       0x12e8..0x1355: register esi
       0x1358..0x135e: register esi
     _Right (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x12e0..0x12e1: memory at esp +4
       0x12e6..0x1352: register edi
       0x1358..0x135e: register edi
@@ -455,23 +465,28 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   variables:
     _Next (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x27d0..0x27d1: memory at esp +4
     _Prev (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x27d0..0x27d1: memory at esp +8
     <_Val_0> (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x27d0..0x27d1: memory at esp +12
     _Pnode (local)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x27dd..0x27eb: register eax
     this (local)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x27d0..0x27eb: memory at esp +0
 
   > 0x27dd: std::_Default_allocator_traits<std::allocator<std::_List_node<google_breakpad::AppMemory,void *> > >::construct(std::allocator<std::_List_node<google_breakpad::AppMemory,void *> >&, google_breakpad::AppMemory* const, google_breakpad::AppMemory const&) (0xb)
@@ -498,7 +513,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   variables:
     this (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x2560..0x2565: register ecx
       0x2565..0x257c: register esi
       0x2581..0x25f0: register esi
@@ -508,7 +524,9 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x267b..0x2680: register esi
     <_Val_0> (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Pointer (4 bytes)
+            > Unknown
       0x2560..0x2561: memory at esp +4
     _Newcapacity (local)
       type:
@@ -537,7 +555,9 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x267b..0x2680: register ebx
     _Newvec (local)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Pointer (4 bytes)
+            > Unknown
       0x25f0..0x25f6: register edi
       0x2610..0x2612: register edi
       0x2614..0x2671: register edi
@@ -650,7 +670,9 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
           variables:
             _First (parameter)
               type:
-                > Unknown
+                > Pointer (4 bytes)
+                  > Pointer (4 bytes)
+                    > Unknown
               0x261f..0x262d: register ecx
 
           > 0x261d: std::_Copy_memmove(google_breakpad::ExceptionHandler**, google_breakpad::ExceptionHandler**, google_breakpad::ExceptionHandler**) (0x15)
@@ -720,7 +742,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   variables:
     this (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x1b90..0x1b99: register ecx
       0x1b99..0x1bf8: register edi
       0x1bfa..0x1bff: register edi
@@ -741,7 +764,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     variables:
       this (parameter)
         type:
-          > Unknown
+          > Pointer (4 bytes)
+            > Unknown
         0x1bb5..0x1bd6: register edx
         0x1bfa..0x1bff: register edx
       _Pos (parameter)
@@ -761,7 +785,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   variables:
     this (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x26a0..0x26a3: register ecx
       0x26a3..0x26e2: register edi
 
@@ -783,12 +808,14 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       variables:
         _Pnode (local)
           type:
-            > Unknown
+            > Pointer (4 bytes)
+              > Unknown
           0x26a7..0x26ca: register eax
           0x26d1..0x26d5: register eax
         _Pnext (local)
           type:
-            > Unknown
+            > Pointer (4 bytes)
+              > Unknown
           0x26c0..0x26c2: register esi
           0x26c2..0x26d5: register esi
 
@@ -829,5 +856,6 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   variables:
     this (parameter)
       type:
-        > Unknown
+        > Pointer (4 bytes)
+          > Unknown
       0x2690..0x2692: register ecx

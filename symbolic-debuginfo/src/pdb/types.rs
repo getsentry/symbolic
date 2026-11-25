@@ -30,6 +30,7 @@ impl<'a> Types<'a> {
                 parse_primitive_indirection(index, ind)
             }
             TypeData::Primitive(ty) => parse_primitive(ty.kind),
+            TypeData::Pointer(ty) => parse_pointer(ty),
             _ => None,
         })
     }
@@ -151,6 +152,29 @@ fn parse_primitive_indirection(
     // Now we need to correctly handle `void*`. Which symbolic expresses as a `PointerType` with a
     // `None` pointee.
     let pointee = (pointee.0 != VOID).then_some(PdbTypeRef(pointee).into());
+
+    Some(PointerType { pointee, size }.into())
+}
+
+fn parse_pointer(ty: pdb::PointerType) -> Option<Type<'static>> {
+    // This is the equivalent to `DW_TAG_ptr_to_member_type` which is also currently not supported.
+    if ty.attributes.pointer_to_member() {
+        return None;
+    }
+
+    use pdb::PointerKind::*;
+    if !matches!(ty.attributes.pointer_kind(), Near16 | Near32 | Ptr64) {
+        return None;
+    }
+
+    // This does not handle `void* pointers correctly currently. This will be addressed once void
+    // pointers handled as dedicated types instead of through `Option::None`.
+    let pointee = Some(PdbTypeRef(ty.underlying_type).into());
+    let size = ty.attributes.size();
+    if size == 0 {
+        return None;
+    }
+    let size = Size::Bytes(size.into());
 
     Some(PointerType { pointee, size }.into())
 }
