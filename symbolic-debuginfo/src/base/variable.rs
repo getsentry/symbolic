@@ -86,6 +86,37 @@ bitflags::bitflags! {
     }
 }
 
+/// Formats the qualifiers as their C keywords separated by spaces, in the order `const`,
+/// `volatile`, `restrict`. No qualifiers format as an empty string.
+///
+/// ```
+/// use symbolic_debuginfo::Qualifiers;
+///
+/// assert_eq!((Qualifiers::RESTRICT | Qualifiers::CONST).to_string(), "const restrict");
+/// assert_eq!(Qualifiers::empty().to_string(), "");
+/// ```
+impl fmt::Display for Qualifiers {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let keywords = [
+            (Self::CONST, "const"),
+            (Self::VOLATILE, "volatile"),
+            (Self::RESTRICT, "restrict"),
+        ]
+        .into_iter()
+        .filter(|(qualifier, _)| self.contains(*qualifier))
+        .map(|(_, keyword)| keyword);
+
+        for (i, keyword) in keywords.enumerate() {
+            if i > 0 {
+                f.write_str(" ")?;
+            }
+            f.write_str(keyword)?;
+        }
+
+        Ok(())
+    }
+}
+
 /// A type with qualifiers, such as `const` or `volatile`, applied to it.
 ///
 /// All qualifiers applied directly to a type are merged into a single [`QualifiedType`], so
