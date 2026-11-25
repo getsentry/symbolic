@@ -86,9 +86,17 @@ where
             Entry::Vacant(entry) => entry,
         };
 
-        let Some(ty) = self.session.lookup_type(&ty_ref).ok().flatten() else {
-            entry.insert(ResolvedState::Unknown);
-            return Err(ResolvedState::Unknown);
+        let ty = match self.session.lookup_type(&ty_ref).ok().flatten() {
+            // `void` is not stored as a type in symcaches yet.
+            Some(di::Type::Void) => {
+                entry.insert(ResolvedState::Stored(v9::raw::Type::VOID));
+                return Err(ResolvedState::Stored(v9::raw::Type::VOID));
+            }
+            Some(ty) => ty,
+            None => {
+                entry.insert(ResolvedState::Unknown);
+                return Err(ResolvedState::Unknown);
+            }
         };
 
         entry.insert(ResolvedState::Pending);
@@ -114,6 +122,8 @@ where
             di::Type::Pointer(ty) => self.ser_pointer(ty),
             di::Type::TypeDef(ty) => self.ser_typedef(ty, string_table),
             di::Type::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
+            // Handled in `resolve`, `void` is not stored in symcaches yet.
+            di::Type::Void => unreachable!(),
         }
     }
 
@@ -130,10 +140,7 @@ where
 
     fn ser_pointer(&mut self, ty: &di::PointerType) -> FwdResult {
         Ok(v9::raw::PointerType {
-            pointee_idx: match ty.pointee.as_ref() {
-                Some(pointee) => self.try_lookup_type_idx(pointee)?,
-                None => v9::raw::Type::VOID,
-            },
+            pointee_idx: self.try_lookup_type_idx(&ty.pointee)?,
             size: v9::raw::Size::from_di(Some(ty.size)),
             _reserved: [0; _],
         }
@@ -143,10 +150,7 @@ where
     fn ser_typedef(&mut self, ty: &di::TypeDefType<'_>, st: &mut StringTable) -> FwdResult {
         Ok(v9::raw::TypeDefType {
             name_offset: st.insert(&ty.name) as u32,
-            ty_idx: match ty.ty.as_ref() {
-                Some(ty) => self.try_lookup_type_idx(ty)?,
-                None => v9::raw::Type::VOID,
-            },
+            ty_idx: self.try_lookup_type_idx(&ty.ty)?,
             _reserved: [0; _],
         }
         .into())
@@ -300,8 +304,8 @@ impl<'a> Resolved<'a> {
 
     fn next_child(&mut self) -> Option<TypeRef> {
         let next = match &self.ty {
-            di::Type::Pointer(t) if self.child_offset == 0 => t.pointee.clone(),
-            di::Type::TypeDef(t) if self.child_offset == 0 => t.ty.clone(),
+            di::Type::Pointer(t) if self.child_offset == 0 => Some(t.pointee.clone()),
+            di::Type::TypeDef(t) if self.child_offset == 0 => Some(t.ty.clone()),
             di::Type::StructureType(t) => t
                 .members
                 .get(self.child_offset)
@@ -495,15 +499,15 @@ mod tests {
 
     fn ptr(pointee: TypeRef) -> di::PointerType {
         di::PointerType {
-            pointee: Some(pointee),
+            pointee,
             size: di::Size::Bytes(8),
         }
     }
 
-    fn tydef(name: &str, ty: impl Into<Option<TypeRef>>) -> di::TypeDefType<'_> {
+    fn tydef(name: &str, ty: TypeRef) -> di::TypeDefType<'_> {
         di::TypeDefType {
             name: name.into(),
-            ty: ty.into(),
+            ty,
         }
     }
 
@@ -665,12 +669,12 @@ mod tests {
         session.register(
             TypeRef::generic(2),
             di::PointerType {
-                pointee: None,
+                pointee: TypeRef::generic(7),
                 size: di::Size::Bytes(8),
             },
         );
         session.register(TypeRef::generic(3), tydef("Missing", TypeRef::generic(100)));
-        session.register(TypeRef::generic(4), tydef("Void", None));
+        session.register(TypeRef::generic(4), tydef("Void", TypeRef::generic(7)));
         session.register(
             TypeRef::generic(5),
             di::StructureType {
@@ -693,9 +697,10 @@ mod tests {
             },
         );
         session.register(TypeRef::generic(6), ty_u32());
+        session.register(TypeRef::generic(7), di::Type::Void);
 
         assert_ty!(run_test(session), @r#"
-        [0, 1, 2, 3, 5, 4]
+        [0, 1, 2, 3, 5, 4, 4294967294]
         [
             [0] Pointer {
                 pointee: "<unknown>",

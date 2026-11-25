@@ -77,6 +77,7 @@ fn parse_primitive(kind: pdb::PrimitiveKind) -> Option<Type<'static>> {
     use pdb::PrimitiveKind::*;
 
     let (name, size, encoding) = match kind {
+        Void => return Some(Type::Void),
         Char => ("signed char", 1, SignedChar),
         RChar => ("char", 1, SignedChar),
         UChar => ("unsigned char", 1, UnsignedChar),
@@ -136,9 +137,6 @@ fn parse_primitive_indirection(
         Indirection::Far16 | Indirection::Far32 | Indirection::Huge16 => return None,
     });
 
-    // The `void` primitive kind in PDB.
-    const VOID: u32 = 0x03;
-
     // Primitives indices are composed as follows:
     //
     // .---------------------------.------.----------.
@@ -149,10 +147,7 @@ fn parse_primitive_indirection(
     // That means we can recover the primitive type by simply masking everything else away.
     //
     // See also: <https://llvm.org/docs/PDB/TpiStream.html#type-indices>.
-    let pointee = TypeIndex(index.0 & 0xff);
-    // Now we need to correctly handle `void*`. Which symbolic expresses as a `PointerType` with a
-    // `None` pointee.
-    let pointee = (pointee.0 != VOID).then_some(PdbTypeRef(pointee).into());
+    let pointee = PdbTypeRef(TypeIndex(index.0 & 0xff)).into();
 
     Some(PointerType { pointee, size }.into())
 }
@@ -168,9 +163,7 @@ fn parse_pointer(ty: pdb::PointerType) -> Option<Type<'static>> {
         return None;
     }
 
-    // This does not handle `void* pointers correctly currently. This will be addressed once void
-    // pointers handled as dedicated types instead of through `Option::None`.
-    let pointee = Some(PdbTypeRef(ty.underlying_type).into());
+    let pointee = PdbTypeRef(ty.underlying_type).into();
     let size = ty.attributes.size();
     if size == 0 {
         return None;
@@ -182,7 +175,6 @@ fn parse_pointer(ty: pdb::PointerType) -> Option<Type<'static>> {
 
 fn parse_alias<'a>(ty: pdb::AliasType<'a>) -> Type<'a> {
     let name = ty.name.to_string();
-    // Same as for `parse_pointer`, void types are currently not handled.
-    let ty = Some(PdbTypeRef(ty.underlying_type).into());
+    let ty = PdbTypeRef(ty.underlying_type).into();
     TypeDefType { name, ty }.into()
 }

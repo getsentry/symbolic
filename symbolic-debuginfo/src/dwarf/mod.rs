@@ -184,6 +184,15 @@ enum DwarfTypeRefInner {
     },
     /// A type signature.
     Signature(DebugTypeSignature),
+    /// `void`, which DWARF represents as a missing `DW_AT_type`.
+    Void,
+}
+
+impl DwarfTypeRef {
+    /// Creates a [`DwarfTypeRef`] to `void`.
+    fn void() -> Self {
+        Self(DwarfTypeRefInner::Void)
+    }
 }
 
 /// DWARF section information including its data.
@@ -2097,6 +2106,7 @@ impl<'data> DwarfDebugSession<'data> {
             } => Some(info.find_types_unit_offset(*offset)?),
             DwarfTypeRefInner::Signature(signature) => info.find_type_signature(*signature)?,
             DwarfTypeRefInner::Offset { .. } => None,
+            DwarfTypeRefInner::Void => return Ok(Some(Type::Void)),
         };
         let Some((unit, offset)) = unit else {
             return Ok(None);

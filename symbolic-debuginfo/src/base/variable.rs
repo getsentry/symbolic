@@ -59,6 +59,8 @@ impl From<crate::pdb::PdbTypeRef> for TypeRef {
 /// A concrete type.
 #[derive(Debug, Clone)]
 pub enum Type<'data> {
+    /// `void`.
+    Void,
     /// A primitive type.
     Primitive(PrimitiveType<'data>),
     /// A pointer type.
@@ -149,9 +151,7 @@ pub struct ValueBits {
 #[derive(Debug, Clone)]
 pub struct PointerType {
     /// The type the pointer references.
-    ///
-    /// A value of `None` indicates that the pointer has no referenced type, e.g. for `void*`.
-    pub pointee: Option<TypeRef>,
+    pub pointee: TypeRef,
     /// The size of a pointer.
     pub size: Size,
 }
@@ -163,9 +163,9 @@ pub struct TypeDefType<'data> {
     pub name: Cow<'data, str>,
     /// The linked type.
     ///
-    /// This may be `None` if the debug information provides no underlying type reference,
+    /// This resolves to [`Type::Void`] if the debug information provides no underlying type reference,
     /// for example an alias to `void` or a type declaration without a definition.
-    pub ty: Option<TypeRef>,
+    pub ty: TypeRef,
 }
 
 /// A structure type.
