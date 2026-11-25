@@ -144,7 +144,7 @@ fn parse_primitive_indirection(
     // '---------------------------'------'----------'
     // |+32                        |+12   |+8        |+0
     //
-    // That means, if we recover the primitive type by simply masking everything else away.
+    // That means we can recover the primitive type by simply masking everything else away.
     //
     // See also: <https://llvm.org/docs/PDB/TpiStream.html#type-indices>.
     let pointee = TypeIndex(index.0 & 0xff);
