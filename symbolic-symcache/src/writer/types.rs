@@ -86,17 +86,9 @@ where
             Entry::Vacant(entry) => entry,
         };
 
-        let ty = match self.session.lookup_type(&ty_ref).ok().flatten() {
-            // `void` is not stored as a type in symcaches yet.
-            Some(di::Type::Void) => {
-                entry.insert(ResolvedState::Stored(v9::raw::Type::VOID));
-                return Err(ResolvedState::Stored(v9::raw::Type::VOID));
-            }
-            Some(ty) => ty,
-            None => {
-                entry.insert(ResolvedState::Unknown);
-                return Err(ResolvedState::Unknown);
-            }
+        let Some(ty) = self.session.lookup_type(&ty_ref).ok().flatten() else {
+            entry.insert(ResolvedState::Unknown);
+            return Err(ResolvedState::Unknown);
         };
 
         entry.insert(ResolvedState::Pending);
@@ -118,12 +110,11 @@ where
         string_table: &mut StringTable,
     ) -> FwdResult {
         match ty {
+            di::Type::Void => Ok(v9::raw::VoidType::default().into()),
             di::Type::Primitive(ty) => self.ser_primitive(ty, string_table),
             di::Type::Pointer(ty) => self.ser_pointer(ty),
             di::Type::TypeDef(ty) => self.ser_typedef(ty, string_table),
             di::Type::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
-            // Handled in `resolve`, `void` is not stored in symcaches yet.
-            di::Type::Void => unreachable!(),
         }
     }
 
@@ -545,7 +536,6 @@ mod tests {
                     };
 
                     let refs = |idx: u32| match idx {
-                        v9::raw::Type::VOID => "void".to_owned(),
                         v9::raw::Type::UNKNOWN => "<unknown>".to_owned(),
                         _ => match types.types.get(idx as usize).and_then(|t| t.as_enum()) {
                             Some(v9::raw::ty::Enum::primitive(t)) => {
@@ -558,6 +548,7 @@ mod tests {
                             Some(v9::raw::ty::Enum::structure(t)) => {
                                 format!("[{idx}] (struct:{})", name(t.name_offset))
                             }
+                            Some(v9::raw::ty::Enum::void(_)) => format!("[{idx}] (void)"),
                             None => format!("[{idx}] <ERROR>"),
                         },
                     };
@@ -593,6 +584,7 @@ mod tests {
                                 .field("members", &members)
                                 .finish()
                         }
+                        Some(v9::raw::ty::Enum::void(_)) => write!(f, "[{idx}] Void"),
                         None => f.write_str("<invalid type>"),
                     }
                 }
@@ -700,26 +692,27 @@ mod tests {
         session.register(TypeRef::generic(7), di::Type::Void);
 
         assert_ty!(run_test(session), @r#"
-        [0, 1, 2, 3, 5, 4, 4294967294]
+        [0, 2, 3, 4, 6, 5, 1]
         [
             [0] Pointer {
                 pointee: "<unknown>",
             },
-            [1] Pointer {
-                pointee: "void",
+            [1] Void,
+            [2] Pointer {
+                pointee: "[1] (void)",
             },
-            [2] TypeDef {
+            [3] TypeDef {
                 name: "Missing",
                 ty: "<unknown>",
             },
-            [3] TypeDef {
+            [4] TypeDef {
                 name: "Void",
-                ty: "void",
+                ty: "[1] (void)",
             },
-            [4] Primitive {
+            [5] Primitive {
                 name: "u32",
             },
-            [5] Structure {
+            [6] Structure {
                 name: "Partial",
                 members: [
                     Member {
@@ -728,7 +721,7 @@ mod tests {
                     },
                     Member {
                         name: "value",
-                        ty: "[4] (primitive:u32)",
+                        ty: "[5] (primitive:u32)",
                     },
                 ],
             },
