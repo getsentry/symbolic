@@ -965,7 +965,7 @@ impl<'s> Unit<'s> {
         let mut skipped_depth = None;
 
         let mut functions = Vec::new();
-        let mut stack = FunctionStack::new(self.debug_info.cpu);
+        let mut stack = FunctionStack::new(self.debug_info);
         let mut proc_offsets = SmallVec::<[_; 3]>::new();
         let mut last_proc = None;
 
@@ -1041,7 +1041,7 @@ impl<'s> Unit<'s> {
                 }
                 Ok(symbol) => {
                     if let Some(top) = stack.top_mut() {
-                        top.visit_for_variables(depth, &symbol, &self.debug_info.address_map);
+                        top.visit_for_variables(depth, &symbol);
                     }
                     continue;
                 }
