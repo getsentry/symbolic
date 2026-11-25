@@ -8,6 +8,11 @@ use pdb_addr2line::pdb::{
 use crate::pdb::PdbTypeRef;
 use crate::{PointerType, PrimitiveType, Size, StructureMember, StructureType, Type, TypeDefType};
 
+/// A type as it is returned by [`Types::find`].
+///
+/// It's a tuple of the type's [raw kind](pdb::Type::raw_kind) and the parsed [`TypeData`].
+type FoundType<'a> = (u16, TypeData<'a>);
+
 pub struct Types<'a> {
     indexer: RefCell<TypeIndexer<'a>>,
 }
@@ -40,7 +45,7 @@ impl<'a> Types<'a> {
         })
     }
 
-    fn find(&self, index: TypeIndex) -> pdb::Result<Option<(u16, TypeData<'a>)>> {
+    fn find(&self, index: TypeIndex) -> pdb::Result<Option<FoundType<'a>>> {
         let item = self.indexer.borrow_mut().find(index);
         match item.and_then(|item| {
             let data = item.parse()?;
@@ -216,6 +221,8 @@ impl<'a> TypeIndexer<'a> {
     }
 
     fn index_class_definition(&mut self, item: &pdb::Type<'a>) -> Option<ClassKey<'a>> {
+        // PDB constants as they can be found in the `pdb2` source code.
+        // Unfortunately they are not directly exposed.
         const LF_CLASS: u16 = 0x1504;
         const LF_CLASS_ST: u16 = 0x1004;
         const LF_CLASS2: u16 = 0x1608;
