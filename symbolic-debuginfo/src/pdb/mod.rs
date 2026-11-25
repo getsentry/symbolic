@@ -23,7 +23,7 @@ use symbolic_common::{
 };
 
 use crate::base::*;
-use crate::pdb::function_stack::FunctionStack;
+use crate::pdb::function_stack::{FunctionStack, ProcedureFrames};
 use crate::pdb::srcsrv::{SourceServerInfo, SourceServerMappings};
 use crate::sourcebundle::SourceFileDescriptor;
 use crate::{ParseObjectOptions, Type, TypeRef};
@@ -951,6 +951,17 @@ impl<'s> Unit<'s> {
         let program = self.module.line_program()?;
         let mut symbols = self.module.symbols()?;
 
+        // Frames are constructed from `S_FRAMEPROC` entries which are associated with a procedure
+        // (`S_*PROC*` variants), we need the frame information for construction of variables ahead of
+        // time, unfortunately the `S_FRAMEPROC` can be placed anywhere in the scope of the procedure.
+        //
+        // That's why we parse ahead to find the frame info for each procedure, an alternative would
+        // be to keep track of symbols as they are discovered and on ending the procedure scope we
+        // fix-up all variables with the frame information. This is more efficient when it comes to
+        // parsing the symbol stream but requires more effort to keep around an unfinished variable
+        // state that can be completed later.
+        let mut frames = ProcedureFrames::new(self.module, self.debug_info.cpu)?;
+
         // Depending on the compiler version, the inlinee table might not be sorted. Since constant
         // search through inlinees is too slow (due to repeated parsing), but Inlinees are rather
         // small structures, it is relatively cheap to collect them into an in-memory index.
@@ -1001,16 +1012,18 @@ impl<'s> Unit<'s> {
             let function = match symbol.parse() {
                 Ok(SymbolData::Procedure(proc)) => {
                     proc_offsets.push((depth, proc.offset));
+                    let frame = frames.take(symbol.index(), proc.end)?;
                     let function = self
                         .handle_procedure(&proc, &program)?
-                        .map(|func| stack.standalone(depth, func));
-                    last_proc = Some(proc);
+                        .map(|func| stack.standalone(depth, func, frame));
+                    last_proc = Some((proc, frame));
                     function
                 }
                 Ok(SymbolData::SeparatedCode(sepcode)) => match last_proc.as_ref() {
-                    Some(last_proc) if last_proc.offset == sepcode.parent_offset => self
-                        .handle_separated_code(last_proc, &sepcode, &program)?
-                        .map(|func| stack.standalone(depth, func)),
+                    Some((last_proc, last_frame)) if last_proc.offset == sepcode.parent_offset => {
+                        self.handle_separated_code(last_proc, &sepcode, &program)?
+                            .map(|func| stack.standalone(depth, func, *last_frame))
+                    }
                     _ => continue,
                 },
                 Ok(SymbolData::InlineSite(site)) => {
