@@ -16,20 +16,6 @@ impl TypeRef {
         TypeRef(NativeTypeRef::Generic(id))
     }
 
-    /// Creates a [`TypeRef`] to `void`.
-    ///
-    /// [`DebugSession::lookup_type`](crate::DebugSession::lookup_type) resolves it to
-    /// [`Type::Void`].
-    pub fn void() -> Self {
-        TypeRef(NativeTypeRef::Void)
-    }
-
-    /// Returns `true` if this is `void`.
-    #[cfg(feature = "dwarf")]
-    pub(crate) fn is_void(&self) -> bool {
-        matches!(self.0, NativeTypeRef::Void)
-    }
-
     #[cfg(feature = "dwarf")]
     pub(crate) fn as_dwarf(&self) -> Option<&crate::dwarf::DwarfTypeRef> {
         match &self.0 {
@@ -50,9 +36,6 @@ impl TypeRef {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum NativeTypeRef {
     Generic(u64),
-    /// `void` in debug formats without an entry for it, such as DWARF, where a missing
-    /// `DW_AT_type` means `void`.
-    Void,
     #[cfg(feature = "dwarf")]
     Dwarf(crate::dwarf::DwarfTypeRef),
     #[cfg(feature = "ms")]
@@ -180,7 +163,7 @@ pub struct TypeDefType<'data> {
     pub name: Cow<'data, str>,
     /// The linked type.
     ///
-    /// This is [`TypeRef::void`] if the debug information provides no underlying type reference,
+    /// This resolves to [`Type::Void`] if the debug information provides no underlying type reference,
     /// for example an alias to `void` or a type declaration without a definition.
     pub ty: TypeRef,
 }

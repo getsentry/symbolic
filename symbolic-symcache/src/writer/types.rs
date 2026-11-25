@@ -86,16 +86,17 @@ where
             Entry::Vacant(entry) => entry,
         };
 
-        // `void` is not stored as a type in symcaches yet, see `try_lookup_type_idx`.
-        let Some(ty) = self
-            .session
-            .lookup_type(&ty_ref)
-            .ok()
-            .flatten()
-            .filter(|ty| !matches!(ty, di::Type::Void))
-        else {
-            entry.insert(ResolvedState::Unknown);
-            return Err(ResolvedState::Unknown);
+        let ty = match self.session.lookup_type(&ty_ref).ok().flatten() {
+            // `void` is not stored as a type in symcaches yet.
+            Some(di::Type::Void) => {
+                entry.insert(ResolvedState::Stored(v9::raw::Type::VOID));
+                return Err(ResolvedState::Stored(v9::raw::Type::VOID));
+            }
+            Some(ty) => ty,
+            None => {
+                entry.insert(ResolvedState::Unknown);
+                return Err(ResolvedState::Unknown);
+            }
         };
 
         entry.insert(ResolvedState::Pending);
@@ -103,11 +104,6 @@ where
     }
 
     fn try_lookup_type_idx(&self, ty_ref: &TypeRef) -> FwdResult<u32> {
-        // `void` is not stored as a type in symcaches yet.
-        if *ty_ref == TypeRef::void() {
-            return Ok(v9::raw::Type::VOID);
-        }
-
         match self.resolved.get(ty_ref) {
             Some(ResolvedState::Stored(idx)) => Ok(*idx),
             Some(ResolvedState::Unknown) => Ok(v9::raw::Type::UNKNOWN),
@@ -126,7 +122,7 @@ where
             di::Type::Pointer(ty) => self.ser_pointer(ty),
             di::Type::TypeDef(ty) => self.ser_typedef(ty, string_table),
             di::Type::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
-            // Filtered out in `resolve`, `void` is not stored in symcaches yet.
+            // Handled in `resolve`, `void` is not stored in symcaches yet.
             di::Type::Void => unreachable!(),
         }
     }
@@ -673,12 +669,12 @@ mod tests {
         session.register(
             TypeRef::generic(2),
             di::PointerType {
-                pointee: TypeRef::void(),
+                pointee: TypeRef::generic(7),
                 size: di::Size::Bytes(8),
             },
         );
         session.register(TypeRef::generic(3), tydef("Missing", TypeRef::generic(100)));
-        session.register(TypeRef::generic(4), tydef("Void", TypeRef::void()));
+        session.register(TypeRef::generic(4), tydef("Void", TypeRef::generic(7)));
         session.register(
             TypeRef::generic(5),
             di::StructureType {
@@ -701,9 +697,10 @@ mod tests {
             },
         );
         session.register(TypeRef::generic(6), ty_u32());
+        session.register(TypeRef::generic(7), di::Type::Void);
 
         assert_ty!(run_test(session), @r#"
-        [0, 1, 2, 3, 5, 4]
+        [0, 1, 2, 3, 5, 4, 4294967294]
         [
             [0] Pointer {
                 pointee: "<unknown>",
