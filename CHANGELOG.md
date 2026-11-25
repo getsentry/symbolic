@@ -14,7 +14,7 @@
 - Add `VariableLocation::RegisterOffset` for variables in memory at an offset from a register's contents. ([#1160](https://github.com/getsentry/symbolic/pull/1160))
 - Parse `DW_OP_breg<n>` and `DW_OP_bregx` locations from DWARF into `VariableLocation::RegisterOffset`. ([#1151](https://github.com/getsentry/symbolic/pull/1151), [#1155](https://github.com/getsentry/symbolic/pull/1155))
 - Resolve DWARF `DW_OP_fbreg` variable locations against the function's `DW_AT_frame_base`. A register frame base gives `VariableLocation::RegisterOffset`, the CFA gives `VariableLocation::CfaOffset`, and locations with any other frame base are dropped. ([#1152](https://github.com/getsentry/symbolic/pull/1152))
-- Implement `Display` for `Qualifiers`, formatting them as C keywords such as `const volatile`. ([#PR](https://github.com/getsentry/symbolic/pull/PR))
+- Implement `Display` for `Qualifiers`, formatting them as C keywords such as `const volatile`. ([#1207](https://github.com/getsentry/symbolic/pull/1207))
 
 **Fixes**
 
