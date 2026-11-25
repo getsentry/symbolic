@@ -4,7 +4,7 @@ use pdb_addr2line::pdb::{
     self, FallibleIterator, Indirection, ItemInformation, TypeData, TypeFinder, TypeIndex, TypeIter,
 };
 
-use crate::{PointerType, PrimitiveType, Size, Type, pdb::PdbTypeRef};
+use crate::{PointerType, PrimitiveType, Size, Type, TypeDefType, pdb::PdbTypeRef};
 
 pub struct Types<'a> {
     indexer: RefCell<TypeIndexer<'a>>,
@@ -31,6 +31,7 @@ impl<'a> Types<'a> {
             }
             TypeData::Primitive(ty) => parse_primitive(ty.kind),
             TypeData::Pointer(ty) => parse_pointer(ty),
+            TypeData::Alias(ty) => Some(parse_alias(ty)),
             _ => None,
         })
     }
@@ -177,4 +178,11 @@ fn parse_pointer(ty: pdb::PointerType) -> Option<Type<'static>> {
     let size = Size::Bytes(size.into());
 
     Some(PointerType { pointee, size }.into())
+}
+
+fn parse_alias<'a>(ty: pdb::AliasType<'a>) -> Type<'a> {
+    let name = ty.name.to_string();
+    // Same as for `parse_pointer`, void types are currently not handled.
+    let ty = Some(PdbTypeRef(ty.underlying_type).into());
+    TypeDefType { name, ty }.into()
 }
