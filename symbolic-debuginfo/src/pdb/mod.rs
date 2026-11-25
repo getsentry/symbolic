@@ -1,46 +1,54 @@
 //! Support for Program Database, the debug companion format on Windows.
 
 use std::borrow::Cow;
-use std::collections::btree_map::BTreeMap;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
-use std::io::Cursor;
 use std::sync::Arc;
 
 use elsa::sync::FrozenMap;
-use parking_lot::Mutex;
-use pdb_addr2line::ModuleProvider;
-use pdb_addr2line::pdb::{
-    AddressMap, FallibleIterator, ImageSectionHeader, InlineSiteSymbol, LineProgram, MachineType,
-    Module, ModuleInfo, PdbInternalSectionOffset, ProcedureSymbol, RawString, SeparatedCodeSymbol,
-    SymbolData, TypeIndex,
-};
+use ms_pdb::codeview::parser::{Parser, ParserError};
+use ms_pdb::coff::IMAGE_FILE_MACHINE;
+use ms_pdb::dbi::ModuleInfoFixed;
+use ms_pdb::lines::FileChecksumIter;
+use ms_pdb::modi::ModiStreamData;
+use ms_pdb::names::NameIndex;
+use ms_pdb::syms::{Block, OffsetSegment, Proc, Sym, SymData, SymIter, SymKind};
+use ms_pdb::types::TypeIndex;
+use ms_pdb::{BStr, StreamData};
 use smallvec::SmallVec;
 use thiserror::Error;
 
-use symbolic_common::{
-    Arch, AsSelf, CodeId, CpuFamily, DebugId, Language, Name, NameMangling, SelfCell, Uuid,
-};
+use symbolic_common::{Arch, AsSelf, CodeId, CpuFamily, DebugId, Language, Name, NameMangling};
 
 use crate::base::*;
-use crate::pdb::function_stack::{FunctionStack, ProcedureFrames};
 use crate::pdb::srcsrv::{SourceServerInfo, SourceServerMappings};
 use crate::sourcebundle::SourceFileDescriptor;
 use crate::{ParseObjectOptions, Type, TypeRef};
 
+use self::addresses::AddressMap;
+use self::function_stack::{FunctionStack, ProcedureFrames};
+use self::lines::{ModuleLines, RawLine};
+
+mod addresses;
 mod function_stack;
+mod lines;
 mod register;
 mod srcsrv;
 mod types;
 mod variables;
 
-type Pdb<'data> = pdb::PDB<'data, Cursor<&'data [u8]>>;
+type Pdb<'data> = ms_pdb::Pdb<&'data [u8]>;
+
+/// A reference to a type in the PDB file.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PdbTypeRef(TypeIndex);
 
 const MAGIC_BIG: &[u8] = b"Microsoft C/C++ MSF 7.00\r\n\x1a\x44\x53\x00\x00\x00";
-
-// Used for CFI, remove once abstraction is complete
-#[doc(hidden)]
-pub use pdb_addr2line::pdb;
+const CV_SIGNATURE_C13: u32 = 4;
+const S_THUNK32_ST: SymKind = SymKind(0x0206);
+const S_BLOCK32_ST: SymKind = SymKind(0x0207);
+const S_WITH32_ST: SymKind = SymKind(0x0208);
 
 /// The error type for [`PdbError`].
 #[non_exhaustive]
@@ -98,8 +106,14 @@ impl From<PdbErrorKind> for PdbError {
     }
 }
 
-impl From<pdb::Error> for PdbError {
-    fn from(e: pdb::Error) -> Self {
+impl From<anyhow::Error> for PdbError {
+    fn from(e: anyhow::Error) -> Self {
+        Self::new(PdbErrorKind::BadObject, e)
+    }
+}
+
+impl From<ParserError> for PdbError {
+    fn from(e: ParserError) -> Self {
         Self::new(PdbErrorKind::BadObject, e)
     }
 }
@@ -110,63 +124,31 @@ impl From<fmt::Error> for PdbError {
     }
 }
 
-impl From<pdb_addr2line::Error> for PdbError {
-    fn from(e: pdb_addr2line::Error) -> Self {
-        match e {
-            pdb_addr2line::Error::PdbError(e) => Self::new(PdbErrorKind::BadObject, e),
-            pdb_addr2line::Error::FormatError(e) => Self::new(PdbErrorKind::FormattingFailed, e),
-            e => Self::new(PdbErrorKind::FormattingFailed, e),
-        }
-    }
-}
-
-/// A reference to a type in the DWARF file.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PdbTypeRef(TypeIndex);
-
 /// Program Database, the debug companion format on Windows.
 ///
 /// This object is a sole debug companion to [`PeObject`](crate::pe::PeObject).
 pub struct PdbObject<'data> {
-    pdb: Arc<Mutex<Pdb<'data>>>,
-    debug_info: Arc<pdb::DebugInformation<'data>>,
-    pdb_info: pdb::PDBInformation<'data>,
-    public_syms: pdb::SymbolTable<'data>,
-    executable_sections: ExecutableSections,
+    pdb: Arc<Pdb<'data>>,
+    addresses: Arc<AddressMap>,
     data: &'data [u8],
 }
-
-// NB: The pdb crate simulates mmap behavior on any Read + Seek type. This implementation requires
-// mutability of the `Source` and uses trait objects without a Send + Sync barrier. We know that we
-// only instanciate `&[u8]` as source. Whenever we mutate the reader (to read a new module stream),
-// we acquire a write lock on the PDB, which should be sufficient.
-unsafe impl Send for PdbObject<'_> {}
-unsafe impl Sync for PdbObject<'_> {}
 
 impl<'data> PdbObject<'data> {
     /// Tests whether the buffer could contain an PDB object.
     pub fn test(data: &[u8]) -> bool {
-        // NB: "Microsoft C/C++ program database 2.00" is not supported by the pdb crate, so there
-        // is no point in pretending we could read it.
         data.starts_with(MAGIC_BIG)
     }
 
     /// Tries to parse a PDB object from the given slice.
-    #[allow(clippy::arc_with_non_send_sync)]
     pub fn parse(data: &'data [u8]) -> Result<Self, PdbError> {
-        let mut pdb = Pdb::open(Cursor::new(data))?;
-        let dbi = pdb.debug_information()?;
-        let pdbi = pdb.pdb_information()?;
-        let pubi = pdb.global_symbols()?;
-        let sections = pdb.sections()?;
+        let pdb = Pdb::open_from_random_file(data)?;
+        pdb.gss()?;
+        let addresses = Arc::new(AddressMap::new(&pdb)?);
 
         Ok(PdbObject {
-            pdb: Arc::new(Mutex::new(pdb)),
-            debug_info: Arc::new(dbi),
-            pdb_info: pdbi,
-            public_syms: pubi,
+            pdb: Arc::from(pdb),
+            addresses,
             data,
-            executable_sections: ExecutableSections::from_sections(&sections),
         })
     }
 
@@ -196,32 +178,29 @@ impl<'data> PdbObject<'data> {
         // the executable than the PDB info header. The latter is often bumped independently when
         // the PDB is processed or optimized, which causes it to go out of sync with the original
         // image.
-        let age = self.debug_info.age().unwrap_or(self.pdb_info.age);
-        match Uuid::from_slice(&self.pdb_info.guid.as_bytes()[..]) {
-            Ok(uuid) => DebugId::from_parts(uuid, age),
-            Err(_) => DebugId::default(),
+        let info = self.pdb.pdbi();
+        let age = match self.pdb.dbi_header().age.get() {
+            0 => info.age,
+            age => age,
+        };
+        match info.unique_id {
+            Some(uuid) => DebugId::from_parts(uuid, age),
+            None => DebugId::default(),
         }
     }
 
     /// The CPU architecture of this object, as specified in the debug information stream (DBI).
     pub fn arch(&self) -> Arch {
-        self.debug_info
-            .machine_type()
-            .ok()
-            .map(arch_from_machine)
-            .unwrap_or_default()
+        arch_from_machine(self.pdb.machine())
     }
 
     /// Returns true if this object contains source server information.
     pub fn has_source_server_data(&self) -> Result<bool, PdbError> {
-        let mut pdb = self.pdb.lock();
-        match pdb.named_stream(b"srcsrv") {
-            Ok(_) => Ok(true),
-            Err(pdb::Error::StreamNameNotFound) => {
-                // No source server info is normal for many PDBs
-                Ok(false)
-            }
-            Err(e) => Err(e.into()),
+        if let Some(index) = self.pdb.named_stream("srcsrv") {
+            self.pdb.read_stream(index)?;
+            Ok(true)
+        } else {
+            Ok(false)
         }
     }
 
@@ -249,9 +228,12 @@ impl<'data> PdbObject<'data> {
     /// Returns an iterator over symbols in the public symbol table.
     pub fn symbols(&self) -> PdbSymbolIterator<'data, '_> {
         PdbSymbolIterator {
-            symbols: self.public_syms.iter(),
-            address_map: self.pdb.lock().address_map().ok(),
-            executable_sections: &self.executable_sections,
+            symbols: self
+                .pdb
+                .gss()
+                .map_or_else(|_| SymIter::new(&[]), |gss| gss.iter_syms()),
+            addresses: &self.addresses,
+            marker: std::marker::PhantomData,
         }
     }
 
@@ -293,13 +275,13 @@ impl<'data> PdbObject<'data> {
         self.arch().cpu_family() == CpuFamily::Intel32
     }
 
-    /// Returns the raw data of the ELF file.
+    /// Returns the raw data of the PDB file.
     pub fn data(&self) -> &'data [u8] {
         self.data
     }
 
     #[doc(hidden)]
-    pub fn inner(&self) -> &Mutex<Pdb<'data>> {
+    pub fn inner(&self) -> &ms_pdb::Pdb<&'data [u8]> {
         &self.pdb
     }
 }
@@ -322,7 +304,7 @@ impl<'slf, 'data: 'slf> AsSelf<'slf> for PdbObject<'data> {
     type Ref = PdbObject<'slf>;
 
     fn as_self(&'slf self) -> &'slf Self::Ref {
-        unsafe { std::mem::transmute(self) }
+        self
     }
 }
 
@@ -400,51 +382,14 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for PdbObject<'data> {
     }
 }
 
-pub(crate) fn arch_from_machine(machine: MachineType) -> Arch {
+pub(crate) fn arch_from_machine(machine: IMAGE_FILE_MACHINE) -> Arch {
     match machine {
-        MachineType::X86 => Arch::X86,
-        MachineType::Amd64 => Arch::Amd64,
-        MachineType::Arm => Arch::Arm,
-        MachineType::Arm64 => Arch::Arm64,
-        MachineType::PowerPC => Arch::Ppc,
+        IMAGE_FILE_MACHINE::IMAGE_FILE_MACHINE_I386 => Arch::X86,
+        IMAGE_FILE_MACHINE::IMAGE_FILE_MACHINE_AMD64 => Arch::Amd64,
+        IMAGE_FILE_MACHINE::IMAGE_FILE_MACHINE_ARM => Arch::Arm,
+        IMAGE_FILE_MACHINE::IMAGE_FILE_MACHINE_ARM64 => Arch::Arm64,
+        IMAGE_FILE_MACHINE::IMAGE_FILE_MACHINE_POWERPC => Arch::Ppc,
         _ => Arch::Unknown,
-    }
-}
-
-/// Contains information about which sections are executable.
-struct ExecutableSections {
-    /// For every section header in the PDB, a boolean which indicates whether the "executable"
-    /// or "execute" flag is set in the section header's characteristics.
-    is_executable_per_section: Vec<bool>,
-}
-
-impl ExecutableSections {
-    pub fn from_sections(sections: &Option<Vec<ImageSectionHeader>>) -> Self {
-        Self {
-            is_executable_per_section: match sections {
-                Some(sections) => sections
-                    .iter()
-                    .map(|section| section.characteristics)
-                    .map(|char| char.executable() || char.execute())
-                    .collect(),
-                None => Default::default(),
-            },
-        }
-    }
-
-    /// Returns whether the given offset is contained in an executable section.
-    pub fn contains(&self, offset: &PdbInternalSectionOffset) -> bool {
-        // offset.section is a one-based index.
-        if offset.section == 0 {
-            // No section.
-            return false;
-        }
-
-        let section_index = (offset.section - 1) as usize;
-        self.is_executable_per_section
-            .get(section_index)
-            .cloned()
-            .unwrap_or(false)
     }
 }
 
@@ -452,233 +397,156 @@ impl ExecutableSections {
 ///
 /// Returned by [`PdbObject::symbols`].
 pub struct PdbSymbolIterator<'data, 'object> {
-    symbols: pdb::SymbolIter<'object>,
-    address_map: Option<AddressMap<'data>>,
-    executable_sections: &'object ExecutableSections,
+    symbols: SymIter<'object>,
+    addresses: &'object AddressMap,
+    marker: std::marker::PhantomData<&'data [u8]>,
 }
 
 impl<'data> Iterator for PdbSymbolIterator<'data, '_> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let address_map = self.address_map.as_ref()?;
-
-        while let Ok(Some(symbol)) = self.symbols.next() {
-            if let Ok(SymbolData::Public(public)) = symbol.parse() {
-                if !self.executable_sections.contains(&public.offset) {
-                    continue;
-                }
-
-                let address = match public.offset.to_rva(address_map) {
-                    Some(address) => address,
-                    None => continue,
-                };
-
-                // pdb::SymbolIter offers data bound to its own lifetime since it holds the
-                // buffer containing public symbols. The contract requires that we return
-                // `Symbol<'data>`, so we cannot return zero-copy symbols here.
-                let cow = public.name.to_string();
-                let name = Cow::from(String::from(cow));
-
-                return Some(Symbol {
-                    name: Some(name),
-                    address: u64::from(address.0),
-                    size: 0, // Computed in `SymbolMap`
-                });
+        for symbol in self
+            .symbols
+            .by_ref()
+            .filter(|symbol| matches!(symbol.kind, SymKind::S_PUB32 | SymKind::S_PUB32_ST))
+        {
+            let Ok(SymData::Pub(public)) = symbol.parse() else {
+                continue;
+            };
+            let offset = public.offset_segment();
+            if !self.addresses.is_executable(offset) {
+                continue;
             }
+            let Some(address) = self.addresses.rva(offset) else {
+                continue;
+            };
+            return Some(Symbol {
+                name: Some(String::from_utf8_lossy(public.name).into_owned().into()),
+                address: address.into(),
+                size: 0,
+            });
         }
-
         None
     }
 }
 
-struct PdbStreams<'d> {
-    debug_info: Arc<pdb::DebugInformation<'d>>,
-    type_info: pdb::TypeInformation<'d>,
-    id_info: pdb::IdInformation<'d>,
-    string_table: Option<pdb::StringTable<'d>>,
-    srcsrv: Option<Vec<u8>>,
-
-    pdb: Arc<Mutex<Pdb<'d>>>,
-
-    /// ModuleInfo objects are stored on this object (outside PdbDebugInfo) so that the
-    /// PdbDebugInfo can store a TypeFormatter, which has a lifetime dependency on its
-    /// ModuleProvider, which is this PdbStreams. This is so that TypeFormatter can cache
-    /// CrossModuleImports inside itself, and those have a lifetime dependency on the
-    /// ModuleInfo.
-    module_infos: FrozenMap<usize, Box<ModuleInfo<'d>>>,
-}
-
-impl<'d> PdbStreams<'d> {
-    fn from_pdb(pdb: &PdbObject<'d>) -> Result<Self, PdbError> {
-        let mut p = pdb.pdb.lock();
-
-        // PDB::string_table errors if the named stream for the string table is not present.
-        // However, this occurs in certain PDBs and does not automatically indicate an error.
-        let string_table = match p.string_table() {
-            Ok(string_table) => Some(string_table),
-            Err(pdb::Error::StreamNameNotFound) => None,
-            Err(e) => return Err(e.into()),
-        };
-
-        // Try to open the "srcsrv" named stream
-        let srcsrv = match p.named_stream(b"srcsrv") {
-            Ok(stream) => Some(stream.as_slice().to_vec()),
-            Err(pdb::Error::StreamNameNotFound) => {
-                // No source server info is normal for many PDBs
-                None
-            }
-            Err(e) => return Err(e.into()),
-        };
-
-        Ok(Self {
-            string_table,
-            debug_info: pdb.debug_info.clone(),
-            type_info: p.type_information()?,
-            id_info: p.id_information()?,
-            srcsrv,
-            pdb: pdb.pdb.clone(),
-            module_infos: FrozenMap::new(),
-        })
-    }
-}
-
-impl<'d> pdb_addr2line::ModuleProvider<'d> for PdbStreams<'d> {
-    fn get_module_info(
-        &self,
-        module_index: usize,
-        module: &Module,
-    ) -> Result<Option<&ModuleInfo<'d>>, pdb::Error> {
-        if let Some(module_info) = self.module_infos.get(&module_index) {
-            return Ok(Some(module_info));
-        }
-
-        let mut pdb = self.pdb.lock();
-        Ok(pdb.module_info(module)?.map(|module_info| {
-            self.module_infos
-                .insert(module_index, Box::new(module_info))
-        }))
-    }
-}
+type ModuleStream = ModiStreamData<StreamData>;
 
 struct PdbDebugInfo<'d> {
-    /// The CPU family of the PDB.
-    cpu: CpuFamily,
-    /// The streams, to load module streams on demand.
-    streams: &'d PdbStreams<'d>,
-    /// OMAP structure to map reordered sections to RVAs.
-    address_map: pdb::AddressMap<'d>,
-    /// String table for name lookups.
-    string_table: Option<&'d pdb::StringTable<'d>>,
-    /// Type formatter for function name strings.
-    type_formatter: pdb_addr2line::TypeFormatter<'d, 'd>,
-    /// Type information.
-    types: types::Types<'d>,
-    /// Source Server mappings.
-    srcsrv: Option<SourceServerMappings<'d>>,
+    pdb: Arc<Pdb<'d>>,
+    addresses: Arc<AddressMap>,
+    cpu_family: CpuFamily,
+    types: types::Types,
+    srcsrv: Option<srcsrv::OwnedSourceServerMappings>,
+    modules: Vec<ModuleInfoFixed>,
+    module_streams: FrozenMap<usize, Box<ModuleStream>>,
+    module_names: HashMap<Vec<u8>, usize>,
 }
 
 impl<'d> PdbDebugInfo<'d> {
-    fn build(pdb: &PdbObject<'d>, streams: &'d PdbStreams<'d>) -> Result<Self, PdbError> {
-        let modules = streams.debug_info.modules()?.collect::<Vec<_>>()?;
+    fn build(object: &PdbObject<'d>) -> Result<Self, PdbError> {
+        let pdb = &object.pdb;
+        if pdb.named_stream("/names").is_some() {
+            pdb.names()?;
+        }
+        let srcsrv = pdb
+            .named_stream("srcsrv")
+            .map(|index| pdb.read_stream(index))
+            .transpose()?
+            .and_then(|stream| SourceServerMappings::from_stream(stream).ok());
+        let mut modules = Vec::new();
+        let mut module_names = HashMap::new();
+        let mut records = pdb.modules()?.iter();
+        for module in records.by_ref() {
+            module_names.insert(module.module_name().to_ascii_lowercase(), modules.len());
+            modules.push(module.header().clone());
+        }
+        if !records.rest().is_empty() {
+            return Err(anyhow::anyhow!("invalid PDB module list").into());
+        }
 
-        // Avoid deadlocks by only covering the two access to the address map. For
-        // instance, `pdb.symbol_map()` requires a mutable borrow of the PDB as well.
-        let mut p = pdb.pdb.lock();
-        let address_map = p.address_map()?;
-
-        drop(p);
-
-        let srcsrv = streams
-            .srcsrv
-            .as_deref()
-            // We don't want to exit on error here so we can still use the PDB
-            // file even if we fail to parse the source server part.
-            // TODO: It would be nice to surface this error to users, if and
-            // when we add logging to this crate.
-            .and_then(|stream| SourceServerMappings::parse(stream).ok());
-
-        Ok(PdbDebugInfo {
-            cpu: pdb.arch().cpu_family(),
-            address_map,
-            streams,
-            string_table: streams.string_table.as_ref(),
+        Ok(Self {
+            pdb: pdb.clone(),
+            addresses: object.addresses.clone(),
+            cpu_family: object.arch().cpu_family(),
+            types: types::Types::read(pdb)?,
             srcsrv,
-            type_formatter: pdb_addr2line::TypeFormatter::new_from_parts(
-                streams,
-                modules,
-                &streams.debug_info,
-                &streams.type_info,
-                &streams.id_info,
-                streams.string_table.as_ref(),
-                Default::default(),
-            )?,
-            types: types::Types::new(&streams.type_info),
+            modules,
+            module_streams: FrozenMap::new(),
+            module_names,
         })
     }
 
-    /// Returns an iterator over all compilation units (modules).
-    fn units(&'d self) -> PdbUnitIterator<'d> {
+    fn units(&self) -> PdbUnitIterator<'_> {
         PdbUnitIterator {
             debug_info: self,
             index: 0,
         }
     }
 
-    fn modules(&self) -> &[Module<'d>] {
-        self.type_formatter.modules()
-    }
-
-    fn get_module(&'d self, index: usize) -> Result<Option<&'d ModuleInfo<'d>>, PdbError> {
-        // Silently ignore module references out-of-bound
-        let module = match self.modules().get(index) {
-            Some(module) => module,
-            None => return Ok(None),
+    fn module_stream(&self, index: usize) -> Result<Option<&ModuleStream>, PdbError> {
+        if let Some(stream) = self.module_streams.get(&index) {
+            return Ok(Some(stream));
+        }
+        let module = &self.modules[index];
+        let Some(stream) = module.stream() else {
+            return Ok(None);
         };
-
-        Ok(self.streams.get_module_info(index, module)?)
+        let stream = ModuleStream::new(self.pdb.read_stream(stream)?, module)?;
+        Ok(Some(self.module_streams.insert(index, Box::new(stream))))
     }
 
-    fn file_info(&self, file_info: pdb::FileInfo<'d>) -> Result<FileInfo<'_>, PdbError> {
-        let file_path = match self.string_table {
-            Some(string_table) => file_info.name.to_raw_string(string_table)?,
-            None => "".into(),
+    fn resolve_index(&self, lines: &ModuleLines<'_>, index: TypeIndex) -> Option<TypeIndex> {
+        if index.0 & 0x8000_0000 == 0 {
+            return Some(index);
+        }
+
+        let (name_index, local) = lines.import(index.0)?;
+        let name = self.pdb.get_name(NameIndex(name_index)).ok()?;
+        let &module_index = self.module_names.get(&name.to_ascii_lowercase())?;
+        let stream = self.module_stream(module_index).ok()??;
+        lines::export(stream.c13_line_data(), local).map(TypeIndex)
+    }
+
+    fn file_info(&self, index: NameIndex) -> Result<FileInfo<'_>, PdbError> {
+        let path = if self.pdb.named_stream("/names").is_some() {
+            self.pdb.get_name(index)?
+        } else {
+            BStr::new(b"")
         };
-
-        Ok(FileInfo::from_path(file_path.as_bytes()))
-    }
-}
-
-impl<'slf, 'd: 'slf> AsSelf<'slf> for PdbDebugInfo<'d> {
-    type Ref = PdbDebugInfo<'slf>;
-
-    fn as_self(&'slf self) -> &'slf Self::Ref {
-        unsafe { std::mem::transmute(self) }
+        let mut file = FileInfo::from_path(path);
+        if let Some(mappings) = &self.srcsrv {
+            let original_path = file.path_str();
+            if let Some(SourceServerInfo { path, revision }) =
+                mappings.get().get_info(&original_path)
+            {
+                file.set_srcsrv_path(path.as_bytes());
+                file.set_srcsrv_revision(revision);
+            }
+        }
+        Ok(file)
     }
 }
 
 /// Debug session for PDB objects.
 pub struct PdbDebugSession<'d> {
-    cell: SelfCell<Box<PdbStreams<'d>>, PdbDebugInfo<'d>>,
+    debug_info: PdbDebugInfo<'d>,
 }
 
 impl<'d> PdbDebugSession<'d> {
     fn build(pdb: &PdbObject<'d>) -> Result<Self, PdbError> {
-        let streams = PdbStreams::from_pdb(pdb)?;
-
-        let cell = SelfCell::try_new(Box::new(streams), |streams| {
-            PdbDebugInfo::build(pdb, unsafe { &*streams })
-        })?;
-
-        Ok(PdbDebugSession { cell })
+        Ok(PdbDebugSession {
+            debug_info: PdbDebugInfo::build(pdb)?,
+        })
     }
 
     /// Returns an iterator over all source files in this debug file.
     pub fn files(&self) -> PdbFileIterator<'_> {
         PdbFileIterator {
-            debug_info: self.cell.get(),
-            units: self.cell.get().units(),
-            files: pdb::FileIterator::default(),
+            debug_info: &self.debug_info,
+            units: self.debug_info.units(),
+            files: FileChecksumIter::new(&[]),
             finished: false,
         }
     }
@@ -686,7 +554,7 @@ impl<'d> PdbDebugSession<'d> {
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> PdbFunctionIterator<'_> {
         PdbFunctionIterator {
-            units: self.cell.get().units(),
+            units: self.debug_info.units(),
             functions: Vec::new().into_iter(),
             finished: false,
         }
@@ -696,12 +564,11 @@ impl<'d> PdbDebugSession<'d> {
     ///
     /// See also: [`DebugSession::lookup_type`].
     pub fn lookup_type(&self, ty: &TypeRef) -> Result<Option<Type<'_>>, PdbError> {
-        let Some(index) = ty.as_pdb() else {
+        let Some(PdbTypeRef(index)) = ty.as_pdb() else {
             return Ok(None);
         };
 
-        let info = self.cell.get();
-        Ok(info.types.lookup(index.0)?)
+        self.debug_info.types.lookup(*index)
     }
 
     /// See [DebugSession::source_by_path] for more information.
@@ -718,11 +585,10 @@ impl<'d> PdbDebugSession<'d> {
     /// if present. Common values include "perforce", "tfs", "git", etc.
     /// Returns `None` if no SRCSRV stream exists or if it cannot be parsed.
     pub fn srcsrv_vcs_name(&self) -> Option<String> {
-        self.cell
-            .get()
+        self.debug_info
             .srcsrv
             .as_ref()
-            .map(|srcsrv| srcsrv.vcs_name().to_owned())
+            .map(|srcsrv| srcsrv.get().vcs_name().to_owned())
     }
 }
 
@@ -750,127 +616,83 @@ impl<'session> DebugSession<'session> for PdbDebugSession<'_> {
 
 struct Unit<'s> {
     debug_info: &'s PdbDebugInfo<'s>,
-    module_index: usize,
-    module: &'s pdb::ModuleInfo<'s>,
+    module: &'s ModuleStream,
 }
 
 impl<'s> Unit<'s> {
-    fn load(
-        debug_info: &'s PdbDebugInfo<'s>,
-        module_index: usize,
-        module: &'s pdb::ModuleInfo<'s>,
-    ) -> Result<Self, PdbError> {
-        Ok(Self {
-            debug_info,
-            module_index,
-            module,
-        })
-    }
-
-    fn collect_lines<I>(
+    fn collect_lines(
         &self,
-        mut line_iter: I,
-        program: &LineProgram<'s>,
-    ) -> Result<Vec<LineInfo<'s>>, PdbError>
-    where
-        I: FallibleIterator<Item = pdb::LineInfo>,
-        PdbError: From<I::Error>,
-    {
-        let address_map = &self.debug_info.address_map;
-
+        module_lines: &ModuleLines<'_>,
+        raw_lines: Vec<RawLine>,
+    ) -> Result<Vec<LineInfo<'s>>, PdbError> {
         let mut lines = Vec::new();
-        while let Some(line_info) = line_iter.next()? {
-            let rva = match line_info.offset.to_rva(address_map) {
-                Some(rva) => u64::from(rva.0),
-                None => continue,
+        for line in raw_lines {
+            let Some(address) = self.debug_info.addresses.rva(line.offset) else {
+                continue;
             };
-
-            // skip 0-sized line infos
-            let size = line_info.length.map(u64::from);
-            if size == Some(0) {
+            if line.size == Some(0) {
                 continue;
             }
-
-            let file_info = program.get_file_info(line_info.file_index)?;
-            let mut file = self.debug_info.file_info(file_info)?;
-
-            // Fill in source server information if available
-            if let Some(mappings) = self.debug_info.srcsrv.as_ref() {
-                let original_path = file.path_str();
-                let info = mappings.get_info(&original_path);
-                if let Some(SourceServerInfo { path, revision }) = info {
-                    file.set_srcsrv_path(path.as_bytes());
-                    file.set_srcsrv_revision(revision);
-                }
-            }
-
+            let file = self.debug_info.file_info(module_lines.file(line.file)?)?;
             lines.push(LineInfo {
-                address: rva,
-                size,
+                address: address.into(),
+                size: line.size.map(u64::from),
                 file,
-                line: line_info.line_start.into(),
+                line: line.line.into(),
             });
         }
         lines.sort_by_key(|line| line.address);
-
-        // Merge line infos that only differ in their `column` information, which we don't
-        // care about. We only want to output line infos that differ in their file/line.
-        lines.dedup_by(|current, prev| {
-            // the records need to be consecutive to be able to merge
-            let first_end = prev.size.and_then(|size| prev.address.checked_add(size));
-            let is_consecutive = first_end == Some(current.address);
-            // the line record points to the same file/line, so we want to merge/dedupe it
-            if is_consecutive && prev.file == current.file && prev.line == current.line {
-                prev.size = prev
+        lines.dedup_by(|current, previous| {
+            let end = previous
+                .size
+                .and_then(|size| previous.address.checked_add(size));
+            if end == Some(current.address)
+                && previous.file == current.file
+                && previous.line == current.line
+            {
+                previous.size = previous
                     .size
-                    .map(|first_size| first_size.saturating_add(current.size.unwrap_or(0)));
-
+                    .map(|size| size.saturating_add(current.size.unwrap_or(0)));
                 return true;
             }
             false
         });
-
         Ok(lines)
     }
 
-    fn handle_function(
+    fn function(
         &self,
-        offset: PdbInternalSectionOffset,
+        module_lines: &ModuleLines<'_>,
+        offset: OffsetSegment,
         len: u32,
-        name: RawString<'s>,
-        type_index: TypeIndex,
-        program: &LineProgram<'s>,
+        proc: &Proc<'s>,
+        kind: SymKind,
     ) -> Result<Option<Function<'s>>, PdbError> {
-        let address_map = &self.debug_info.address_map;
-
-        // Translate the function's address to the PE's address space. If this fails, we're
-        // likely dealing with an invalid function and can skip it.
-        let address = match offset.to_rva(address_map) {
-            Some(addr) => u64::from(addr.0),
-            None => return Ok(None),
+        let Some(address) = self.debug_info.addresses.rva(offset) else {
+            return Ok(None);
         };
-
-        // Names from the private symbol table are generally demangled. They contain the path of the
-        // scope and name of the function itself, including type parameters, and the parameter lists
-        // are contained in the type info. We do not emit a return type.
-        let formatter = &self.debug_info.type_formatter;
-        let name = name.to_string();
-        let name = Name::new(
-            formatter
-                .format_function(&name, self.module_index, type_index)
-                .map(Cow::Owned)
-                .unwrap_or(name),
-            NameMangling::Unmangled,
-            Language::Unknown,
-        );
-
-        let line_iter = program.lines_for_symbol(offset);
-        let lines = self.collect_lines(line_iter, program)?;
-
+        let types = &self.debug_info.types;
+        let resolve = |index| self.debug_info.resolve_index(module_lines, index);
+        let index = resolve(proc.fixed.proc_type.get());
+        let raw_name = String::from_utf8_lossy(proc.name);
+        let name = index
+            .and_then(|index| {
+                let index = if matches!(
+                    kind,
+                    SymKind::S_GPROC32_ID | SymKind::S_LPROC32_ID | SymKind::S_LPROC32_DPC_ID
+                ) {
+                    types.function_type(index)?
+                } else {
+                    index
+                };
+                types.format_function(&raw_name, index, &resolve)
+            })
+            .map_or(raw_name, Cow::Owned);
+        let lines = self.collect_lines(module_lines, module_lines.for_symbol(offset))?;
         Ok(Some(Function {
-            address,
+            address: address.into(),
             size: len.into(),
-            name,
+            name: Name::new(name, NameMangling::Unmangled, Language::Unknown),
             compilation_dir: &[],
             lines,
             inlinees: Vec::new(),
@@ -879,201 +701,191 @@ impl<'s> Unit<'s> {
         }))
     }
 
-    fn handle_procedure(
+    fn inlinee(
         &self,
-        proc: &ProcedureSymbol<'s>,
-        program: &LineProgram<'s>,
-    ) -> Result<Option<Function<'s>>, PdbError> {
-        self.handle_function(proc.offset, proc.len, proc.name, proc.type_index, program)
-    }
-
-    fn handle_separated_code(
-        &self,
-        proc: &ProcedureSymbol<'s>,
-        sepcode: &SeparatedCodeSymbol,
-        program: &LineProgram<'s>,
-    ) -> Result<Option<Function<'s>>, PdbError> {
-        self.handle_function(
-            sepcode.offset,
-            sepcode.len,
-            proc.name,
-            proc.type_index,
-            program,
-        )
-    }
-
-    fn handle_inlinee(
-        &self,
-        inline_site: InlineSiteSymbol<'s>,
-        parent_offset: PdbInternalSectionOffset,
-        inlinee: &pdb::Inlinee<'s>,
-        program: &LineProgram<'s>,
-    ) -> Result<Option<Function<'s>>, PdbError> {
-        let line_iter = inlinee.lines(parent_offset, &inline_site);
-        let lines = self.collect_lines(line_iter, program)?;
-
-        // If there are no line records, skip this inline function completely. Apparently, it was
-        // eliminated by the compiler, and cannot be hit by the program anymore. For `symbolic`,
-        // such functions do not have any use.
-        let start = match lines.first().map(|line| line.address) {
-            Some(address) => address,
-            None => return Ok(None),
-        };
-
-        let end = match lines
-            .last()
-            .map(|line| line.address + line.size.unwrap_or(1))
-        {
-            Some(address) => address,
-            None => return Ok(None),
-        };
-
-        let formatter = &self.debug_info.type_formatter;
-        let name = Name::new(
-            formatter.format_id(self.module_index, inline_site.inlinee)?,
-            NameMangling::Unmangled,
-            Language::Unknown,
-        );
-
-        Ok(Some(Function {
-            address: start,
-            size: end - start,
-            name,
+        module_lines: &ModuleLines<'_>,
+        parent: OffsetSegment,
+        id: u32,
+        annotations: &[u8],
+    ) -> Option<Function<'s>> {
+        let raw_lines = module_lines.inlinee(parent, id, annotations)?;
+        let lines = self.collect_lines(module_lines, raw_lines).ok()?;
+        let address = lines.first()?.address;
+        let last = lines.last()?;
+        let end = last.address + last.size.unwrap_or(1);
+        let index = self.debug_info.resolve_index(module_lines, TypeIndex(id))?;
+        let name = self.debug_info.types.format_id(index, &|index| {
+            self.debug_info.resolve_index(module_lines, index)
+        })?;
+        Some(Function {
+            address,
+            size: end - address,
+            name: Name::new(name, NameMangling::Unmangled, Language::Unknown),
             compilation_dir: &[],
             lines,
             inlinees: Vec::new(),
             variables: Vec::new(),
             inline: true,
-        }))
+        })
     }
 
     fn functions(&self) -> Result<Vec<Function<'s>>, PdbError> {
-        let program = self.module.line_program()?;
-        let mut symbols = self.module.symbols()?;
-
-        // Frames are constructed from `S_FRAMEPROC` entries which are associated with a procedure
-        // (`S_*PROC*` variants), we need the frame information for construction of variables ahead of
-        // time, unfortunately the `S_FRAMEPROC` can be placed anywhere in the scope of the procedure.
-        //
-        // That's why we parse ahead to find the frame info for each procedure, an alternative would
-        // be to keep track of symbols as they are discovered and on ending the procedure scope we
-        // fix-up all variables with the frame information. This is more efficient when it comes to
-        // parsing the symbol stream but requires more effort to keep around an unfinished variable
-        // state that can be completed later.
-        let mut frames = ProcedureFrames::new(self.module, self.debug_info.cpu)?;
-
-        // Depending on the compiler version, the inlinee table might not be sorted. Since constant
-        // search through inlinees is too slow (due to repeated parsing), but Inlinees are rather
-        // small structures, it is relatively cheap to collect them into an in-memory index.
-        let inlinees: BTreeMap<_, _> = self
-            .module
-            .inlinees()?
-            .map(|i| Ok((i.index(), i)))
-            .collect()?;
-
+        let module_lines = ModuleLines::new(self.module.c13_line_data_bytes())?;
+        let bytes = self.module.full_sym_data()?;
+        if !bytes.is_empty() && !bytes.starts_with(&CV_SIGNATURE_C13.to_le_bytes()) {
+            return Err(anyhow::anyhow!("unsupported CodeView symbol data format").into());
+        }
+        let mut symbols = SymIter::for_module_syms(bytes);
+        let mut frames = ProcedureFrames::new(bytes.len(), self.debug_info.cpu_family);
+        let resolve_type_index = |index| {
+            self.debug_info
+                .resolve_index(&module_lines, index)
+                .unwrap_or(index)
+        };
         let mut depth = 0;
         let mut inc_next = false;
         let mut skipped_depth = None;
-
         let mut functions = Vec::new();
         let mut stack = FunctionStack::new(self.debug_info);
         let mut proc_offsets = SmallVec::<[_; 3]>::new();
         let mut last_proc = None;
 
-        while let Some(symbol) = symbols.next()? {
+        loop {
+            let index = bytes.len() - symbols.rest().len();
+            let Some(symbol) = symbols.next() else {
+                break;
+            };
             if inc_next {
                 depth += 1;
             }
-
-            inc_next = symbol.starts_scope();
-            if symbol.ends_scope() {
+            inc_next = starts_scope(symbol.kind);
+            if symbol.kind.ends_scope() {
                 depth -= 1;
-
-                if proc_offsets.last().is_some_and(|&(d, _)| d >= depth) {
+                if proc_offsets
+                    .last()
+                    .is_some_and(|&(scope, _)| scope >= depth)
+                {
                     proc_offsets.pop();
                 }
             }
-
-            // If we're navigating within a skipped function (see below), we can ignore this
-            // entry completely. Otherwise, we've moved out of any skipped function and can
-            // reset the stored depth.
             match skipped_depth {
                 Some(skipped) if depth > skipped => continue,
                 _ => skipped_depth = None,
             }
-
-            // Flush all functions out that exceed the current iteration depth. Since we
-            // encountered a symbol at this level, there will be no more inlinees to the
-            // previous function at the same level or any of it's children.
-            if symbol.ends_scope() {
+            if symbol.kind.ends_scope() {
                 stack.flush(depth, &mut functions);
             }
 
-            let function = match symbol.parse() {
-                Ok(SymbolData::Procedure(proc)) => {
-                    proc_offsets.push((depth, proc.offset));
-                    let frame = frames.take(symbol.index(), proc.end)?;
-                    let function = self
-                        .handle_procedure(&proc, &program)?
-                        .map(|func| stack.standalone(depth, func, frame));
-                    last_proc = Some((proc, frame));
-                    function
+            let data = parse_symbol(&symbol).ok();
+            let builder = match data {
+                Some(SymData::Proc(proc)) => {
+                    let offset = proc.fixed.offset_segment;
+                    proc_offsets.push((depth, offset));
+                    let frame = frames.take(index, proc.fixed.p_end.get() as usize, &symbols);
+                    let builder = self
+                        .function(
+                            &module_lines,
+                            offset,
+                            proc.fixed.proc_len.get(),
+                            &proc,
+                            symbol.kind,
+                        )?
+                        .map(|function| stack.standalone(depth, function, frame));
+                    last_proc = Some((proc, frame, symbol.kind));
+                    builder
                 }
-                Ok(SymbolData::SeparatedCode(sepcode)) => match last_proc.as_ref() {
-                    Some((last_proc, last_frame)) if last_proc.offset == sepcode.parent_offset => {
-                        self.handle_separated_code(last_proc, &sepcode, &program)?
-                            .map(|func| stack.standalone(depth, func, *last_frame))
+                _ if symbol.kind == SymKind::S_SEPCODE => {
+                    let Some((proc, frame, kind)) = last_proc.as_ref() else {
+                        continue;
+                    };
+                    let (offset, parent, len) = separated_code(symbol.data)?;
+                    if proc.fixed.offset_segment != parent {
+                        continue;
                     }
-                    _ => continue,
-                },
-                Ok(SymbolData::InlineSite(site)) => {
-                    let parent_offset = proc_offsets
-                        .last()
-                        .map(|&(_, offset)| offset)
-                        .ok_or(PdbErrorKind::UnexpectedInline)?;
-
-                    // We can assume that inlinees will be listed in the inlinee table. If missing,
-                    // skip silently instead of erroring out. Missing a single inline function is
-                    // more acceptable in such a case than halting iteration completely.
-                    inlinees
-                        .get(&site.inlinee)
-                        .and_then(|inlinee| {
-                            // We have seen that the MSVC Compiler `19.16` (VS 2017) can output
-                            // `ChangeFile` annotations which are not properly aligned to the beginning
-                            // of a file checksum, leading to `UnimplementedFileChecksumKind` errors.
-                            // Investigation showed that this can happen for inlined `{ctor}` functions,
-                            // but there are no clear leads to why that might have happened, and how to
-                            // recover from these broken annotations.
-                            // For that reason, we skip these inlinees completely so we do not fail
-                            // processing the complete pdb file.
-                            self.handle_inlinee(site, parent_offset, inlinee, &program)
-                                .ok()
-                                .flatten()
-                        })
-                        .map(|func| stack.inlinee(depth, func))
+                    self.function(&module_lines, offset, len, proc, *kind)?
+                        .map(|function| stack.standalone(depth, function, *frame))
                 }
-                Ok(symbol) => {
-                    if let Some(top) = stack.top_mut() {
-                        top.visit_for_variables(depth, &symbol);
-                    }
-                    continue;
+                data => {
+                    let (id, annotations) = match data {
+                        Some(SymData::InlineSite(site)) => {
+                            (site.fixed.inlinee.get(), site.binary_annotations)
+                        }
+                        Some(SymData::InlineSite2(site)) => {
+                            (site.fixed.inlinee.get(), site.binary_annotations)
+                        }
+                        Some(data) => {
+                            if let Some(top) = stack.top_mut() {
+                                top.visit_for_variables(depth, &symbol, &data, &resolve_type_index);
+                            }
+                            continue;
+                        }
+                        _ => continue,
+                    };
+                    let &(_, parent) = proc_offsets.last().ok_or(PdbErrorKind::UnexpectedInline)?;
+                    self.inlinee(&module_lines, parent, id, annotations)
+                        .map(|function| stack.inlinee(depth, function))
                 }
-                // We need to ignore errors here since the PDB crate does not yet implement all
-                // symbol types. Instead of erroring too often, it's better to swallow these.
-                _ => continue,
             };
-
-            match function {
-                Some(function) => stack.push(function),
+            match builder {
+                Some(builder) => stack.push(builder),
                 None => skipped_depth = Some(depth),
             }
         }
-
-        // We're done, flush the remaining stack.
+        if !symbols.rest().is_empty() {
+            return Err(anyhow::anyhow!("truncated or invalid CodeView symbol record").into());
+        }
         stack.flush(0, &mut functions);
-
         Ok(functions)
     }
+}
+
+fn parse_symbol<'s>(symbol: &Sym<'s>) -> Result<SymData<'s>, ParserError> {
+    match symbol.kind {
+        SymKind::S_LPROC32_ID
+        | SymKind::S_GPROC32_ID
+        | SymKind::S_LPROC32_DPC
+        | SymKind::S_LPROC32_DPC_ID => symbol.parse_as::<Proc<'_>>().map(SymData::Proc),
+        SymKind::S_LPROC32_ST | SymKind::S_GPROC32_ST => {
+            let mut parser = Parser::new(symbol.data);
+            Ok(SymData::Proc(Proc {
+                fixed: parser.get()?,
+                name: parser.strt_raw()?,
+            }))
+        }
+        S_BLOCK32_ST => {
+            let mut parser = Parser::new(symbol.data);
+            Ok(SymData::Block(Block {
+                fixed: parser.get()?,
+                name: parser.strt_raw()?,
+            }))
+        }
+        _ => symbol.parse(),
+    }
+}
+
+fn starts_scope(kind: SymKind) -> bool {
+    kind.starts_scope()
+        || kind.is_proc()
+        || matches!(
+            kind,
+            S_BLOCK32_ST | SymKind::S_WITH32 | S_WITH32_ST | S_THUNK32_ST
+        )
+}
+
+fn separated_code(bytes: &[u8]) -> Result<(OffsetSegment, OffsetSegment, u32), ParserError> {
+    let mut parser = Parser::new(bytes);
+    parser.skip(8)?;
+    let len = parser.u32()?;
+    parser.skip(4)?;
+    let offset = parser.u32()?;
+    let parent = parser.u32()?;
+    let segment = parser.u16()?;
+    let parent_segment = parser.u16()?;
+    Ok((
+        OffsetSegment::new(offset, segment),
+        OffsetSegment::new(parent, parent_segment),
+        len,
+    ))
 }
 
 struct PdbUnitIterator<'s> {
@@ -1085,30 +897,29 @@ impl<'s> Iterator for PdbUnitIterator<'s> {
     type Item = Result<Unit<'s>, PdbError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let debug_info = self.debug_info;
-        while self.index < debug_info.modules().len() {
-            let module_index = self.index;
-            let result = debug_info.get_module(module_index);
+        while self.index < self.debug_info.modules.len() {
+            let index = self.index;
             self.index += 1;
-
-            let module = match result {
-                Ok(Some(module)) => module,
+            match self.debug_info.module_stream(index) {
+                Ok(Some(module)) => {
+                    return Some(Ok(Unit {
+                        debug_info: self.debug_info,
+                        module,
+                    }));
+                }
                 Ok(None) => continue,
                 Err(error) => return Some(Err(error)),
-            };
-
-            return Some(Unit::load(debug_info, module_index, module));
+            }
         }
-
         None
     }
 }
 
-/// An iterator over source files in a Pdb object.
+/// An iterator over source files in a PDB object.
 pub struct PdbFileIterator<'s> {
     debug_info: &'s PdbDebugInfo<'s>,
     units: PdbUnitIterator<'s>,
-    files: pdb::FileIterator<'s>,
+    files: FileChecksumIter<'s>,
     finished: bool,
 }
 
@@ -1119,45 +930,27 @@ impl<'s> Iterator for PdbFileIterator<'s> {
         if self.finished {
             return None;
         }
-
         loop {
-            if let Some(file_result) = self.files.next().transpose() {
-                let result = file_result
-                    .map_err(|err| err.into())
-                    .and_then(|i| self.debug_info.file_info(i))
-                    .map(|mut file| {
-                        // Fill in source server information if available
-                        if let Some(mappings) = &self.debug_info.srcsrv {
-                            let original_path = file.path_str();
-                            let info = mappings.get_info(&original_path);
-                            if let Some(SourceServerInfo { path, revision }) = info {
-                                file.set_srcsrv_path(path.as_bytes());
-                                file.set_srcsrv_revision(revision);
-                            }
-                        }
-
-                        FileEntry::new(Cow::default(), file)
-                    });
-
-                return Some(result);
+            if let Some(checksum) = self.files.next() {
+                return Some(
+                    self.debug_info
+                        .file_info(checksum.name())
+                        .map(|file| FileEntry::new(Cow::default(), file)),
+                );
             }
-
-            let unit = match self.units.next() {
-                Some(Ok(unit)) => unit,
+            match self.units.next() {
+                Some(Ok(unit)) => {
+                    if let Some(checksums) = unit.module.c13_line_data().find_checksums() {
+                        self.files = checksums.iter();
+                    }
+                }
                 Some(Err(error)) => return Some(Err(error)),
-                None => break,
-            };
-
-            let line_program = match unit.module.line_program() {
-                Ok(line_program) => line_program,
-                Err(error) => return Some(Err(error.into())),
-            };
-
-            self.files = line_program.files();
+                None => {
+                    self.finished = true;
+                    return None;
+                }
+            }
         }
-
-        self.finished = true;
-        None
     }
 }
 

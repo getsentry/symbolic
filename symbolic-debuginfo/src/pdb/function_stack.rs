@@ -1,12 +1,13 @@
 use std::collections::VecDeque;
 
-use fallible_iterator::FallibleIterator;
-use pdb_addr2line::pdb::{self, FrameProcedureFlags, ModuleInfo, SymbolData, SymbolIndex};
+use ms_pdb::codeview::parser::Parser;
+use ms_pdb::syms::{Sym, SymData, SymIter, SymKind};
+use ms_pdb::types::TypeIndex;
 use smallvec::SmallVec;
 use symbolic_common::{CpuFamily, register::Register};
 
 use crate::base::{Function, VariableKind};
-use crate::pdb::{PdbDebugInfo, register, variables};
+use crate::pdb::{PdbDebugInfo, parse_symbol, register, starts_scope, variables};
 
 /// A stack for assembling function trees from lists of nested functions.
 pub struct FunctionStack<'a> {
@@ -112,7 +113,13 @@ pub struct FunctionBuilder<'a> {
 
 impl<'a> FunctionBuilder<'a> {
     /// Visitor for each symbol which is parsed within the scope of the function.
-    pub fn visit_for_variables(&mut self, depth: isize, symbol: &SymbolData<'a>) {
+    pub fn visit_for_variables(
+        &mut self,
+        depth: isize,
+        symbol: &Sym<'a>,
+        data: &SymData<'a>,
+        resolve: &impl Fn(TypeIndex) -> TypeIndex,
+    ) {
         let Some(vars) = self.variables.last_mut() else {
             return;
         };
@@ -125,13 +132,13 @@ impl<'a> FunctionBuilder<'a> {
             return;
         }
 
-        match symbol {
-            SymbolData::Block(block) => {
-                let rva = block.offset.to_rva(&self.debug_info.address_map);
-                let nested = vars.nested(rva, block.len.into());
+        match data {
+            SymData::Block(block) => {
+                let rva = self.debug_info.addresses.rva(block.fixed.offset_segment);
+                let nested = vars.nested(rva, block.fixed.length.get().into());
                 self.variables.push(nested);
             }
-            symbol => vars.add(symbol),
+            _ => vars.add(symbol, data, resolve),
         }
     }
 
@@ -165,10 +172,10 @@ pub struct Frame {
 }
 
 impl Frame {
-    fn new(cpu: CpuFamily, flags: FrameProcedureFlags) -> Self {
+    fn new(cpu: CpuFamily, flags: u32) -> Self {
         Self {
-            local_base: register::frame_base(cpu, flags.encoded_local_base_pointer),
-            param_base: register::frame_base(cpu, flags.encoded_param_base_pointer),
+            local_base: register::frame_base(cpu, ((flags >> 14) & 3) as u8),
+            param_base: register::frame_base(cpu, ((flags >> 16) & 3) as u8),
         }
     }
 
@@ -181,25 +188,25 @@ impl Frame {
 }
 
 /// Lazily reads procedure frames in symbol-stream order.
-pub struct ProcedureFrames<'s> {
-    symbols: pdb::SymbolIter<'s>,
+pub struct ProcedureFrames {
+    stream_len: usize,
     cpu: CpuFamily,
-    frames: VecDeque<(SymbolIndex, Frame)>,
+    frames: VecDeque<(usize, Frame)>,
 }
 
-impl<'s> ProcedureFrames<'s> {
-    /// Creates a new [`ProcedureFrames`] for the specified `module`.
-    pub fn new(module: &'s ModuleInfo<'_>, cpu: CpuFamily) -> pdb::Result<Self> {
-        Ok(Self {
-            symbols: module.symbols()?,
+impl ProcedureFrames {
+    /// Creates a new [`ProcedureFrames`] for the module symbol stream.
+    pub fn new(stream_len: usize, cpu: CpuFamily) -> Self {
+        Self {
+            stream_len,
             cpu,
             frames: VecDeque::new(),
-        })
+        }
     }
 
     /// Advances the internal state of [`ProcedureFrames`] to the specified `symbol` and returns its
     /// related [`Frame`].
-    pub fn take(&mut self, symbol: SymbolIndex, end: SymbolIndex) -> pdb::Result<Frame> {
+    pub fn take(&mut self, symbol: usize, end: usize, following: &SymIter<'_>) -> Frame {
         // Remove all frames which are before `symbol`.
         while self
             .frames
@@ -209,53 +216,53 @@ impl<'s> ProcedureFrames<'s> {
 
         // If there are no frames left, we need to collect more.
         if self.frames.is_empty() {
-            self.scan_next(symbol, end)?;
+            self.scan_next(symbol, end, following.clone());
         }
 
-        Ok(self
-            .frames
+        self.frames
             .pop_front_if(|(start, _)| *start == symbol)
             .map(|(_, frame)| frame)
-            .unwrap_or_default())
+            .unwrap_or_default()
     }
 
     /// Scans ahead until the requested frame is found or its scope closes.
-    fn scan_next(&mut self, index: SymbolIndex, end: SymbolIndex) -> pdb::Result<()> {
-        const S_FRAMEPROC: u16 = 0x1012;
-
-        self.symbols.skip_to(index)?;
-
+    fn scan_next(&mut self, index: usize, end: usize, mut symbols: SymIter<'_>) {
         let mut scopes = SmallVec::<[_; 5]>::new();
         scopes.push(Some((self.frames.len(), end)));
         self.frames.push_back((index, Frame::default()));
 
-        while let Some(symbol) = self.symbols.next()? {
-            if symbol.starts_scope() {
-                let slot = if let Ok(SymbolData::Procedure(procedure)) = symbol.parse() {
+        loop {
+            let index = self.stream_len - symbols.rest().len();
+            let Some(symbol) = symbols.next() else {
+                break;
+            };
+            if starts_scope(symbol.kind) {
+                let slot = if let Ok(SymData::Proc(procedure)) = parse_symbol(&symbol) {
                     let slot = self.frames.len();
-                    self.frames.push_back((symbol.index(), Frame::default()));
-                    Some((slot, procedure.end))
+                    self.frames.push_back((index, Frame::default()));
+                    Some((slot, procedure.fixed.p_end.get() as usize))
                 } else {
                     None
                 };
                 scopes.push(slot);
-            } else if symbol.ends_scope() {
+            } else if symbol.kind.ends_scope() {
                 scopes.pop();
                 if scopes.is_empty() {
                     break;
                 }
-            } else if symbol.raw_kind() == S_FRAMEPROC {
+            } else if symbol.kind == SymKind::S_FRAMEPROC {
                 let Some(scope) = scopes.last_mut() else {
                     continue;
                 };
                 let Some((slot, end)) = *scope else {
                     continue;
                 };
-                if symbol.index() >= end {
+                if index >= end {
                     continue;
                 }
-                if let Ok(SymbolData::FrameProcedure(frame)) = symbol.parse() {
-                    self.frames[slot].1 = Frame::new(self.cpu, frame.flags);
+                let mut parser = Parser::new(symbol.data);
+                if let Ok(flags) = parser.skip(22).and_then(|()| parser.u32()) {
+                    self.frames[slot].1 = Frame::new(self.cpu, flags);
                     *scope = None;
                     if scopes.len() == 1 {
                         break;
@@ -263,8 +270,6 @@ impl<'s> ProcedureFrames<'s> {
                 }
             }
         }
-
-        Ok(())
     }
 }
 

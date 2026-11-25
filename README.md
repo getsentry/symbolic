@@ -71,7 +71,7 @@ for better use:
 - [sourcemap](https://github.com/getsentry/rust-sourcemap)
 - [gimli](https://github.com/gimli-rs/gimli)
 - [goblin](https://github.com/m4b/goblin)
-- [pdb](https://github.com/willglynn/pdb)
+- [ms-pdb](https://github.com/microsoft/pdb-rs)
 
 ## Building and Development
 

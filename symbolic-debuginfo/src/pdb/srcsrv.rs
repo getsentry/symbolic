@@ -7,6 +7,8 @@ use std::str::FromStr;
 
 use crate::pdb::{PdbError, PdbErrorKind};
 
+use ms_pdb::StreamData;
+use symbolic_common::{AsSelf, SelfCell};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -70,6 +72,22 @@ pub struct SourceServerMappings<'s> {
     cache: RefCell<HashMap<String, Option<SourceServerInfo>>>,
     /// The underlying `SrcSrvStream`.
     stream: srcsrv::SrcSrvStream<'s>,
+}
+
+pub(super) type OwnedSourceServerMappings = SelfCell<Box<[u8]>, SourceServerMappings<'static>>;
+
+impl<'slf, 's: 'slf> AsSelf<'slf> for SourceServerMappings<'s> {
+    type Ref = SourceServerMappings<'slf>;
+
+    fn as_self(&'slf self) -> &'slf Self::Ref {
+        self
+    }
+}
+
+impl SourceServerMappings<'static> {
+    pub(super) fn from_stream(stream: StreamData) -> Result<OwnedSourceServerMappings, PdbError> {
+        SelfCell::try_new(stream.into_boxed(), |bytes| Self::parse(unsafe { &*bytes }))
+    }
 }
 
 impl<'s> SourceServerMappings<'s> {

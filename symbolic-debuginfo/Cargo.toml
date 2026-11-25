@@ -54,14 +54,14 @@ macho = [
 ]
 # PDB/PE processing
 ms = [
+    "anyhow",
     "elsa",
     "flate2",
     "goblin/pe32",
     "goblin/pe64",
     "goblin/std",
     "hashbrown",
-    "parking_lot",
-    "pdb-addr2line",
+    "ms-pdb",
     "scroll",
     "smallvec",
     "srcsrv",
@@ -83,6 +83,7 @@ js = ["dep:memchr"]
 wasm = ["dwarf", "wasmparser"]
 
 [dependencies]
+anyhow = { workspace = true, optional = true }
 debugid = { workspace = true }
 elementtree = { workspace = true, optional = true }
 elsa = { workspace = true, optional = true }
@@ -93,10 +94,10 @@ goblin = { workspace = true, optional = true }
 hashbrown = { workspace = true, optional = true }
 indexmap = { workspace = true, optional = true }
 memchr = { workspace = true, optional = true }
+ms-pdb = { version = "0.1.22", optional = true }
 nom = { workspace = true, optional = true }
 nom-supreme = { workspace = true, optional = true }
 parking_lot = { workspace = true, optional = true }
-pdb-addr2line = { workspace = true, optional = true }
 percent-encoding = { workspace = true, optional = true }
 regex = { workspace = true, optional = true }
 scroll = { workspace = true, optional = true }

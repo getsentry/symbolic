@@ -171,7 +171,7 @@ impl<'data> PeObject<'data> {
     /// The CPU architecture of this object, as specified in the COFF header.
     pub fn arch(&self) -> Arch {
         let machine = self.pe.header.coff_header.machine;
-        crate::pdb::arch_from_machine(machine.into())
+        crate::pdb::arch_from_machine(ms_pdb::coff::IMAGE_FILE_MACHINE(machine))
     }
 
     /// The kind of this object, as specified in the PE header.

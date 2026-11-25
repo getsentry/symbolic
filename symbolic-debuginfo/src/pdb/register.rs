@@ -1,4 +1,4 @@
-use pdb_addr2line::pdb::{self, register as codeview};
+use ms_pdb::codeview::arch::{amd64::Amd64Reg, arm64::Arm64Reg, x86::X86Reg};
 use symbolic_common::{CpuFamily, register as symbolic};
 
 /// Decodes an `S_FRAMEPROC` base as a physical register.
@@ -24,20 +24,18 @@ pub fn frame_base(cpu: CpuFamily, encoded: u8) -> Option<symbolic::Register> {
 }
 
 /// Translates a CodeView register number using the CPU family's register set.
-pub fn to_symbolic(cpu: CpuFamily, register: pdb::Register) -> Option<symbolic::Register> {
+pub fn to_symbolic(cpu: CpuFamily, register: u16) -> Option<symbolic::Register> {
     match cpu {
-        CpuFamily::Intel32 => intel32(register.0.try_into().ok()?).map(Into::into),
-        CpuFamily::Amd64 => amd64(register.0.try_into().ok()?).map(Into::into),
-        CpuFamily::Arm32 => arm32(register.0.try_into().ok()?).map(Into::into),
-        CpuFamily::Arm64 | CpuFamily::Arm64_32 => {
-            arm64(register.0.try_into().ok()?).map(Into::into)
-        }
+        CpuFamily::Intel32 => intel32(X86Reg(register)).map(Into::into),
+        CpuFamily::Amd64 => amd64(Amd64Reg(register)).map(Into::into),
+        CpuFamily::Arm32 => arm32(register).map(Into::into),
+        CpuFamily::Arm64 | CpuFamily::Arm64_32 => arm64(Arm64Reg(register)).map(Into::into),
         _ => None,
     }
 }
 
-fn intel32(register: codeview::X86Register) -> Option<symbolic::Intel32Register> {
-    use codeview::X86Register as Cv;
+fn intel32(register: X86Reg) -> Option<symbolic::Intel32Register> {
+    use X86Reg as Cv;
     use symbolic::Intel32Register as Reg;
 
     Some(match register {
@@ -88,8 +86,8 @@ fn intel32(register: codeview::X86Register) -> Option<symbolic::Intel32Register>
     })
 }
 
-fn amd64(register: codeview::AMD64Register) -> Option<symbolic::Amd64Register> {
-    use codeview::AMD64Register as Cv;
+fn amd64(register: Amd64Reg) -> Option<symbolic::Amd64Register> {
+    use Amd64Reg as Cv;
     use symbolic::Amd64Register as Reg;
 
     Some(match register {
@@ -158,125 +156,124 @@ fn amd64(register: codeview::AMD64Register) -> Option<symbolic::Amd64Register> {
     })
 }
 
-fn arm32(register: codeview::ARMRegister) -> Option<symbolic::Arm32Register> {
-    use codeview::ARMRegister as Cv;
+fn arm32(register: u16) -> Option<symbolic::Arm32Register> {
     use symbolic::Arm32Register as Reg;
 
     Some(match register {
-        Cv::R0 => Reg::R0,
-        Cv::R1 => Reg::R1,
-        Cv::R2 => Reg::R2,
-        Cv::R3 => Reg::R3,
-        Cv::R4 => Reg::R4,
-        Cv::R5 => Reg::R5,
-        Cv::R6 => Reg::R6,
-        Cv::R7 => Reg::R7,
-        Cv::R8 => Reg::R8,
-        Cv::R9 => Reg::R9,
-        Cv::R10 => Reg::R10,
-        Cv::R11 => Reg::R11,
-        Cv::R12 => Reg::R12,
-        Cv::SP => Reg::R13,
-        Cv::LR => Reg::R14,
-        Cv::PC => Reg::R15,
-        Cv::FS0 => Reg::S0,
-        Cv::FS1 => Reg::S1,
-        Cv::FS2 => Reg::S2,
-        Cv::FS3 => Reg::S3,
-        Cv::FS4 => Reg::S4,
-        Cv::FS5 => Reg::S5,
-        Cv::FS6 => Reg::S6,
-        Cv::FS7 => Reg::S7,
-        Cv::FS8 => Reg::S8,
-        Cv::FS9 => Reg::S9,
-        Cv::FS10 => Reg::S10,
-        Cv::FS11 => Reg::S11,
-        Cv::FS12 => Reg::S12,
-        Cv::FS13 => Reg::S13,
-        Cv::FS14 => Reg::S14,
-        Cv::FS15 => Reg::S15,
-        Cv::FS16 => Reg::S16,
-        Cv::FS17 => Reg::S17,
-        Cv::FS18 => Reg::S18,
-        Cv::FS19 => Reg::S19,
-        Cv::FS20 => Reg::S20,
-        Cv::FS21 => Reg::S21,
-        Cv::FS22 => Reg::S22,
-        Cv::FS23 => Reg::S23,
-        Cv::FS24 => Reg::S24,
-        Cv::FS25 => Reg::S25,
-        Cv::FS26 => Reg::S26,
-        Cv::FS27 => Reg::S27,
-        Cv::FS28 => Reg::S28,
-        Cv::FS29 => Reg::S29,
-        Cv::FS30 => Reg::S30,
-        Cv::FS31 => Reg::S31,
-        Cv::WCGR0 => Reg::Wcgr0,
-        Cv::WCGR1 => Reg::Wcgr1,
-        Cv::WCGR2 => Reg::Wcgr2,
-        Cv::WCGR3 => Reg::Wcgr3,
-        Cv::WR0 => Reg::Wr0,
-        Cv::WR1 => Reg::Wr1,
-        Cv::WR2 => Reg::Wr2,
-        Cv::WR3 => Reg::Wr3,
-        Cv::WR4 => Reg::Wr4,
-        Cv::WR5 => Reg::Wr5,
-        Cv::WR6 => Reg::Wr6,
-        Cv::WR7 => Reg::Wr7,
-        Cv::WR8 => Reg::Wr8,
-        Cv::WR9 => Reg::Wr9,
-        Cv::WR10 => Reg::Wr10,
-        Cv::WR11 => Reg::Wr11,
-        Cv::WR12 => Reg::Wr12,
-        Cv::WR13 => Reg::Wr13,
-        Cv::WR14 => Reg::Wr14,
-        Cv::WR15 => Reg::Wr15,
-        Cv::WCID => Reg::Wc0,
-        Cv::WCON => Reg::Wc1,
-        Cv::WCSSF => Reg::Wc2,
-        Cv::WCASF => Reg::Wc3,
-        Cv::WC4 => Reg::Wc4,
-        Cv::WC5 => Reg::Wc5,
-        Cv::WC6 => Reg::Wc6,
-        Cv::WC7 => Reg::Wc7,
-        Cv::ND0 => Reg::D0,
-        Cv::ND1 => Reg::D1,
-        Cv::ND2 => Reg::D2,
-        Cv::ND3 => Reg::D3,
-        Cv::ND4 => Reg::D4,
-        Cv::ND5 => Reg::D5,
-        Cv::ND6 => Reg::D6,
-        Cv::ND7 => Reg::D7,
-        Cv::ND8 => Reg::D8,
-        Cv::ND9 => Reg::D9,
-        Cv::ND10 => Reg::D10,
-        Cv::ND11 => Reg::D11,
-        Cv::ND12 => Reg::D12,
-        Cv::ND13 => Reg::D13,
-        Cv::ND14 => Reg::D14,
-        Cv::ND15 => Reg::D15,
-        Cv::ND16 => Reg::D16,
-        Cv::ND17 => Reg::D17,
-        Cv::ND18 => Reg::D18,
-        Cv::ND19 => Reg::D19,
-        Cv::ND20 => Reg::D20,
-        Cv::ND21 => Reg::D21,
-        Cv::ND22 => Reg::D22,
-        Cv::ND23 => Reg::D23,
-        Cv::ND24 => Reg::D24,
-        Cv::ND25 => Reg::D25,
-        Cv::ND26 => Reg::D26,
-        Cv::ND27 => Reg::D27,
-        Cv::ND28 => Reg::D28,
-        Cv::ND29 => Reg::D29,
-        Cv::ND30 => Reg::D30,
-        Cv::ND31 => Reg::D31,
+        10 => Reg::R0,
+        11 => Reg::R1,
+        12 => Reg::R2,
+        13 => Reg::R3,
+        14 => Reg::R4,
+        15 => Reg::R5,
+        16 => Reg::R6,
+        17 => Reg::R7,
+        18 => Reg::R8,
+        19 => Reg::R9,
+        20 => Reg::R10,
+        21 => Reg::R11,
+        22 => Reg::R12,
+        23 => Reg::R13,
+        24 => Reg::R14,
+        25 => Reg::R15,
+        50 => Reg::S0,
+        51 => Reg::S1,
+        52 => Reg::S2,
+        53 => Reg::S3,
+        54 => Reg::S4,
+        55 => Reg::S5,
+        56 => Reg::S6,
+        57 => Reg::S7,
+        58 => Reg::S8,
+        59 => Reg::S9,
+        60 => Reg::S10,
+        61 => Reg::S11,
+        62 => Reg::S12,
+        63 => Reg::S13,
+        64 => Reg::S14,
+        65 => Reg::S15,
+        66 => Reg::S16,
+        67 => Reg::S17,
+        68 => Reg::S18,
+        69 => Reg::S19,
+        70 => Reg::S20,
+        71 => Reg::S21,
+        72 => Reg::S22,
+        73 => Reg::S23,
+        74 => Reg::S24,
+        75 => Reg::S25,
+        76 => Reg::S26,
+        77 => Reg::S27,
+        78 => Reg::S28,
+        79 => Reg::S29,
+        80 => Reg::S30,
+        81 => Reg::S31,
+        152 => Reg::Wcgr0,
+        153 => Reg::Wcgr1,
+        154 => Reg::Wcgr2,
+        155 => Reg::Wcgr3,
+        128 => Reg::Wr0,
+        129 => Reg::Wr1,
+        130 => Reg::Wr2,
+        131 => Reg::Wr3,
+        132 => Reg::Wr4,
+        133 => Reg::Wr5,
+        134 => Reg::Wr6,
+        135 => Reg::Wr7,
+        136 => Reg::Wr8,
+        137 => Reg::Wr9,
+        138 => Reg::Wr10,
+        139 => Reg::Wr11,
+        140 => Reg::Wr12,
+        141 => Reg::Wr13,
+        142 => Reg::Wr14,
+        143 => Reg::Wr15,
+        144 => Reg::Wc0,
+        145 => Reg::Wc1,
+        146 => Reg::Wc2,
+        147 => Reg::Wc3,
+        148 => Reg::Wc4,
+        149 => Reg::Wc5,
+        150 => Reg::Wc6,
+        151 => Reg::Wc7,
+        300 => Reg::D0,
+        301 => Reg::D1,
+        302 => Reg::D2,
+        303 => Reg::D3,
+        304 => Reg::D4,
+        305 => Reg::D5,
+        306 => Reg::D6,
+        307 => Reg::D7,
+        308 => Reg::D8,
+        309 => Reg::D9,
+        310 => Reg::D10,
+        311 => Reg::D11,
+        312 => Reg::D12,
+        313 => Reg::D13,
+        314 => Reg::D14,
+        315 => Reg::D15,
+        316 => Reg::D16,
+        317 => Reg::D17,
+        318 => Reg::D18,
+        319 => Reg::D19,
+        320 => Reg::D20,
+        321 => Reg::D21,
+        322 => Reg::D22,
+        323 => Reg::D23,
+        324 => Reg::D24,
+        325 => Reg::D25,
+        326 => Reg::D26,
+        327 => Reg::D27,
+        328 => Reg::D28,
+        329 => Reg::D29,
+        330 => Reg::D30,
+        331 => Reg::D31,
         _ => return None,
     })
 }
 
-fn arm64(register: codeview::ARM64Register) -> Option<symbolic::Arm64Register> {
-    use codeview::ARM64Register as Cv;
+fn arm64(register: Arm64Reg) -> Option<symbolic::Arm64Register> {
+    use Arm64Reg as Cv;
     use symbolic::Arm64Register as Reg;
 
     Some(match register {
@@ -352,15 +349,10 @@ fn arm64(register: codeview::ARM64Register) -> Option<symbolic::Arm64Register> {
 mod tests {
     use super::*;
 
-    use codeview::AMD64Register;
-
     /// Sub registers such as AL, AH, AX are not currently being mapped and supported in
     /// `symbolic_common`, so for now there is no mapping.
     #[test]
     fn test_sub_register() {
-        assert_eq!(
-            to_symbolic(CpuFamily::Amd64, pdb::Register(AMD64Register::AL as u16)),
-            None
-        );
+        assert_eq!(to_symbolic(CpuFamily::Amd64, Amd64Reg::AL.0), None);
     }
 }

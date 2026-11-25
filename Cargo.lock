@@ -35,7 +35,7 @@ dependencies = [
  "cfg-if",
  "once_cell",
  "version_check",
- "zerocopy",
+ "zerocopy 0.7.35",
 ]
 
 [[package]]
@@ -218,12 +218,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "binary-merge"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "597bb81c80a54b6a4381b23faba8d7774b144c94cbd1d6fe3f1329bd776554ab"
-
-[[package]]
 name = "bit-set"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -237,6 +231,12 @@ name = "bit-vec"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e764a1d40d510daf35e07be9eb06e75770908c27d411ee6c92109c9840eaaf7"
+
+[[package]]
+name = "bitfield"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d7e60934ceec538daadb9d8432424ed043a904d8e0243f3c6446bce549a46ac"
 
 [[package]]
 name = "bitflags"
@@ -818,7 +818,7 @@ checksum = "0d494b2004fbc8cf419a6d2115488df4e11140f6f4abd877519de1bbd90c5370"
 dependencies = [
  "log",
  "plain",
- "scroll 0.13.0",
+ "scroll",
 ]
 
 [[package]]
@@ -1078,15 +1078,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "inplace-vec-builder"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf64c2edc8226891a71f127587a2861b132d2b942310843814d5001d99a1d307"
-dependencies = [
- "smallvec",
-]
-
-[[package]]
 name = "insta"
 version = "1.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1251,12 +1242,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "maybe-owned"
-version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4facc753ae494aeb6e3c22f839b158aebd4f9270f55cd3c79906c45476c47ab4"
-
-[[package]]
 name = "memchr"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1295,7 +1280,7 @@ dependencies = [
  "procfs-core",
  "prost",
  "range-map",
- "scroll 0.13.0",
+ "scroll",
  "thiserror",
  "time",
  "tracing",
@@ -1313,7 +1298,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "range-map",
- "scroll 0.13.0",
+ "scroll",
  "smart-default",
 ]
 
@@ -1330,7 +1315,7 @@ dependencies = [
  "minidump",
  "minidump-common",
  "minidump-unwind",
- "scroll 0.13.0",
+ "scroll",
  "serde",
  "serde_json",
  "thiserror",
@@ -1348,7 +1333,7 @@ dependencies = [
  "breakpad-symbols",
  "minidump",
  "minidump-common",
- "scroll 0.13.0",
+ "scroll",
  "tracing",
 ]
 
@@ -1395,6 +1380,96 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "ms-codeview"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be9fa41856ae9a7b5e6eb996f0d6caea5de1495df0ede6399c63b10fef31a20a"
+dependencies = [
+ "anyhow",
+ "bitfield",
+ "bitflags",
+ "bstr",
+ "ms-coff",
+ "pretty-hex",
+ "tracing",
+ "uuid",
+ "zerocopy 0.8.27",
+ "zerocopy-derive 0.8.27",
+]
+
+[[package]]
+name = "ms-coff"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9334bf330495dab66d7a01f566c990af77e75517d3dedc3a2fff3385a609efef"
+dependencies = [
+ "bitflags",
+ "bstr",
+ "static_assertions",
+ "zerocopy 0.8.27",
+ "zerocopy-derive 0.8.27",
+]
+
+[[package]]
+name = "ms-pdb"
+version = "0.1.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "687f8cdf384ff78054f954029731370037e898b7c48f49db4246faf0869c54ac"
+dependencies = [
+ "anyhow",
+ "bitfield",
+ "bitflags",
+ "bitvec",
+ "bstr",
+ "ms-codeview",
+ "ms-coff",
+ "ms-pdb-msf",
+ "ms-pdb-msfz",
+ "pow2",
+ "pretty-hex",
+ "static_assertions",
+ "sync_file",
+ "tracing",
+ "uuid",
+ "zerocopy 0.8.27",
+ "zerocopy-derive 0.8.27",
+]
+
+[[package]]
+name = "ms-pdb-msf"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8434ff1e27d78bf7726e15d8bbeee7699f29593a6a74f7bc30f7a2f3cdf1a3d5"
+dependencies = [
+ "anyhow",
+ "bitvec",
+ "pow2",
+ "static_assertions",
+ "sync_file",
+ "tracing",
+ "uuid",
+ "zerocopy 0.8.27",
+ "zerocopy-derive 0.8.27",
+]
+
+[[package]]
+name = "ms-pdb-msfz"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6d6e1edbe572a4858a58daea361716cfbbab720b238baf70cc8bbc3fca3a94e"
+dependencies = [
+ "anyhow",
+ "flate2",
+ "pow2",
+ "static_assertions",
+ "sync_file",
+ "tracing",
+ "zerocopy 0.8.27",
+ "zerocopy-derive 0.8.27",
+ "zstd 0.13.5",
 ]
 
 [[package]]
@@ -1579,31 +1654,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pdb-addr2line"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3263467eb4f7871a8bd6650fe7230de816d1f744e32e9a9754df9898d0540ce"
-dependencies = [
- "bitflags",
- "elsa",
- "maybe-owned",
- "pdb2",
- "range-collections",
- "thiserror",
-]
-
-[[package]]
-name = "pdb2"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "408d6fa13d943ee4b76ffda52cc28e817df9c2c4b2c46bd9aec8bff574377e1a"
-dependencies = [
- "fallible-iterator",
- "scroll 0.12.0",
- "uuid",
-]
-
-[[package]]
 name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1713,6 +1763,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pow2"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ae2effd3c9b3ac6ee244ab9add985d6e1be66c318bad1fac682666f42578d88"
+dependencies = [
+ "zerocopy 0.7.35",
+ "zerocopy-derive 0.7.35",
+]
+
+[[package]]
 name = "powerfmt"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1724,7 +1784,7 @@ version = "0.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77957b295656769bb8ad2b6a6b09d897d94f05c41b069aede1fcdaa675eaea04"
 dependencies = [
- "zerocopy",
+ "zerocopy 0.7.35",
 ]
 
 [[package]]
@@ -1732,6 +1792,12 @@ name = "precomputed-hash"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
+
+[[package]]
+name = "pretty-hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4f0ef5907a6369b0ab657be63621a651e2c2c9d2eb4f0ea43b4b91bab4c9c58"
 
 [[package]]
 name = "proc-macro2"
@@ -1874,18 +1940,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "range-collections"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "861706ea9c4aded7584c5cd1d241cec2ea7f5f50999f236c22b65409a1f1a0d0"
-dependencies = [
- "binary-merge",
- "inplace-vec-builder",
- "ref-cast",
- "smallvec",
-]
-
-[[package]]
 name = "range-map"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1921,26 +1975,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03a862b389f93e68874fbf580b9de08dd02facb9a788ebadaf4a3fd33cf58834"
 dependencies = [
  "bitflags",
-]
-
-[[package]]
-name = "ref-cast"
-version = "1.0.25"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f354300ae66f76f1c85c5f84693f0ce81d747e2c3f21a45fef496d89c960bf7d"
-dependencies = [
- "ref-cast-impl",
-]
-
-[[package]]
-name = "ref-cast-impl"
-version = "1.0.25"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7186006dcb21920990093f30e3dea63b7d6e977bf1256be20c3563a5db070da"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.96",
 ]
 
 [[package]]
@@ -2050,12 +2084,6 @@ name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
-
-[[package]]
-name = "scroll"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ab8598aa408498679922eff7fa985c25d58a90771bd6be794434c5277eab1a6"
 
 [[package]]
 name = "scroll"
@@ -2526,6 +2554,7 @@ dependencies = [
 name = "symbolic-debuginfo"
 version = "14.0.0-alpha.5"
 dependencies = [
+ "anyhow",
  "criterion",
  "debugid",
  "elementtree",
@@ -2538,14 +2567,14 @@ dependencies = [
  "indexmap",
  "insta",
  "memchr",
+ "ms-pdb",
  "nom",
  "nom-supreme",
  "parking_lot",
- "pdb-addr2line",
  "percent-encoding",
  "proptest",
  "regex",
- "scroll 0.13.0",
+ "scroll",
  "serde",
  "serde_json",
  "similar-asserts",
@@ -2558,7 +2587,7 @@ dependencies = [
  "thiserror",
  "wasmparser",
  "zip",
- "zstd",
+ "zstd 0.14.3",
 ]
 
 [[package]]
@@ -2649,7 +2678,7 @@ dependencies = [
  "insta",
  "quick-xml",
  "regex",
- "scroll 0.13.0",
+ "scroll",
  "serde",
  "similar-asserts",
  "symbolic-testutils",
@@ -2700,6 +2729,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "sync_file"
+version = "0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9cfc24238213e42ffb35314aad7a7f5d46649c5fbba3ea95ef24f7debb95874e"
+dependencies = [
+ "wasi",
 ]
 
 [[package]]
@@ -3418,7 +3456,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b9b4fd18abc82b8136838da5d50bae7bdea537c574d8dc1a34ed098d6c166f0"
 dependencies = [
  "byteorder",
- "zerocopy-derive",
+ "zerocopy-derive 0.7.35",
+]
+
+[[package]]
+name = "zerocopy"
+version = "0.8.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0894878a5fa3edfd6da3f88c4805f4c8558e2b996227a3d864f47fe11e38282c"
+dependencies = [
+ "zerocopy-derive 0.8.27",
 ]
 
 [[package]]
@@ -3426,6 +3473,17 @@ name = "zerocopy-derive"
 version = "0.7.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa4f8080344d4671fb4e831a13ad1e68092748387dfc4f55e356242fae12ce3e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.96",
+]
+
+[[package]]
+name = "zerocopy-derive"
+version = "0.8.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "88d2b8d9c68ad2b9e4340d7832716a4d21a22a1154777ad56ea55c51a9cf3831"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3516,11 +3574,29 @@ dependencies = [
 
 [[package]]
 name = "zstd"
+version = "0.13.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50adf04cf3ec914b0b9905c9dde90c80fe74bfd701e331fc80a39c512c525278"
+dependencies = [
+ "zstd-safe 7.4.1",
+]
+
+[[package]]
+name = "zstd"
 version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db3ae9bf90af6e40197bef767eeefc46ad6397420fe873830bd85e5fbbfb3c70"
 dependencies = [
- "zstd-safe",
+ "zstd-safe 8.2.0",
+]
+
+[[package]]
+name = "zstd-safe"
+version = "7.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "498d94ad68720c89b4fbe41b9090850651e68cb2dd9210ce7ffbff3a94653819"
+dependencies = [
+ "zstd-sys",
 ]
 
 [[package]]

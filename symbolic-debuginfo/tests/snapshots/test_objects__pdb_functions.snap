@@ -629,7 +629,8 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
             0x25f0..0x25ff: register eax
           _Ptr (local)
             type:
-              > Unknown
+              > Pointer (4 bytes)
+                > Unknown
             0x25f0..0x25f6: register edi
             0x25fc..0x25ff: register edi
 
