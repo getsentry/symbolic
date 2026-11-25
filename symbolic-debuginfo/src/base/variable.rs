@@ -104,16 +104,11 @@ impl fmt::Display for Qualifiers {
         ]
         .into_iter()
         .filter(|(qualifier, _)| self.contains(*qualifier))
-        .map(|(_, keyword)| keyword);
+        .map(|(_, keyword)| keyword)
+        .collect::<Vec<_>>()
+        .join(" ");
 
-        for (i, keyword) in keywords.enumerate() {
-            if i > 0 {
-                f.write_str(" ")?;
-            }
-            f.write_str(keyword)?;
-        }
-
-        Ok(())
+        f.write_str(&keywords)
     }
 }
 
