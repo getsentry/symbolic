@@ -23,6 +23,14 @@ impl TypeRef {
             _ => None,
         }
     }
+
+    #[cfg(feature = "ms")]
+    pub(crate) fn as_pdb(&self) -> Option<&crate::pdb::PdbTypeRef> {
+        match &self.0 {
+            NativeTypeRef::Pdb(pdb) => Some(pdb),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

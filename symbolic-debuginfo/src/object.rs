@@ -525,7 +525,7 @@ impl ObjectDebugSession<'_> {
         match *self {
             ObjectDebugSession::Breakpad(_) => Ok(None),
             ObjectDebugSession::Dwarf(ref s) => s.lookup_type(ty).map_err(ObjectError::transparent),
-            ObjectDebugSession::Pdb(_) => Ok(None),
+            ObjectDebugSession::Pdb(ref s) => s.lookup_type(ty).map_err(ObjectError::transparent),
             ObjectDebugSession::SourceBundle(_) => Ok(None),
             ObjectDebugSession::PortablePdb(_) => Ok(None),
         }

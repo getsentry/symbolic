@@ -31,6 +31,7 @@ use crate::{ParseObjectOptions, Type, TypeRef};
 mod function_stack;
 mod register;
 mod srcsrv;
+mod types;
 mod variables;
 
 type Pdb<'data> = pdb::PDB<'data, Cursor<&'data [u8]>>;
@@ -571,6 +572,8 @@ struct PdbDebugInfo<'d> {
     string_table: Option<&'d pdb::StringTable<'d>>,
     /// Type formatter for function name strings.
     type_formatter: pdb_addr2line::TypeFormatter<'d, 'd>,
+    /// Type information.
+    types: types::Types<'d>,
     /// Source Server mappings.
     srcsrv: Option<SourceServerMappings<'d>>,
 }
@@ -610,6 +613,7 @@ impl<'d> PdbDebugInfo<'d> {
                 streams.string_table.as_ref(),
                 Default::default(),
             )?,
+            types: types::Types::new(&streams.type_info),
         })
     }
 
@@ -691,8 +695,13 @@ impl<'d> PdbDebugSession<'d> {
     /// Resolves a [`TypeRef`] in this debug file.
     ///
     /// See also: [`DebugSession::lookup_type`].
-    pub fn lookup_type(&self, _ty: &TypeRef) -> Result<Option<Type<'_>>, PdbError> {
-        Ok(None)
+    pub fn lookup_type(&self, ty: &TypeRef) -> Result<Option<Type<'_>>, PdbError> {
+        let Some(index) = ty.as_pdb() else {
+            return Ok(None);
+        };
+
+        let info = self.cell.get();
+        Ok(info.types.lookup(index.0)?)
     }
 
     /// See [DebugSession::source_by_path] for more information.
