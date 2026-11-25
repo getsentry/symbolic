@@ -2,6 +2,24 @@
 source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug::new(&session, &functions)"
 ---
+> 0x1300: _Z16mixed_qualifiersPKPKcPVKi (0x1)
+  0x1300: variables.cpp:282 (/fixture)
+  variables:
+    strs (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Qualified: const
+            > Pointer (8 bytes)
+              > Qualified: const
+                > Primitive: char (SignedChar, 1 byte)
+      0x1300..0x1301: register rdi
+    cv (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Qualified: const volatile
+            > Primitive: int (SignedInt, 4 bytes)
+      0x1300..0x1301: register rsi
+
 > 0x1040: main (0x97)
   0x1040: variables.cpp:256 (/fixture)
   0x1045: variables.cpp:262 (/fixture)
@@ -120,7 +138,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x1270..0x127c: register rdi
     slot (local)
       type:
-        > Unknown
+        > Qualified: volatile
+          > Primitive: int (SignedInt, 4 bytes)
       0x1270..0x127c: cfa -12
 
 > 0x1260: _Z13optimized_outi (0x4)
@@ -251,7 +270,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
     str (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Qualified: const
+            > Primitive: char (SignedChar, 1 byte)
       0x11e0..0x11e1: register rdx
     any (parameter)
       type:

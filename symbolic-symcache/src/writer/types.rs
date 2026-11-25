@@ -86,7 +86,14 @@ where
             Entry::Vacant(entry) => entry,
         };
 
-        let Some(ty) = self.session.lookup_type(&ty_ref).ok().flatten() else {
+        // Qualified types are not stored in symcaches yet, so they are unknown.
+        let Some(ty) = self
+            .session
+            .lookup_type(&ty_ref)
+            .ok()
+            .flatten()
+            .filter(|ty| !matches!(ty, di::Type::Qualified(_)))
+        else {
             entry.insert(ResolvedState::Unknown);
             return Err(ResolvedState::Unknown);
         };
@@ -115,6 +122,7 @@ where
             di::Type::Pointer(ty) => self.ser_pointer(ty),
             di::Type::TypeDef(ty) => self.ser_typedef(ty, string_table),
             di::Type::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
+            di::Type::Qualified(_) => unreachable!("`resolve` treats qualified types as unknown"),
         }
     }
 

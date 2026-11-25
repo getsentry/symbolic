@@ -34,7 +34,10 @@ mod types;
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::{Type, TypeRef, Variable, VariableKind, VariableLocation, VariableLocationInfo};
+use crate::{
+    QualifiedType, Qualifiers, Type, TypeRef, Variable, VariableKind, VariableLocation,
+    VariableLocationInfo,
+};
 
 /// This is a fake BcSymbolMap used when macho support is turned off since they are unfortunately
 /// part of the dwarf interface
@@ -2090,29 +2093,68 @@ impl<'data> DwarfDebugSession<'data> {
     ///
     /// See also: [`DebugSession::lookup_type`].
     pub fn lookup_type(&self, ty: &TypeRef) -> Result<Option<Type<'_>>, DwarfError> {
-        let Some(DwarfTypeRef(ty)) = ty.as_dwarf() else {
-            return Ok(None);
-        };
+        /// The maximum number of adjacent type modifier entries merged into one
+        /// [`QualifiedType`].
+        ///
+        /// Modifier chains in valid DWARF are short (e.g. `const volatile`), this limit only
+        /// protects against cycles in malformed debug information.
+        const MAX_MODIFIER_DEPTH: u8 = 16;
 
-        let info = self.cell.get();
-        let unit = match ty {
-            DwarfTypeRefInner::Offset {
-                section: SectionId::DebugInfo,
-                offset,
-            } => Some(info.find_info_unit_offset(gimli::DebugInfoOffset(offset.0))?),
-            DwarfTypeRefInner::Offset {
-                section: SectionId::DebugTypes,
-                offset,
-            } => Some(info.find_types_unit_offset(*offset)?),
-            DwarfTypeRefInner::Signature(signature) => info.find_type_signature(*signature)?,
-            DwarfTypeRefInner::Offset { .. } => None,
-            DwarfTypeRefInner::Void => return Ok(Some(Type::Void)),
-        };
-        let Some((unit, offset)) = unit else {
-            return Ok(None);
-        };
+        /// Looks up a DWARF type. Adjacent modifier entries, such as `const volatile`, are merged
+        /// into one [`QualifiedType`]: `qualifiers` holds the qualifiers of the modifier entries
+        /// already followed, and `depth` limits how many more are followed.
+        fn lookup<'d>(
+            info: &DwarfInfo<'d>,
+            ty: &DwarfTypeRefInner,
+            qualifiers: Qualifiers,
+            depth: u8,
+        ) -> Result<Option<Type<'d>>, DwarfError> {
+            let unit = match ty {
+                DwarfTypeRefInner::Offset {
+                    section: SectionId::DebugInfo,
+                    offset,
+                } => Some(info.find_info_unit_offset(gimli::DebugInfoOffset(offset.0))?),
+                DwarfTypeRefInner::Offset {
+                    section: SectionId::DebugTypes,
+                    offset,
+                } => Some(info.find_types_unit_offset(*offset)?),
+                DwarfTypeRefInner::Signature(signature) => info.find_type_signature(*signature)?,
+                DwarfTypeRefInner::Offset { .. } => None,
+                // A modifier of `void` has no `DW_AT_type`, so `void` is only reached unqualified.
+                DwarfTypeRefInner::Void => return Ok(Some(Type::Void)),
+            };
+            let Some((unit, offset)) = unit else {
+                return Ok(None);
+            };
 
-        self::types::parse_type(unit, offset)
+            match types::parse_modifier(unit, offset)? {
+                // Not a modifier and not qualified: the entry is the type itself.
+                None if qualifiers.is_empty() => types::parse_type(unit, offset),
+                // Not a modifier: the entry is the type that the followed modifiers qualify.
+                None => Ok(Some(Type::Qualified(QualifiedType {
+                    qualifiers,
+                    ty: DwarfTypeRef(ty.clone()).into(),
+                }))),
+                // A modifier without a modified type qualifies `void`.
+                Some((modifier, None)) => Ok(Some(Type::Qualified(QualifiedType {
+                    qualifiers: qualifiers | modifier,
+                    ty: DwarfTypeRef::void().into(),
+                }))),
+                // A modifier chain longer than the depth limit.
+                Some(_) if depth == 0 => Ok(None),
+                // Recursive case: follow the modifier and add its qualifier.
+                Some((modifier, Some(DwarfTypeRef(modified)))) => {
+                    lookup(info, &modified, qualifiers | modifier, depth - 1)
+                }
+            }
+        }
+
+        match ty.as_dwarf() {
+            Some(DwarfTypeRef(ty)) => {
+                lookup(self.cell.get(), ty, Qualifiers::empty(), MAX_MODIFIER_DEPTH)
+            }
+            None => Ok(None),
+        }
     }
 
     /// See [`DebugSession::source_by_path`] for more information.
