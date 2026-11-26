@@ -23,12 +23,16 @@ use symbolic_common::{
 };
 
 use crate::base::*;
-use crate::function_stack::FunctionStack;
+use crate::pdb::function_stack::{FunctionStack, ProcedureFrames};
 use crate::pdb::srcsrv::{SourceServerInfo, SourceServerMappings};
 use crate::sourcebundle::SourceFileDescriptor;
 use crate::{ParseObjectOptions, Type, TypeRef};
 
+mod function_stack;
+mod register;
 mod srcsrv;
+mod types;
+mod variables;
 
 type Pdb<'data> = pdb::PDB<'data, Cursor<&'data [u8]>>;
 
@@ -115,6 +119,10 @@ impl From<pdb_addr2line::Error> for PdbError {
         }
     }
 }
+
+/// A reference to a type in the DWARF file.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PdbTypeRef(TypeIndex);
 
 /// Program Database, the debug companion format on Windows.
 ///
@@ -554,6 +562,8 @@ impl<'d> pdb_addr2line::ModuleProvider<'d> for PdbStreams<'d> {
 }
 
 struct PdbDebugInfo<'d> {
+    /// The CPU family of the PDB.
+    cpu: CpuFamily,
     /// The streams, to load module streams on demand.
     streams: &'d PdbStreams<'d>,
     /// OMAP structure to map reordered sections to RVAs.
@@ -562,6 +572,9 @@ struct PdbDebugInfo<'d> {
     string_table: Option<&'d pdb::StringTable<'d>>,
     /// Type formatter for function name strings.
     type_formatter: pdb_addr2line::TypeFormatter<'d, 'd>,
+    /// Type information.
+    types: types::Types<'d>,
+    /// Source Server mappings.
     srcsrv: Option<SourceServerMappings<'d>>,
 }
 
@@ -586,6 +599,7 @@ impl<'d> PdbDebugInfo<'d> {
             .and_then(|stream| SourceServerMappings::parse(stream).ok());
 
         Ok(PdbDebugInfo {
+            cpu: pdb.arch().cpu_family(),
             address_map,
             streams,
             string_table: streams.string_table.as_ref(),
@@ -599,6 +613,7 @@ impl<'d> PdbDebugInfo<'d> {
                 streams.string_table.as_ref(),
                 Default::default(),
             )?,
+            types: types::Types::new(&streams.type_info),
         })
     }
 
@@ -680,8 +695,13 @@ impl<'d> PdbDebugSession<'d> {
     /// Resolves a [`TypeRef`] in this debug file.
     ///
     /// See also: [`DebugSession::lookup_type`].
-    pub fn lookup_type(&self, _ty: &TypeRef) -> Result<Option<Type<'_>>, PdbError> {
-        Ok(None)
+    pub fn lookup_type(&self, ty: &TypeRef) -> Result<Option<Type<'_>>, PdbError> {
+        let Some(index) = ty.as_pdb() else {
+            return Ok(None);
+        };
+
+        let info = self.cell.get();
+        Ok(info.types.lookup(index.0)?)
     }
 
     /// See [DebugSession::source_by_path] for more information.
@@ -813,30 +833,6 @@ impl<'s> Unit<'s> {
         Ok(lines)
     }
 
-    /// Sanitize the collected lines.
-    ///
-    /// This essentially filters out all the lines that lay outside of the function range.
-    ///
-    /// For example we have observed in a real-world pdb that has:
-    /// - A function 0x33ea50 (size 0xc)
-    /// - With one line record: 0x33e850 (size 0x26)
-    ///
-    /// The line record is completely outside the range of the function.
-    fn sanitize_lines(func: &mut Function) {
-        let fn_start = func.address;
-        let fn_end = func.end_address();
-        func.lines.retain(|line| {
-            if line.address >= fn_end {
-                return false;
-            }
-            let line_end = match line.size {
-                Some(size) => line.address.saturating_add(size),
-                None => return true,
-            };
-            line_end > fn_start
-        });
-    }
-
     fn handle_function(
         &self,
         offset: PdbInternalSectionOffset,
@@ -955,6 +951,17 @@ impl<'s> Unit<'s> {
         let program = self.module.line_program()?;
         let mut symbols = self.module.symbols()?;
 
+        // Frames are constructed from `S_FRAMEPROC` entries which are associated with a procedure
+        // (`S_*PROC*` variants), we need the frame information for construction of variables ahead of
+        // time, unfortunately the `S_FRAMEPROC` can be placed anywhere in the scope of the procedure.
+        //
+        // That's why we parse ahead to find the frame info for each procedure, an alternative would
+        // be to keep track of symbols as they are discovered and on ending the procedure scope we
+        // fix-up all variables with the frame information. This is more efficient when it comes to
+        // parsing the symbol stream but requires more effort to keep around an unfinished variable
+        // state that can be completed later.
+        let mut frames = ProcedureFrames::new(self.module, self.debug_info.cpu)?;
+
         // Depending on the compiler version, the inlinee table might not be sorted. Since constant
         // search through inlinees is too slow (due to repeated parsing), but Inlinees are rather
         // small structures, it is relatively cheap to collect them into an in-memory index.
@@ -969,7 +976,7 @@ impl<'s> Unit<'s> {
         let mut skipped_depth = None;
 
         let mut functions = Vec::new();
-        let mut stack = FunctionStack::new();
+        let mut stack = FunctionStack::new(self.debug_info);
         let mut proc_offsets = SmallVec::<[_; 3]>::new();
         let mut last_proc = None;
 
@@ -1005,13 +1012,17 @@ impl<'s> Unit<'s> {
             let function = match symbol.parse() {
                 Ok(SymbolData::Procedure(proc)) => {
                     proc_offsets.push((depth, proc.offset));
-                    let function = self.handle_procedure(&proc, &program)?;
-                    last_proc = Some(proc);
+                    let frame = frames.take(symbol.index(), proc.end)?;
+                    let function = self
+                        .handle_procedure(&proc, &program)?
+                        .map(|func| stack.standalone(depth, func, frame));
+                    last_proc = Some((proc, frame));
                     function
                 }
                 Ok(SymbolData::SeparatedCode(sepcode)) => match last_proc.as_ref() {
-                    Some(last_proc) if last_proc.offset == sepcode.parent_offset => {
+                    Some((last_proc, last_frame)) if last_proc.offset == sepcode.parent_offset => {
                         self.handle_separated_code(last_proc, &sepcode, &program)?
+                            .map(|func| stack.standalone(depth, func, *last_frame))
                     }
                     _ => continue,
                 },
@@ -1024,21 +1035,28 @@ impl<'s> Unit<'s> {
                     // We can assume that inlinees will be listed in the inlinee table. If missing,
                     // skip silently instead of erroring out. Missing a single inline function is
                     // more acceptable in such a case than halting iteration completely.
-                    if let Some(inlinee) = inlinees.get(&site.inlinee) {
-                        // We have seen that the MSVC Compiler `19.16` (VS 2017) can output
-                        // `ChangeFile` annotations which are not properly aligned to the beginning
-                        // of a file checksum, leading to `UnimplementedFileChecksumKind` errors.
-                        // Investigation showed that this can happen for inlined `{ctor}` functions,
-                        // but there are no clear leads to why that might have happened, and how to
-                        // recover from these broken annotations.
-                        // For that reason, we skip these inlinees completely so we do not fail
-                        // processing the complete pdb file.
-                        self.handle_inlinee(site, parent_offset, inlinee, &program)
-                            .ok()
-                            .flatten()
-                    } else {
-                        None
+                    inlinees
+                        .get(&site.inlinee)
+                        .and_then(|inlinee| {
+                            // We have seen that the MSVC Compiler `19.16` (VS 2017) can output
+                            // `ChangeFile` annotations which are not properly aligned to the beginning
+                            // of a file checksum, leading to `UnimplementedFileChecksumKind` errors.
+                            // Investigation showed that this can happen for inlined `{ctor}` functions,
+                            // but there are no clear leads to why that might have happened, and how to
+                            // recover from these broken annotations.
+                            // For that reason, we skip these inlinees completely so we do not fail
+                            // processing the complete pdb file.
+                            self.handle_inlinee(site, parent_offset, inlinee, &program)
+                                .ok()
+                                .flatten()
+                        })
+                        .map(|func| stack.inlinee(depth, func))
+                }
+                Ok(symbol) => {
+                    if let Some(top) = stack.top_mut() {
+                        top.visit_for_variables(depth, &symbol);
                     }
+                    continue;
                 }
                 // We need to ignore errors here since the PDB crate does not yet implement all
                 // symbol types. Instead of erroring too often, it's better to swallow these.
@@ -1046,12 +1064,7 @@ impl<'s> Unit<'s> {
             };
 
             match function {
-                Some(mut function) => {
-                    Self::sanitize_lines(&mut function);
-                    // TODO: figure out what to do with functions that have no more lines
-                    // after sanitization
-                    stack.push(depth, function)
-                }
+                Some(function) => stack.push(function),
                 None => skipped_depth = Some(depth),
             }
         }

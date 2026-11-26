@@ -5,6 +5,7 @@
 **Breaking Changes**
 
 - Rename `VariableLocation::FrameOffset` to `VariableLocation::CfaOffset`. It now only describes variables at an offset from the CFA. ([#1168](https://github.com/getsentry/symbolic/pull/1168))
+- Change the MSRV version to 1.93. ([#1197](https://github.com/getsentry/symbolic/pull/1197))
 
 **Features**
 

@@ -1,11 +1,12 @@
 use std::fmt;
 
 use symbolic_common::{Language, Name, NameMangling};
+use symbolic_debuginfo::ValueBits;
 
 use crate::SymCache;
 
 pub use symbolic_debuginfo::{
-    PrimitiveTypeEncoding, Size, VariableKind, VariableLocation, VariableLocationInfo,
+    PrimitiveTypeEncoding, Qualifiers, Size, VariableKind, VariableLocation, VariableLocationInfo,
 };
 
 /// A source File included in the SymCache.
@@ -112,6 +113,8 @@ pub struct TypeId(pub(crate) u32);
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum Type<'data> {
+    /// `void`.
+    Void,
     /// A primitive type.
     Primitive(PrimitiveType<'data>),
     /// A pointer type.
@@ -120,6 +123,38 @@ pub enum Type<'data> {
     TypeDef(TypeDefType<'data>),
     /// A structure type.
     StructureType(StructureType<'data>),
+    /// A type with qualifiers, such as `const`, applied to it.
+    Qualified(QualifiedType),
+}
+
+impl<'data> From<PrimitiveType<'data>> for Type<'data> {
+    fn from(value: PrimitiveType<'data>) -> Self {
+        Self::Primitive(value)
+    }
+}
+
+impl<'data> From<PointerType> for Type<'data> {
+    fn from(value: PointerType) -> Self {
+        Self::Pointer(value)
+    }
+}
+
+impl<'data> From<TypeDefType<'data>> for Type<'data> {
+    fn from(value: TypeDefType<'data>) -> Self {
+        Self::TypeDef(value)
+    }
+}
+
+impl<'data> From<StructureType<'data>> for Type<'data> {
+    fn from(value: StructureType<'data>) -> Self {
+        Self::StructureType(value)
+    }
+}
+
+impl<'data> From<QualifiedType> for Type<'data> {
+    fn from(value: QualifiedType) -> Self {
+        Self::Qualified(value)
+    }
 }
 
 /// A primitive type contained in the SymCache.
@@ -127,6 +162,7 @@ pub enum Type<'data> {
 pub struct PrimitiveType<'data> {
     pub(crate) name: Option<&'data str>,
     pub(crate) size: Size,
+    pub(crate) value_bits: Option<ValueBits>,
     pub(crate) encoding: Option<PrimitiveTypeEncoding>,
 }
 
@@ -143,6 +179,11 @@ impl<'data> PrimitiveType<'data> {
         self.size
     }
 
+    /// The meaningful value range within this primitive's storage.
+    pub fn value_bits(&self) -> Option<ValueBits> {
+        self.value_bits
+    }
+
     /// The encoding of this primitive type.
     pub fn encoding(&self) -> Option<PrimitiveTypeEncoding> {
         self.encoding
@@ -153,7 +194,7 @@ impl<'data> PrimitiveType<'data> {
 #[derive(Clone, Debug)]
 pub struct PointerType {
     pub(crate) size: Size,
-    pub(crate) pointee: Option<TypeId>,
+    pub(crate) pointee: TypeId,
 }
 
 impl PointerType {
@@ -164,10 +205,9 @@ impl PointerType {
 
     /// The referenced type.
     ///
-    /// This returns `None` for pointers without a referenced type, like `void*`.
-    /// If the pointer references a type that could not be resolved, this returns `Some` with a
-    /// [`TypeId`] for which [`SymCache::lookup_type`] returns `None`.
-    pub fn pointee(&self) -> Option<TypeId> {
+    /// If the pointer references a type that could not be resolved, [`SymCache::lookup_type`]
+    /// returns `None` for this [`TypeId`].
+    pub fn pointee(&self) -> TypeId {
         self.pointee
     }
 }
@@ -176,7 +216,7 @@ impl PointerType {
 #[derive(Clone, Debug)]
 pub struct TypeDefType<'data> {
     pub(crate) name: &'data str,
-    pub(crate) ty: Option<TypeId>,
+    pub(crate) ty: TypeId,
 }
 
 impl<'data> TypeDefType<'data> {
@@ -187,10 +227,31 @@ impl<'data> TypeDefType<'data> {
 
     /// The linked type.
     ///
-    /// This may be `None` if the debug information provides no underlying type reference,
-    /// for example an alias to `void` or a type declaration without a definition.
-    /// The referenced type.
-    pub fn ty(&self) -> Option<TypeId> {
+    /// This is a [`Type::Void`] if the debug information provides no underlying type
+    /// reference, for example an alias to `void` or a type declaration without a definition.
+    pub fn ty(&self) -> TypeId {
+        self.ty
+    }
+}
+
+/// A qualified type contained in the SymCache, such as `const int`.
+#[derive(Clone, Debug)]
+pub struct QualifiedType {
+    pub(crate) qualifiers: Qualifiers,
+    pub(crate) ty: TypeId,
+}
+
+impl QualifiedType {
+    /// The qualifiers applied to [`ty`](Self::ty).
+    pub fn qualifiers(&self) -> Qualifiers {
+        self.qualifiers
+    }
+
+    /// The qualified type.
+    ///
+    /// This is never another [`Type::Qualified`]. If the qualified type could not be resolved,
+    /// [`SymCache::lookup_type`] returns `None` for this [`TypeId`].
+    pub fn ty(&self) -> TypeId {
         self.ty
     }
 }
@@ -228,6 +289,7 @@ pub struct StructureMember<'data> {
     pub(crate) name: Option<&'data str>,
     pub(crate) ty: TypeId,
     pub(crate) offset: Option<Size>,
+    pub(crate) size: Option<Size>,
 }
 
 impl<'data> StructureMember<'data> {
@@ -244,6 +306,13 @@ impl<'data> StructureMember<'data> {
     /// The offset from the beginning of the structure.
     pub fn offset(&self) -> Option<Size> {
         self.offset
+    }
+
+    /// The size of this member's storage.
+    ///
+    /// If specified, this overrides the default size for the member's type.
+    pub fn size(&self) -> Option<Size> {
+        self.size
     }
 }
 

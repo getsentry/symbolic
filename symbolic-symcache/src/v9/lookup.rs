@@ -3,12 +3,13 @@ use std::cmp::Ordering;
 use std::collections::HashSet;
 
 use symbolic_common::{Arch, CpuFamily, Language};
+use symbolic_debuginfo::Qualifiers;
 use watto::StringTable;
 
 use crate::v9::{SymCache, convert, raw};
 use crate::{
-    File, Function, PointerType, PrimitiveType, Size, StructureMember, StructureType, Type,
-    TypeDefType, TypeId, VariableKind, VariableLocation, VariableLocationInfo,
+    File, Function, PointerType, PrimitiveType, QualifiedType, StructureMember, StructureType,
+    Type, TypeDefType, TypeId, VariableKind, VariableLocation, VariableLocationInfo,
 };
 
 impl<'data> SymCache<'data> {
@@ -36,10 +37,10 @@ impl<'data> SymCache<'data> {
             Err(idx) => source_location_start + idx as u32 - 1,
         };
 
-        if let Some(source_location) = self.source_locations.get(source_location_idx as usize) {
-            if *source_location == raw::NO_SOURCE_LOCATION {
-                source_location_idx = u32::MAX;
-            }
+        if let Some(source_location) = self.source_locations.get(source_location_idx as usize)
+            && *source_location == raw::NO_SOURCE_LOCATION
+        {
+            source_location_idx = u32::MAX;
         }
 
         SourceLocations {
@@ -77,17 +78,17 @@ impl<'data> SymCache<'data> {
         Some(match raw_ty.as_enum()? {
             raw::ty::Enum::primitive(primitive) => Type::Primitive(PrimitiveType {
                 name: self.get_string(primitive.name_offset),
-                size: Size::Bytes(primitive.size.into()),
+                size: primitive.size.into_di().unwrap_or_default(),
+                value_bits: primitive.value_bits.into_di(),
                 encoding: convert::u8_to_primitive_type_encoding(primitive.encoding),
             }),
             raw::ty::Enum::pointer(pointer) => Type::Pointer(PointerType {
-                size: Size::Bytes(pointer.size.into()),
-                pointee: (pointer.pointee_idx != raw::Type::VOID)
-                    .then_some(TypeId(pointer.pointee_idx)),
+                size: pointer.size.into_di().unwrap_or_default(),
+                pointee: TypeId(pointer.pointee_idx),
             }),
             raw::ty::Enum::typedef(td) => Type::TypeDef(TypeDefType {
                 name: self.get_string(td.name_offset).unwrap_or("?"),
-                ty: (td.ty_idx != raw::Type::VOID).then_some(TypeId(td.ty_idx)),
+                ty: TypeId(td.ty_idx),
             }),
             raw::ty::Enum::structure(structure) => {
                 let start = structure.member_idx as usize;
@@ -96,8 +97,7 @@ impl<'data> SymCache<'data> {
 
                 Type::StructureType(StructureType {
                     name: self.get_string(structure.name_offset),
-                    size: (structure.size != u32::MAX)
-                        .then_some(Size::Bytes(structure.size.into())),
+                    size: structure.size.into_di(),
                     members: StructureMembers {
                         string_bytes: self.string_bytes,
                         members: members.iter(),
@@ -105,6 +105,11 @@ impl<'data> SymCache<'data> {
                     .into(),
                 })
             }
+            raw::ty::Enum::void(_) => Type::Void,
+            raw::ty::Enum::qualified(qualified) => Type::Qualified(QualifiedType {
+                qualifiers: Qualifiers::from_bits_truncate(qualified.qualifiers),
+                ty: TypeId(qualified.ty_idx),
+            }),
         })
     }
 
@@ -148,7 +153,8 @@ impl<'data> Iterator for StructureMembers<'data> {
         Some(StructureMember {
             name: StringTable::read(self.string_bytes, member.name_offset as usize).ok(),
             ty: TypeId(member.type_idx),
-            offset: Some(convert::raw_to_size(member.offset)),
+            offset: member.offset.into_di(),
+            size: member.size.into_di(),
         })
     }
 }

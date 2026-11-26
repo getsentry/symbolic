@@ -8,12 +8,13 @@ authors = ["Sentry <hello@sentry.io>"]
 license = "MIT"
 repository = "https://github.com/getsentry/symbolic"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.93"
 
 [workspace.dependencies]
 anyhow = "1.0.32"
 anylog = "0.6.4"
 async-trait = "0.1.53"
+bitflags = "2.7.0"
 bytes = "1.4.0"
 cc = "1.0.79"
 chrono = { version = "0.4.23", default-features = false, features = ["std"] }

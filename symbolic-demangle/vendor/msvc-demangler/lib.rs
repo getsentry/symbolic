@@ -512,10 +512,10 @@ impl<'a> ParserState<'a> {
         F: FnOnce(&mut Self) -> Result<T>,
     {
         self.depth += 1;
-        if let Some(max) = self.max_recursion_depth {
-            if self.depth > max {
-                return Err(Error::new_recursion_limit_exceeded(max));
-            }
+        if let Some(max) = self.max_recursion_depth
+            && self.depth > max
+        {
+            return Err(Error::new_recursion_limit_exceeded(max));
         }
         let result = f(self);
         self.depth -= 1;
@@ -2094,31 +2094,30 @@ impl Serializer<'_> {
     }
 
     fn write_space_pre(&mut self) {
-        if let Some(&c) = self.w.last() {
-            if char::from(c).is_ascii_alphabetic() || c == b'&' || c == b'>' || c == b')' {
-                self.w.push(b' ');
-            }
+        if let Some(&c) = self.w.last()
+            && (char::from(c).is_ascii_alphabetic() || c == b'&' || c == b'>' || c == b')')
+        {
+            self.w.push(b' ');
         }
     }
 
     fn write_space_ptr(&mut self) {
-        if let Some(&c) = self.w.last() {
-            if char::from(c).is_ascii_alphabetic() || c == b'>' || c == b')' {
-                self.w.push(b' ');
-            }
+        if let Some(&c) = self.w.last()
+            && (char::from(c).is_ascii_alphabetic() || c == b'>' || c == b')')
+        {
+            self.w.push(b' ');
         }
     }
 
     fn write_space(&mut self) {
-        if let Some(&c) = self.w.last() {
-            if char::from(c).is_ascii_alphabetic()
+        if let Some(&c) = self.w.last()
+            && (char::from(c).is_ascii_alphabetic()
                 || c == b'*'
                 || c == b'&'
                 || c == b'>'
-                || c == b')'
-            {
-                self.w.push(b' ');
-            }
+                || c == b')')
+        {
+            self.w.push(b' ');
         }
     }
 

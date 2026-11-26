@@ -59,6 +59,7 @@ ms = [
     "goblin/pe32",
     "goblin/pe64",
     "goblin/std",
+    "hashbrown",
     "parking_lot",
     "pdb-addr2line",
     "scroll",
@@ -82,6 +83,7 @@ js = ["dep:memchr"]
 wasm = ["dwarf", "wasmparser"]
 
 [dependencies]
+bitflags = { workspace = true }
 debugid = { workspace = true }
 elementtree = { workspace = true, optional = true }
 elsa = { workspace = true, optional = true }
@@ -89,6 +91,7 @@ fallible-iterator = { workspace = true }
 flate2 = { workspace = true, optional = true }
 gimli = { workspace = true, optional = true }
 goblin = { workspace = true, optional = true }
+hashbrown = { workspace = true, optional = true }
 indexmap = { workspace = true, optional = true }
 memchr = { workspace = true, optional = true }
 nom = { workspace = true, optional = true }

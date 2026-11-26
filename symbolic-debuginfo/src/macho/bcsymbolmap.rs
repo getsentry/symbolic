@@ -155,14 +155,14 @@ impl<'d> BcSymbolMap<'d> {
     /// assert_eq!(map.resolve("_addJSONData"), "_addJSONData");  // #64
     /// ```
     pub fn resolve(&self, mut name: &'d str) -> &'d str {
-        if let Some(tail) = name.strip_prefix(SWIFT_HIDDEN_PREFIX) {
-            if let Some(index_as_string) = tail.strip_suffix('_') {
-                name = index_as_string
-                    .parse::<usize>()
-                    .ok()
-                    .and_then(|index| self.get(index))
-                    .unwrap_or(name);
-            }
+        if let Some(tail) = name.strip_prefix(SWIFT_HIDDEN_PREFIX)
+            && let Some(index_as_string) = tail.strip_suffix('_')
+        {
+            name = index_as_string
+                .parse::<usize>()
+                .ok()
+                .and_then(|index| self.get(index))
+                .unwrap_or(name);
         }
         name
     }

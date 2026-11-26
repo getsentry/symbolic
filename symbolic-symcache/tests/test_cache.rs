@@ -14,14 +14,23 @@ struct TypeDebug<'data, 'cache>(&'cache SymCache<'data>, Type<'data>);
 impl fmt::Debug for TypeDebug<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.1 {
+            Type::Void => f.write_str("void"),
             Type::Primitive(primitive) => f.write_str(primitive.name().unwrap_or("<unknown>")),
-            Type::Pointer(pointer) => match pointer.pointee() {
-                Some(ty) => match self.0.lookup_type(ty) {
-                    Some(pointee) => write!(f, "{:?}*", TypeDebug(self.0, pointee)),
-                    None => f.write_str("<unknown>*"),
-                },
-                None => f.write_str("void*"),
+            Type::Pointer(pointer) => match self.0.lookup_type(pointer.pointee()) {
+                Some(pointee) => write!(f, "{:?}*", TypeDebug(self.0, pointee)),
+                None => f.write_str("<unknown>*"),
             },
+            // Qualifiers as a suffix ("east const"), such as `char const`.
+            Type::Qualified(qualified) => {
+                match self.0.lookup_type(qualified.ty()) {
+                    Some(ty) => write!(f, "{:?}", TypeDebug(self.0, ty))?,
+                    None => f.write_str("<unknown>")?,
+                }
+                for (name, _) in qualified.qualifiers().iter_names() {
+                    write!(f, " {}", name.to_lowercase())?;
+                }
+                Ok(())
+            }
             _ => f.write_str("<unknown>"),
         }
     }
@@ -95,11 +104,11 @@ fn test_load_header_linux() -> Result<(), Error> {
         functions: 697,
         source_locations: 8431,
         ranges: 6975,
-        string_bytes: 53754,
+        string_bytes: 56493,
         variables: 548,
         variable_locations: 1610,
-        types: 143,
-        structure_members: 186,
+        types: 348,
+        structure_members: 325,
     }
     "#);
     Ok(())
@@ -129,11 +138,11 @@ fn test_load_header_macos() -> Result<(), Error> {
         functions: 639,
         source_locations: 7382,
         ranges: 5965,
-        string_bytes: 46192,
+        string_bytes: 50320,
         variables: 477,
         variable_locations: 1098,
-        types: 197,
-        structure_members: 246,
+        types: 352,
+        structure_members: 526,
     }
     "#);
     Ok(())
@@ -195,8 +204,8 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
 
     let source_location = symcache.lookup(0xfe50).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
-    this (parameter, <unknown>): 0xfe50..0xfe86 register rdi
-    str (parameter, <unknown>*): 0xfe50..0xfe86 register rsi
+    this (parameter, <unknown>* const): 0xfe50..0xfe86 register rdi
+    str (parameter, wchar_t const*): 0xfe50..0xfe86 register rsi
     length (parameter, unsigned int): 0xfe50..0xfe86 register rdx
     mdstring (parameter, <unknown>*): 0xfe50..0xfe86 register rcx
     result (local, bool): <unavailable>
@@ -207,8 +216,8 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
 
     let source_location = symcache.lookup(0xfe90).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
-    this (parameter, <unknown>): <unavailable>
-    str (parameter, <unknown>*): 0xfe86..0xff02 register rbp
+    this (parameter, <unknown>* const): <unavailable>
+    str (parameter, wchar_t const*): 0xfe86..0xff02 register rbp
     length (parameter, unsigned int): 0xfe86..0xff02 register rbx
     mdstring (parameter, <unknown>*): 0xfe86..0xff02 register r13
     result (local, bool): <unavailable>
@@ -219,8 +228,8 @@ fn test_lookup_variables_linux() -> Result<(), Error> {
 
     let source_location = symcache.lookup(0xfecb).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
-    this (parameter, <unknown>): <unavailable>
-    str (parameter, <unknown>*): 0xfe86..0xff02 register rbp
+    this (parameter, <unknown>* const): <unavailable>
+    str (parameter, wchar_t const*): 0xfe86..0xff02 register rbp
     length (parameter, unsigned int): 0xfe86..0xff02 register rbx
     mdstring (parameter, <unknown>*): 0xfe86..0xff02 register r13
     result (local, bool): <unavailable>
@@ -272,8 +281,8 @@ fn test_lookup_variables_lexical_block_merged() -> Result<(), Error> {
     // block copy has no location before the block and can shadow the real value in consumers
     // that key variables by name.
     let before_block = symcache.lookup(0x1ec5).last().unwrap();
-    insta::assert_debug_snapshot!(VariablesDebug(&symcache, before_block.variables()), @r"
-    descriptor (parameter, <unknown>): 0x1ec0..0x1ed3 register rdi
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, before_block.variables()), @"
+    descriptor (parameter, <unknown> const* const): 0x1ec0..0x1ed3 register rdi
     context (parameter, void*): 0x1ec0..0x1ece register rsi
     succeeded (parameter, bool): 0x1ec0..0x1ed9 register rdx
     ");
@@ -281,8 +290,8 @@ fn test_lookup_variables_lexical_block_merged() -> Result<(), Error> {
     let in_block = symcache.lookup(0x1ee5).last().unwrap();
     // `succeeded` is the constant 1 inside the block (`DW_AT_const_value`), which is not
     // extracted yet.
-    insta::assert_debug_snapshot!(VariablesDebug(&symcache, in_block.variables()), @r"
-    descriptor (parameter, <unknown>): 0x1ede..0x1ef0 register rdi
+    insta::assert_debug_snapshot!(VariablesDebug(&symcache, in_block.variables()), @"
+    descriptor (parameter, <unknown> const* const): 0x1ede..0x1ef0 register rdi
     context (parameter, void*): 0x1ede..0x1eeb register rsi
     succeeded (parameter, bool): <unavailable>
     ");
@@ -343,7 +352,7 @@ fn test_lookup_variables_void_pointer() -> Result<(), Error> {
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     num (parameter, int*): 0x1193..0x11ae cfa -24
     num_ptr (parameter, int**): 0x1193..0x11ae cfa -32
-    str (parameter, <unknown>*): 0x1193..0x11ae cfa -40
+    str (parameter, char const*): 0x1193..0x11ae cfa -40
     any (parameter, void*): 0x1193..0x11ae cfa -48
     fn (parameter, <unknown>*): 0x1193..0x11ae cfa -56
     ");
@@ -359,27 +368,27 @@ fn test_lookup_variables_macos() -> Result<(), Error> {
     let source_location = symcache.lookup(0xea0).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>*): 0xea0..0xed2 register rdi
-    str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
+    str (parameter, wchar_t const*): 0xea0..0xeb6 register rsi
     mdstring (parameter, <unknown>*): 0xea0..0xeb1 register rcx
-    out (local, <unknown>): 0xea0..0xfe7 cfa 16
+    out (local, <unknown>): 0xea0..0xfe7 memory at rsp +16
     out_size (local, <unknown>): <unavailable>
     ");
 
     let source_location = symcache.lookup(0xeb2).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>*): 0xea0..0xed2 register rdi
-    str (parameter, <unknown>*): 0xea0..0xeb6 register rsi
+    str (parameter, wchar_t const*): 0xea0..0xeb6 register rsi
     mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
-    out (local, <unknown>): 0xea0..0xfe7 cfa 16
+    out (local, <unknown>): 0xea0..0xfe7 memory at rsp +16
     out_size (local, <unknown>): <unavailable>
     ");
 
     let source_location = symcache.lookup(0xed2).last().unwrap();
     insta::assert_debug_snapshot!(VariablesDebug(&symcache, source_location.variables()), @r"
     this (parameter, <unknown>*): <unavailable>
-    str (parameter, <unknown>*): 0xeb6..0xf23 register rbx
+    str (parameter, wchar_t const*): 0xeb6..0xf23 register rbx
     mdstring (parameter, <unknown>*): 0xeb1..0xf41 register r12
-    out (local, <unknown>): 0xea0..0xfe7 cfa 16
+    out (local, <unknown>): 0xea0..0xfe7 memory at rsp +16
     out_size (local, <unknown>): <unavailable>
     ");
 
@@ -417,11 +426,11 @@ fn test_malformed_section_relationship_rejected() {
         }
         let mut corrupted = buf.clone();
         corrupted[i + 12..i + 16].copy_from_slice(&(num_source_locations + 1).to_le_bytes());
-        if let Err(err) = SymCache::parse(&corrupted) {
-            if matches!(err.kind(), ErrorKind::InvalidRanges) {
-                rejected = true;
-                break;
-            }
+        if let Err(err) = SymCache::parse(&corrupted)
+            && matches!(err.kind(), ErrorKind::InvalidRanges)
+        {
+            rejected = true;
+            break;
         }
     }
     assert!(

@@ -110,17 +110,20 @@ where
         string_table: &mut StringTable,
     ) -> FwdResult {
         match ty {
+            di::Type::Void => Ok(v9::raw::VoidType::default().into()),
             di::Type::Primitive(ty) => self.ser_primitive(ty, string_table),
             di::Type::Pointer(ty) => self.ser_pointer(ty),
             di::Type::TypeDef(ty) => self.ser_typedef(ty, string_table),
             di::Type::StructureType(ty) => self.ser_structure(ty, type_writer, string_table),
+            di::Type::Qualified(ty) => self.ser_qualified(ty),
         }
     }
 
     fn ser_primitive(&mut self, ty: &di::PrimitiveType<'_>, st: &mut StringTable) -> FwdResult {
         Ok(v9::raw::PrimitiveType {
             name_offset: ty.name.as_ref().map_or(u32::MAX, |n| st.insert(n) as u32),
-            size: size(ty.size),
+            size: v9::raw::Size::from_di(Some(ty.size)),
+            value_bits: v9::raw::ValueBits::from_di(ty.value_bits),
             encoding: v9::convert::primitive_type_encoding_to_u8(ty.encoding),
             _reserved: [0; _],
         }
@@ -129,11 +132,8 @@ where
 
     fn ser_pointer(&mut self, ty: &di::PointerType) -> FwdResult {
         Ok(v9::raw::PointerType {
-            pointee_idx: match ty.pointee.as_ref() {
-                Some(pointee) => self.try_lookup_type_idx(pointee)?,
-                None => v9::raw::Type::VOID,
-            },
-            size: size(ty.size),
+            pointee_idx: self.try_lookup_type_idx(&ty.pointee)?,
+            size: v9::raw::Size::from_di(Some(ty.size)),
             _reserved: [0; _],
         }
         .into())
@@ -142,10 +142,16 @@ where
     fn ser_typedef(&mut self, ty: &di::TypeDefType<'_>, st: &mut StringTable) -> FwdResult {
         Ok(v9::raw::TypeDefType {
             name_offset: st.insert(&ty.name) as u32,
-            ty_idx: match ty.ty.as_ref() {
-                Some(ty) => self.try_lookup_type_idx(ty)?,
-                None => v9::raw::Type::VOID,
-            },
+            ty_idx: self.try_lookup_type_idx(&ty.ty)?,
+            _reserved: [0; _],
+        }
+        .into())
+    }
+
+    fn ser_qualified(&mut self, ty: &di::QualifiedType) -> FwdResult {
+        Ok(v9::raw::QualifiedType {
+            ty_idx: self.try_lookup_type_idx(&ty.ty)?,
+            qualifiers: ty.qualifiers.bits(),
             _reserved: [0; _],
         }
         .into())
@@ -164,7 +170,7 @@ where
                 .name
                 .as_ref()
                 .map_or(u32::MAX, |name| st.insert(name) as u32),
-            size: ty.size.map_or(u32::MAX, size),
+            size: v9::raw::Size::from_di(ty.size),
             member_idx,
             num_members,
         }
@@ -179,12 +185,6 @@ where
     ) -> FwdResult<(u32, u32)> {
         let mut serialized = Vec::with_capacity(members.len());
         for member in members {
-            let Some(offset) = member.offset else {
-                continue;
-            };
-            let Some(offset) = v9::convert::size_to_raw(offset) else {
-                continue;
-            };
             let type_idx = self.try_lookup_type_idx(&member.ty)?;
             let name_offset = member
                 .name
@@ -193,7 +193,8 @@ where
             serialized.push(v9::raw::StructureMember {
                 name_offset,
                 type_idx,
-                offset,
+                offset: v9::raw::Size::from_di(member.offset),
+                size: v9::raw::Size::from_di(member.size),
             });
         }
 
@@ -304,8 +305,9 @@ impl<'a> Resolved<'a> {
 
     fn next_child(&mut self) -> Option<TypeRef> {
         let next = match &self.ty {
-            di::Type::Pointer(t) if self.child_offset == 0 => t.pointee.clone(),
-            di::Type::TypeDef(t) if self.child_offset == 0 => t.ty.clone(),
+            di::Type::Pointer(t) if self.child_offset == 0 => Some(t.pointee.clone()),
+            di::Type::TypeDef(t) if self.child_offset == 0 => Some(t.ty.clone()),
+            di::Type::Qualified(t) if self.child_offset == 0 => Some(t.ty.clone()),
             di::Type::StructureType(t) => t
                 .members
                 .get(self.child_offset)
@@ -345,7 +347,7 @@ impl TypeWriter {
     // This really could be any type, we just need something to reserve an index in `types`.
     const PLACEHOLDER: v9::raw::PointerType = v9::raw::PointerType {
         pointee_idx: 0,
-        size: 0,
+        size: v9::raw::Size(0),
         _reserved: [0; _],
     };
 
@@ -426,13 +428,6 @@ impl TypeWriter {
     }
 }
 
-fn size(s: di::Size) -> u32 {
-    match s {
-        di::Size::Bytes(bytes) => bytes as u32,
-        di::Size::Bits(bits) => (bits / 8) as u32,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::fmt;
@@ -506,15 +501,15 @@ mod tests {
 
     fn ptr(pointee: TypeRef) -> di::PointerType {
         di::PointerType {
-            pointee: Some(pointee),
+            pointee,
             size: di::Size::Bytes(8),
         }
     }
 
-    fn tydef(name: &str, ty: impl Into<Option<TypeRef>>) -> di::TypeDefType<'_> {
+    fn tydef(name: &str, ty: TypeRef) -> di::TypeDefType<'_> {
         di::TypeDefType {
             name: name.into(),
-            ty: ty.into(),
+            ty,
         }
     }
 
@@ -552,7 +547,6 @@ mod tests {
                     };
 
                     let refs = |idx: u32| match idx {
-                        v9::raw::Type::VOID => "void".to_owned(),
                         v9::raw::Type::UNKNOWN => "<unknown>".to_owned(),
                         _ => match types.types.get(idx as usize).and_then(|t| t.as_enum()) {
                             Some(v9::raw::ty::Enum::primitive(t)) => {
@@ -565,6 +559,8 @@ mod tests {
                             Some(v9::raw::ty::Enum::structure(t)) => {
                                 format!("[{idx}] (struct:{})", name(t.name_offset))
                             }
+                            Some(v9::raw::ty::Enum::void(_)) => format!("[{idx}] (void)"),
+                            Some(v9::raw::ty::Enum::qualified(_)) => format!("[{idx}] (qualified)"),
                             None => format!("[{idx}] <ERROR>"),
                         },
                     };
@@ -600,6 +596,12 @@ mod tests {
                                 .field("members", &members)
                                 .finish()
                         }
+                        Some(v9::raw::ty::Enum::void(_)) => write!(f, "[{idx}] Void"),
+                        Some(v9::raw::ty::Enum::qualified(t)) => f
+                            .debug_struct(&format!("[{idx}] Qualified"))
+                            .field("qualifiers", &t.qualifiers)
+                            .field("ty", &refs(t.ty_idx))
+                            .finish(),
                         None => f.write_str("<invalid type>"),
                     }
                 }
@@ -676,12 +678,12 @@ mod tests {
         session.register(
             TypeRef::generic(2),
             di::PointerType {
-                pointee: None,
+                pointee: TypeRef::generic(7),
                 size: di::Size::Bytes(8),
             },
         );
         session.register(TypeRef::generic(3), tydef("Missing", TypeRef::generic(100)));
-        session.register(TypeRef::generic(4), tydef("Void", None));
+        session.register(TypeRef::generic(4), tydef("Void", TypeRef::generic(7)));
         session.register(
             TypeRef::generic(5),
             di::StructureType {
@@ -704,28 +706,30 @@ mod tests {
             },
         );
         session.register(TypeRef::generic(6), ty_u32());
+        session.register(TypeRef::generic(7), di::Type::Void);
 
         assert_ty!(run_test(session), @r#"
-        [0, 1, 2, 3, 5, 4]
+        [0, 2, 3, 4, 6, 5, 1]
         [
             [0] Pointer {
                 pointee: "<unknown>",
             },
-            [1] Pointer {
-                pointee: "void",
+            [1] Void,
+            [2] Pointer {
+                pointee: "[1] (void)",
             },
-            [2] TypeDef {
+            [3] TypeDef {
                 name: "Missing",
                 ty: "<unknown>",
             },
-            [3] TypeDef {
+            [4] TypeDef {
                 name: "Void",
-                ty: "void",
+                ty: "[1] (void)",
             },
-            [4] Primitive {
+            [5] Primitive {
                 name: "u32",
             },
-            [5] Structure {
+            [6] Structure {
                 name: "Partial",
                 members: [
                     Member {
@@ -734,7 +738,7 @@ mod tests {
                     },
                     Member {
                         name: "value",
-                        ty: "[4] (primitive:u32)",
+                        ty: "[5] (primitive:u32)",
                     },
                 ],
             },

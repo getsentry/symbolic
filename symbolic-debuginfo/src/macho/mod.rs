@@ -130,16 +130,16 @@ impl<'d> MachObject<'d> {
 
     /// Gets the Compact Unwind Info of this object, if any exists.
     pub fn compact_unwind_info(&self) -> Result<Option<CompactUnwindInfoIter<'d>>, MachError> {
-        if let Some(section) = self.section("unwind_info") {
-            if let Cow::Borrowed(section) = section.data {
-                let arch = self.arch();
-                let is_little_endian = self.endianity() == Endian::Little;
-                return Ok(Some(CompactUnwindInfoIter::new(
-                    section,
-                    is_little_endian,
-                    arch,
-                )?));
-            }
+        if let Some(section) = self.section("unwind_info")
+            && let Cow::Borrowed(section) = section.data
+        {
+            let arch = self.arch();
+            let is_little_endian = self.endianity() == Endian::Little;
+            return Ok(Some(CompactUnwindInfoIter::new(
+                section,
+                is_little_endian,
+                arch,
+            )?));
         }
         Ok(None)
     }
@@ -522,33 +522,34 @@ impl<'data> Dwarf<'data> for MachObject<'data> {
                     u64::from(header.offset)
                 };
 
-                if let Ok(sec) = header.name() {
-                    if sec.starts_with("__") && map_section_name(&sec[2..]) == section_name {
-                        // In some cases, dsymutil leaves sections headers but removes their
-                        // data from the file. While the addr and size parameters are still
-                        // set, `header.offset` is 0 in that case. We skip them just like the
-                        // section was missing to avoid loading invalid data.
-                        if header.offset == 0 {
-                            return None;
-                        }
-
-                        let data = match offset == u64::from(header.offset) {
-                            true => data,
-                            false => {
-                                let start = usize::try_from(offset).ok()?;
-                                let len = usize::try_from(header.size).ok()?;
-                                let end = start.checked_add(len)?;
-                                self.data.get(start..end)?
-                            }
-                        };
-
-                        return Some(DwarfSection {
-                            data: Cow::Borrowed(data),
-                            address: header.addr,
-                            offset,
-                            align: u64::from(header.align),
-                        });
+                if let Ok(sec) = header.name()
+                    && sec.starts_with("__")
+                    && map_section_name(&sec[2..]) == section_name
+                {
+                    // In some cases, dsymutil leaves sections headers but removes their
+                    // data from the file. While the addr and size parameters are still
+                    // set, `header.offset` is 0 in that case. We skip them just like the
+                    // section was missing to avoid loading invalid data.
+                    if header.offset == 0 {
+                        return None;
                     }
+
+                    let data = match offset == u64::from(header.offset) {
+                        true => data,
+                        false => {
+                            let start = usize::try_from(offset).ok()?;
+                            let len = usize::try_from(header.size).ok()?;
+                            let end = start.checked_add(len)?;
+                            self.data.get(start..end)?
+                        }
+                    };
+
+                    return Some(DwarfSection {
+                        data: Cow::Borrowed(data),
+                        address: header.addr,
+                        offset,
+                        align: u64::from(header.align),
+                    });
                 }
             }
         }
@@ -604,10 +605,10 @@ impl<'data> Iterator for MachOSymbolIterator<'data> {
             }
 
             // Trim leading underscores from mangled C++ names.
-            if let Some(tail) = name.strip_prefix('_') {
-                if !name.starts_with(SWIFT_HIDDEN_PREFIX) {
-                    name = tail;
-                }
+            if let Some(tail) = name.strip_prefix('_')
+                && !name.starts_with(SWIFT_HIDDEN_PREFIX)
+            {
+                name = tail;
             }
 
             return Some(Symbol {

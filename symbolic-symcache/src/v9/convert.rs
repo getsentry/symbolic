@@ -1,29 +1,52 @@
 use symbolic_common::CpuFamily;
 use symbolic_common::register::Register;
-use symbolic_debuginfo::{PrimitiveTypeEncoding, Size, VariableKind};
+use symbolic_debuginfo::{self as di, PrimitiveTypeEncoding, VariableKind};
 
-const SIZE_BITS_FLAG: u32 = 1 << 31;
+use crate::v9::raw;
 
-/// Converts a [`Size`] to its packed representation, with the top bit set for bit offsets.
-///
-/// Returns `None` if the offset does not fit in 31 bits.
-pub fn size_to_raw(offset: Size) -> Option<u32> {
-    let (offset, flag) = match offset {
-        Size::Bytes(offset) => (offset, 0),
-        Size::Bits(offset) => (offset, SIZE_BITS_FLAG),
-    };
+impl raw::Size {
+    #[inline(always)]
+    pub fn from_di(size: Option<di::Size>) -> Self {
+        match size {
+            Some(di::Size::Bytes(bytes)) if bytes < (1 << 31) => Self(bytes as u32),
+            Some(di::Size::Bits(bits)) if bits < (1 << 31) => Self(1 << 31 | bits as u32),
+            _ => Self(u32::MAX),
+        }
+    }
 
-    let offset = u32::try_from(offset).ok()?;
-    (offset < SIZE_BITS_FLAG).then_some(offset | flag)
+    #[inline(always)]
+    pub fn into_di(self) -> Option<di::Size> {
+        match self.0 {
+            u32::MAX => None,
+            v if v < 1 << 31 => Some(di::Size::Bytes(v.into())),
+            v => Some(di::Size::Bits((v << 1 >> 1).into())),
+        }
+    }
 }
 
-/// Converts a packed offset to a [`Size`], using the top bit as the unit flag.
-pub fn raw_to_size(offset: u32) -> Size {
-    let value = (offset & !SIZE_BITS_FLAG).into();
-    if offset & SIZE_BITS_FLAG == 0 {
-        Size::Bytes(value)
-    } else {
-        Size::Bits(value)
+impl raw::ValueBits {
+    #[inline(always)]
+    pub fn from_di(vb: Option<di::ValueBits>) -> Self {
+        match vb {
+            Some(vb) if let (Ok(size), Ok(offset)) = (vb.size.try_into(), vb.offset.try_into()) => {
+                raw::ValueBits { size, offset }
+            }
+            Some(_) | None => raw::ValueBits {
+                size: u16::MAX,
+                offset: u16::MAX,
+            },
+        }
+    }
+
+    #[inline(always)]
+    pub fn into_di(self) -> Option<di::ValueBits> {
+        match (self.offset, self.size) {
+            (u16::MAX, u16::MAX) => None,
+            (offset, size) => Some(di::ValueBits {
+                offset: offset.into(),
+                size: size.into(),
+            }),
+        }
     }
 }
 
@@ -108,27 +131,40 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_size_out_of_range() {
-        for offset in [
-            1 << 31,
-            u64::from(u32::MAX),
-            u64::from(u32::MAX) + 1,
-            u64::MAX,
-        ] {
-            assert_eq!(size_to_raw(Size::Bytes(offset)), None);
-            assert_eq!(size_to_raw(Size::Bits(offset)), None);
-        }
+    fn test_convert_size_di_to_raw() {
+        const BIT_FLAG: u32 = 1 << 31;
+
+        let conv_bytes = |s| raw::Size::from_di(Some(di::Size::Bytes(s))).0;
+        let conv_bits = |s| raw::Size::from_di(Some(di::Size::Bits(s))).0;
+
+        assert_eq!(conv_bytes(0), 0);
+        assert_eq!(conv_bytes(42), 42);
+        assert_eq!(conv_bytes(u64::from(BIT_FLAG)), u32::MAX);
+        assert_eq!(conv_bytes(u64::from(BIT_FLAG) - 1), BIT_FLAG - 1);
+
+        assert_eq!(conv_bits(0), BIT_FLAG);
+        assert_eq!(conv_bits(42), BIT_FLAG | 42);
+        assert_eq!(conv_bits(u64::from(BIT_FLAG)), u32::MAX);
+        assert_eq!(
+            conv_bits(u64::from(BIT_FLAG) - 1),
+            BIT_FLAG | (BIT_FLAG - 1)
+        );
+
+        assert_eq!(raw::Size::from_di(None).0, u32::MAX);
     }
 
     #[test]
-    fn test_size_roundtrip() {
-        assert_eq!(size_to_raw(Size::Bytes(0)), Some(0));
-        assert_matches!(raw_to_size(0), Size::Bytes(0));
-        assert_eq!(size_to_raw(Size::Bytes(42)), Some(42));
-        assert_matches!(raw_to_size(42), Size::Bytes(42));
-        assert_eq!(size_to_raw(Size::Bits(0)), Some(0x8000_0000));
-        assert_matches!(raw_to_size(0x8000_0000), Size::Bits(0));
-        assert_eq!(size_to_raw(Size::Bits(42)), Some(0x8000_002a));
-        assert_matches!(raw_to_size(0x8000_002a), Size::Bits(42));
+    fn test_convert_size_raw_to_di_opt() {
+        const BIT_FLAG: u32 = 1 << 31;
+
+        let conv = |s| raw::Size(s).into_di();
+
+        assert_matches!(conv(0), Some(di::Size::Bytes(0)));
+        assert_matches!(conv(42), Some(di::Size::Bytes(42)));
+        assert_matches!(conv(BIT_FLAG - 1), Some(di::Size::Bytes(0x7fff_ffff)));
+
+        assert_matches!(conv(BIT_FLAG), Some(di::Size::Bits(0)));
+        assert_matches!(conv(BIT_FLAG | 42), Some(di::Size::Bits(42)));
+        assert_matches!(conv(u32::MAX), None);
     }
 }
