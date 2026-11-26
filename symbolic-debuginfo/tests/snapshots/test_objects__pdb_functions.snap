@@ -7,6 +7,14 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x1123: xstring:2425 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x116c: xstring:2426 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x116d: xstring:2425 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+  variables:
+    this (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x1120..0x1123: register ecx
+      0x1123..0x116c: register esi
+      0x116d..0x1173: register esi
 
   > 0x1123: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Tidy_deallocate() (0x50)
     0x1123: xstring:3902 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -33,6 +41,18 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         0x113c: xmemory0:213 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x114e: xmemory0:217 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x116d: xmemory0:213 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+        variables:
+          _Ptr (parameter)
+            type:
+              > Pointer (4 bytes)
+                > Void
+            0x1134..0x1144: register eax
+            0x114e..0x1155: register eax
+          _Bytes (parameter)
+            type:
+              > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            0x1134..0x1155: register ecx
+            0x116d..0x1173: register ecx
 
         > 0x113c: std::_Adjust_manually_vector_aligned(void*&, unsigned int&) (0x37)
           0x113c: xmemory0:119 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -40,6 +60,17 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
           0x1144: xmemory0:138 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x114c: xmemory0:143 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x116d: xmemory0:140 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+          variables:
+            _Ptr_container (local)
+              type:
+                > Unknown
+              0x113f..0x114e: register edx
+              0x114e..0x1155: register edx
+              0x116d..0x1173: register edx
+            _Back_shift (local)
+              type:
+                > Unknown
+              0x1144..0x1147: register eax
 
 > 0x1000: google_breakpad::CrashGenerationClient::RequestDump(_EXCEPTION_POINTERS*, MDRawAssertionInfo*) (0x114)
   0x1000: crash_generation_client.cc:323 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
@@ -56,6 +87,26 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x10fd: crash_generation_client.cc:338 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
   0x1101: crash_generation_client.cc:337 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
   0x1107: crash_generation_client.cc:338 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
+  variables:
+    this (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x1000..0x1011: register ecx
+      0x1011..0x101a: register ebx
+      0x102b..0x1104: register ebx
+    ex_info (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x1000..0x1001: memory at esp +4
+    assert_info (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x1000..0x1001: memory at esp +8
+      0x103d..0x1051: register esi
+      0x1054..0x106e: register esi
 
   > 0x1011: google_breakpad::CrashGenerationClient::IsRegistered() const (0x4)
     0x1011: crash_generation_client.cc:319 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
@@ -70,6 +121,14 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0x10e5: crash_generation_client.cc:366 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
     0x1101: crash_generation_client.cc:373 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
     0x1104: crash_generation_client.cc:373 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
+    variables:
+      result (local)
+        type:
+          > Primitive: unsigned long (UnsignedInt, 4 bytes)
+        0x10fd..0x1107: register eax
+      wait_handles (local)
+        type:
+          > Unknown
 
 > 0x12d0: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Xlen() (0xc)
   0x12d0: xstring:3919 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -87,11 +146,41 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x11d1: xstring:2623 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x12c1: xstring:2627 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x12ca: xstring:2623 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+  variables:
+    this (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x1180..0x1191: register ecx
+      0x1191..0x11c8: register edi
+      0x11d1..0x12c1: register edi
+      0x12ca..0x12cf: register edi
+    _Ptr (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x1180..0x1181: memory at esp +4
+      0x1187..0x11bc: register eax
+      0x11d1..0x11f8: register eax
+      0x12ca..0x12cf: register eax
+    _Count (parameter)
+      type:
+        > Unknown
+      0x1180..0x1181: memory at esp +8
+      0x118d..0x11ca: register ebp
+      0x11d1..0x12c3: register ebp
+      0x12ca..0x12cf: register ebp
 
   > 0x11a0: std::_String_val<std::_Simple_types<wchar_t> >::_Myptr() (0x9)
     0x11a0: xstring:1780 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
     0x11a2: xstring:1781 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
     0x11a7: xstring:1783 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    variables:
+      _Result (local)
+        type:
+          > Pointer (4 bytes)
+            > Primitive: wchar_t (UnsignedChar, 2 bytes)
+        0x11a2..0x11a9: register ebx
 
     > 0x11a2: std::_String_val<std::_Simple_types<wchar_t> >::_Large_string_engaged() const (0x3)
       0x11a2: xstring:1802 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -121,6 +210,23 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0x1286: xstring:3818 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
     0x128f: xstring:3820 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
     0x12ca: xstring:3806 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    variables:
+      _New_capacity (local)
+        type:
+          > Unknown
+        0x11df..0x11e2: register esi
+        0x11ef..0x11f1: register esi
+        0x1205..0x1207: register esi
+        0x120f..0x1241: register esi
+        0x1241..0x1247: register esi
+        0x1247..0x126f: register esi
+      _New_ptr (local)
+        type:
+          > Pointer (4 bytes)
+            > Primitive: wchar_t (UnsignedChar, 2 bytes)
+        0x1241..0x1247: register ebx
+        0x1261..0x1263: register ebx
+        0x1265..0x12c4: register ebx
 
     > 0x1268: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::assign::__l2::<lambda_03628ca18370b1f44a99b655e704819b>::operator()(wchar_t* const, const unsigned int, wchar_t const* const) const (0x1e)
       0x1268: xstring:2624 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -145,6 +251,13 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
 
     > 0x1212: std::allocator<wchar_t>::allocate(const unsigned int) (0x53)
       0x1212: xmemory0:1035 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+      variables:
+        _Count (parameter)
+          type:
+            > Unknown
+          0x1212..0x122c: register eax
+          0x1252..0x125c: register eax
+          0x1263..0x1265: register eax
 
       > 0x121f: std::_Allocate(const unsigned int) (0x46)
         0x121f: xmemory0:192 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -160,6 +273,23 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
           0x123d: xmemory0:102 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x1247: xmemory0:104 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x124d: xmemory0:105 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+          variables:
+            _Block_size (local)
+              type:
+                > Primitive: unsigned int (UnsignedInt, 4 bytes)
+              0x122c..0x123a: register eax
+            _Ptr_container (local)
+              type:
+                > Unknown
+              0x123a..0x1241: register eax
+              0x1241..0x1247: register eax
+              0x1247..0x1250: register eax
+            _Ptr (local)
+              type:
+                > Pointer (4 bytes)
+                  > Void
+              0x1241..0x1247: register ebx
+              0x124d..0x1250: register ebx
 
           > 0x1234: std::_Default_allocate_traits::_Allocate(const unsigned int) (0x9)
             0x1234: xmemory0:51 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -171,6 +301,11 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         0x1212: xmemory0:24 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x1215: xmemory0:25 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x121c: xmemory0:28 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+        variables:
+          _Result (local)
+            type:
+              > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            0x1215..0x121f: register ecx
 
     > 0x11dd: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Calculate_growth(const unsigned int) const (0x32)
       0x11dd: xstring:3784 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -179,6 +314,17 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x11f1: xstring:3791 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
       0x1200: xstring:3793 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
       0x1207: xstring:3796 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+      variables:
+        _Masked (local)
+          type:
+            > Unknown
+          0x11e2..0x11ef: register esi
+          0x11f1..0x1205: register esi
+          0x1207..0x120f: register esi
+        _Old (local)
+          type:
+            > Unknown
+          0x11dd..0x120f: register ecx
 
       > 0x120a: std::_Max_value(unsigned int const&, unsigned int const&) (0x5)
         0x120a: utility:32 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -190,12 +336,32 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         0x1298: xmemory0:211 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x12a0: xmemory0:213 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x12b2: xmemory0:217 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+        variables:
+          _Ptr (parameter)
+            type:
+              > Pointer (4 bytes)
+                > Void
+            0x1298..0x12a8: register eax
+            0x12b2..0x12b9: register eax
+          _Bytes (parameter)
+            type:
+              > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            0x1298..0x12b9: register ecx
 
         > 0x12a0: std::_Adjust_manually_vector_aligned(void*&, unsigned int&) (0x12)
           0x12a0: xmemory0:119 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x12a6: xmemory0:137 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x12a8: xmemory0:138 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x12b0: xmemory0:143 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+          variables:
+            _Ptr_container (local)
+              type:
+                > Unknown
+              0x12a3..0x12b2: register edx
+            _Back_shift (local)
+              type:
+                > Unknown
+              0x12a8..0x12ab: register eax
 
 > 0x12e0: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::operator=(std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >&&) (0x7f)
   0x12e0: xstring:2267 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -205,6 +371,21 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x1352: xstring:2277 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x1354: xstring:2278 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x1358: xstring:2270 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+  variables:
+    this (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x12e0..0x12e8: register ecx
+      0x12e8..0x1355: register esi
+      0x1358..0x135e: register esi
+    _Right (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x12e0..0x12e1: memory at esp +4
+      0x12e6..0x1352: register edi
+      0x1358..0x135e: register edi
 
   > 0x12ec: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Tidy_deallocate() (0x72)
     0x12ec: xstring:3902 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -231,6 +412,18 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         0x1305: xmemory0:213 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x1317: xmemory0:217 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x1358: xmemory0:213 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+        variables:
+          _Ptr (parameter)
+            type:
+              > Pointer (4 bytes)
+                > Void
+            0x12fd..0x130d: register eax
+            0x1317..0x131e: register eax
+          _Bytes (parameter)
+            type:
+              > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            0x12fd..0x131e: register ecx
+            0x1358..0x135e: register ecx
 
         > 0x1305: std::_Adjust_manually_vector_aligned(void*&, unsigned int&) (0x59)
           0x1305: xmemory0:119 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -238,6 +431,17 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
           0x130d: xmemory0:138 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x1315: xmemory0:143 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x1358: xmemory0:140 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+          variables:
+            _Ptr_container (local)
+              type:
+                > Unknown
+              0x1308..0x1317: register edx
+              0x1317..0x131e: register edx
+              0x1358..0x135e: register edx
+            _Back_shift (local)
+              type:
+                > Unknown
+              0x130d..0x1310: register eax
 
   > 0x1334: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Assign_rv_contents(std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >&&, std::integral_constant<bool,1>) (0x1d)
     0x1334: xstring:2291 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -258,6 +462,32 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x27d0: list:762 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x27dd: list:766 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x27e8: list:775 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+  variables:
+    _Next (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x27d0..0x27d1: memory at esp +4
+    _Prev (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x27d0..0x27d1: memory at esp +8
+    <_Val_0> (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x27d0..0x27d1: memory at esp +12
+    _Pnode (local)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x27dd..0x27eb: register eax
+    this (local)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x27d0..0x27eb: memory at esp +0
 
   > 0x27dd: std::_Default_allocator_traits<std::allocator<std::_List_node<google_breakpad::AppMemory,void *> > >::construct(std::allocator<std::_List_node<google_breakpad::AppMemory,void *> >&, google_breakpad::AppMemory* const, google_breakpad::AppMemory const&) (0xb)
     0x27dd: xmemory0:917 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -280,6 +510,57 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x2632: vector:981 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x2676: vector:987 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x267b: vector:958 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+  variables:
+    this (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x2560..0x2565: register ecx
+      0x2565..0x257c: register esi
+      0x2581..0x25f0: register esi
+      0x25f0..0x2601: register esi
+      0x2601..0x2614: register esi
+      0x2614..0x2676: register esi
+      0x267b..0x2680: register esi
+    <_Val_0> (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Pointer (4 bytes)
+            > Unknown
+      0x2560..0x2561: memory at esp +4
+    _Newcapacity (local)
+      type:
+        > Unknown
+      0x25ae..0x25b0: register eax
+      0x25b8..0x25db: register eax
+      0x2601..0x260b: register eax
+      0x2612..0x2614: register eax
+      0x2614..0x2618: register eax
+    _Newsize (local)
+      type:
+        > Unknown
+      0x25a8..0x25f0: register ebp
+      0x25f0..0x2601: register ebp
+      0x2601..0x2614: register ebp
+      0x2614..0x2672: register ebp
+    _Oldsize (local)
+      type:
+        > Unknown
+      0x256b..0x257d: register ebx
+      0x2581..0x2585: register ebx
+      0x2588..0x25f0: register ebx
+      0x25f0..0x2601: register ebx
+      0x2601..0x2614: register ebx
+      0x2614..0x2677: register ebx
+      0x267b..0x2680: register ebx
+    _Newvec (local)
+      type:
+        > Pointer (4 bytes)
+          > Pointer (4 bytes)
+            > Unknown
+      0x25f0..0x25f6: register edi
+      0x2610..0x2612: register edi
+      0x2614..0x2671: register edi
 
   > 0x2565: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::_Has_unused_capacity() const (0x8)
     0x2565: vector:1797 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -303,6 +584,16 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0x25ac: vector:1959 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
     0x25b0: vector:1962 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
     0x25b3: vector:1964 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    variables:
+      _Oldcapacity (local)
+        type:
+          > Unknown
+        0x2594..0x2596: register ecx
+        0x259e..0x25b8: register ecx
+      _Geometric (local)
+        type:
+          > Unknown
+        0x25b3..0x25b8: register eax
 
     > 0x2594: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::capacity() const (0xa)
       0x2594: vector:1786 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -326,6 +617,21 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         0x25ec: xmemory0:102 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x25f6: xmemory0:104 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x25fc: xmemory0:105 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+        variables:
+          _Block_size (local)
+            type:
+              > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            0x25db..0x25e9: register eax
+          _Ptr_container (local)
+            type:
+              > Unknown
+            0x25e9..0x25f0: register eax
+            0x25f0..0x25ff: register eax
+          _Ptr (local)
+            type:
+              > Unknown
+            0x25f0..0x25f6: register edi
+            0x25fc..0x25ff: register edi
 
         > 0x25e3: std::_Default_allocate_traits::_Allocate(const unsigned int) (0x9)
           0x25e3: xmemory0:51 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -337,6 +643,11 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x25b8: xmemory0:24 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
       0x25c4: xmemory0:25 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
       0x25cb: xmemory0:28 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+      variables:
+        _Result (local)
+          type:
+            > Primitive: unsigned int (UnsignedInt, 4 bytes)
+          0x25bf..0x25ce: register ecx
 
   > 0x2614: std::_Default_allocator_traits<std::allocator<google_breakpad::ExceptionHandler *> >::construct(std::allocator<google_breakpad::ExceptionHandler *>&, google_breakpad::ExceptionHandler** const, google_breakpad::ExceptionHandler*&&) (0x9)
     0x2614: xmemory0:917 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -356,12 +667,24 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         > 0x261d: std::_Uninitialized_move_al_unchecked(google_breakpad::ExceptionHandler**, google_breakpad::ExceptionHandler**, google_breakpad::ExceptionHandler**, std::allocator<google_breakpad::ExceptionHandler *>&, std::_Really_trivial_ptr_iterator_tag, std::integral_constant<bool,1>) (0x15)
           0x261d: xmemory:185 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x262f: xmemory:185 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+          variables:
+            _First (parameter)
+              type:
+                > Pointer (4 bytes)
+                  > Pointer (4 bytes)
+                    > Unknown
+              0x261f..0x262d: register ecx
 
           > 0x261d: std::_Copy_memmove(google_breakpad::ExceptionHandler**, google_breakpad::ExceptionHandler**, google_breakpad::ExceptionHandler**) (0x15)
             0x261d: xutility:2386 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
             0x261f: xutility:2389 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
             0x2624: xutility:2390 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
             0x262f: xutility:2390 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+            variables:
+              _Count (local)
+                type:
+                  > Unknown
+                0x2624..0x262d: register eax
 
   > 0x262d: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::_Change_array(google_breakpad::ExceptionHandler** const, const unsigned int, const unsigned int) (0x48)
     0x262d: vector:1999 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -378,12 +701,31 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         0x263e: xmemory0:211 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x2646: xmemory0:213 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x2658: xmemory0:217 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+        variables:
+          _Ptr (parameter)
+            type:
+              > Pointer (4 bytes)
+                > Void
+            0x2658..0x265f: register eax
+          _Bytes (parameter)
+            type:
+              > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            0x263e..0x265f: register ecx
 
         > 0x2646: std::_Adjust_manually_vector_aligned(void*&, unsigned int&) (0x12)
           0x2646: xmemory0:119 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x264c: xmemory0:137 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x264e: xmemory0:138 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x2656: xmemory0:143 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+          variables:
+            _Ptr_container (local)
+              type:
+                > Unknown
+              0x2649..0x2658: register edx
+            _Back_shift (local)
+              type:
+                > Unknown
+              0x2646..0x2651: register eax
 
     > 0x2636: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::capacity() const (0x5)
       0x2636: vector:1786 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -397,6 +739,18 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x1be4: exception_handler.cc:450 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)
   0x1bf5: exception_handler.cc:451 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)
   0x1bfa: exception_handler.cc:440 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)
+  variables:
+    this (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x1b90..0x1b99: register ecx
+      0x1b99..0x1bf8: register edi
+      0x1bfa..0x1bff: register edi
+    google_breakpad::ExceptionHandler::handler_stack_index_ (local)
+      type:
+        > Primitive: long (SignedInt, 4 bytes)
+      0x1baa..0x1bb0: register eax
 
   > 0x1b9f: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::size() const (0x1b)
     0x1b9f: vector:1775 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -407,6 +761,18 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0x1bb5: vector:1831 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
     0x1bbc: vector:1831 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
     0x1bfa: vector:1833 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (4 bytes)
+            > Unknown
+        0x1bb5..0x1bd6: register edx
+        0x1bfa..0x1bff: register edx
+      _Pos (parameter)
+        type:
+          > Unknown
+        0x1bbc..0x1bf9: register esi
+        0x1bfa..0x1bff: register esi
 
     > 0x1bb5: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::size() const (0xf)
       0x1bb5: vector:1775 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -416,6 +782,13 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x26a0: list:1034 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x26a3: list:1035 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x26d6: list:1036 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+  variables:
+    this (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x26a0..0x26a3: register ecx
+      0x26a3..0x26e2: register edi
 
   > 0x26a3: std::list<google_breakpad::AppMemory,std::allocator<google_breakpad::AppMemory> >::_Tidy() (0x32)
     0x26a3: list:1836 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -432,6 +805,19 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x26ca: list:1453 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
       0x26cc: list:1456 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
       0x26cf: list:1453 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+      variables:
+        _Pnode (local)
+          type:
+            > Pointer (4 bytes)
+              > Unknown
+          0x26a7..0x26ca: register eax
+          0x26d1..0x26d5: register eax
+        _Pnext (local)
+          type:
+            > Pointer (4 bytes)
+              > Unknown
+          0x26c0..0x26c2: register esi
+          0x26c2..0x26d5: register esi
 
       > 0x26c2: std::_List_buy<google_breakpad::AppMemory,std::allocator<google_breakpad::AppMemory> >::_Freenode(std::_List_node<google_breakpad::AppMemory,void *>*) (0xd)
         0x26c2: list:781 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -467,3 +853,9 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
 > 0x2690: google_breakpad::scoped_ptr<google_breakpad::CrashGenerationClient>::~scoped_ptr<google_breakpad::CrashGenerationClient>() (0xd)
   0x2690: scoped_ptr.h:98 (c:\projects\breakpad-tools\deps\breakpad\src\common)
   0x269c: scoped_ptr.h:99 (c:\projects\breakpad-tools\deps\breakpad\src\common)
+  variables:
+    this (parameter)
+      type:
+        > Pointer (4 bytes)
+          > Unknown
+      0x2690..0x2692: register ecx

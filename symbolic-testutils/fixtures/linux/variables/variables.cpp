@@ -70,9 +70,9 @@ NOINLINE void primitives(void)
 /*
  * Pointer types, as parameters, so the fixture covers `Kind::Parameter` too.
  *
- * `str`, `any` and `fn` are not resolvable yet: `const char *` points at a
- * `DW_TAG_const_type`, `void *` has no `DW_AT_type` at all, and `int (*)(int)`
- * points at a `DW_TAG_subroutine_type`.
+ * `fn` is not resolvable yet: `int (*)(int)` points at a
+ * `DW_TAG_subroutine_type`. The pointee of `str` resolves to `char` with the
+ * `const` qualifier, and `any` to a pointer without a pointee type.
  */
 NOINLINE void pointers(int *num, int **num_ptr, const char *str, void *any, int (*fn)(int))
 {
@@ -209,9 +209,9 @@ NOINLINE int optimized_out(int a)
 
 /*
  * A volatile local must keep a stack home even at -O2, giving the optimized
- * snapshot its only frame-base location. Its type renders as `Unknown`: the
- * volatile qualifier wraps it in a `DW_TAG_volatile_type`, which symbolic
- * does not follow yet (like `const` in `pointers()`).
+ * snapshot its only frame-base location. Its type resolves to a qualified
+ * type with the `volatile` qualifier around `int`, read from the
+ * `DW_TAG_volatile_type` wrapping it.
  */
 NOINLINE int stack_home(int a)
 {
@@ -277,4 +277,14 @@ int main(void)
     opaque = result;
     class_members();
     return 0;
+}
+
+/*
+ * Qualifiers on more than one pointer level: `strs` points to a `const`
+ * pointer to `const char`. `cv` points to an `int` with two qualifiers, which
+ * merge into one qualified type. Defined after `main` so that adding it does
+ * not shift the addresses of the other functions.
+ */
+NOINLINE void mixed_qualifiers(const char *const *strs, const volatile int *cv)
+{
 }

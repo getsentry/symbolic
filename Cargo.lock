@@ -2526,6 +2526,7 @@ dependencies = [
 name = "symbolic-debuginfo"
 version = "14.0.0-alpha.5"
 dependencies = [
+ "bitflags",
  "criterion",
  "debugid",
  "elementtree",
@@ -2534,6 +2535,7 @@ dependencies = [
  "flate2",
  "gimli 0.33.0",
  "goblin",
+ "hashbrown 0.17.1",
  "indexmap",
  "insta",
  "memchr",

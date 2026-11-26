@@ -2,6 +2,24 @@
 source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug::new(&session, &functions)"
 ---
+> 0x1310: _Z16mixed_qualifiersPKPKcPVKi (0x1)
+  0x1310: variables.cpp:290 (/fixture)
+  variables:
+    strs (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Qualified: const
+            > Pointer (8 bytes)
+              > Qualified: const
+                > Primitive: char (SignedChar, 1 byte)
+      0x1310..0x1311: register rdi
+    cv (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Qualified: const volatile
+            > Primitive: int (SignedInt, 4 bytes)
+      0x1310..0x1311: register rsi
+
 > 0x1040: main (0xa1)
   0x1040: variables.cpp:264 (/fixture)
   0x1041: variables.cpp:268 (/fixture)
@@ -123,7 +141,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x1280..0x128c: register rdi
     slot (local)
       type:
-        > Unknown
+        > Qualified: volatile
+          > Primitive: int (SignedInt, 4 bytes)
       0x1280..0x128c: cfa -12
 
 > 0x1270: _Z13optimized_outi (0x4)
@@ -263,7 +282,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
     str (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Qualified: const
+            > Primitive: char (SignedChar, 1 byte)
       0x11f0..0x11f1: register rdx
     any (parameter)
       type:
@@ -279,16 +299,16 @@ expression: "FunctionsDebug::new(&session, &functions)"
 > 0x11e0: _Z10primitivesv (0x1)
   0x11e0: variables.cpp:68 (/fixture)
 
-> 0x1310: _Z7inlinedi (0x7)
-  0x1310: variables.cpp:127 (/fixture)
-  0x1313: variables.cpp:129 (/fixture)
-  0x1316: variables.cpp:130 (/fixture)
+> 0x1320: _Z7inlinedi (0x7)
+  0x1320: variables.cpp:127 (/fixture)
+  0x1323: variables.cpp:129 (/fixture)
+  0x1326: variables.cpp:130 (/fixture)
   variables:
     param (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1310..0x1317: register rdi
+      0x1320..0x1327: register rdi
     doubled (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x1313..0x1316: register rax
+      0x1323..0x1326: register rax

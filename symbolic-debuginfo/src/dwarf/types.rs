@@ -1,9 +1,9 @@
 use gimli::{AttributeValue, DebuggingInformationEntry, UnitOffset, constants};
 
-use crate::dwarf::{DwarfError, Slice, UnitRef};
+use crate::dwarf::{DwarfError, DwarfTypeRef, Slice, UnitRef};
 use crate::{
-    PointerType, PrimitiveType, PrimitiveTypeEncoding, Size, StructureMember, StructureType, Type,
-    TypeDefType, ValueBits,
+    PointerType, PrimitiveType, PrimitiveTypeEncoding, Qualifiers, Size, StructureMember,
+    StructureType, Type, TypeDefType, ValueBits,
 };
 
 pub fn parse_type<'d>(
@@ -14,7 +14,6 @@ pub fn parse_type<'d>(
 
     Ok(match entry.tag {
         constants::DW_TAG_base_type => parse_base_type(unit, entry).map(Type::Primitive),
-        // Pointers may be nested within `DW_TAG_restrict_type`, `DW_TAG_const_type` etc.
         constants::DW_TAG_pointer_type
         | constants::DW_TAG_reference_type
         | constants::DW_TAG_rvalue_reference_type => {
@@ -26,6 +25,42 @@ pub fn parse_type<'d>(
         }
         _ => None,
     })
+}
+
+/// Parses a type modifier entry (DWARF 5 §5.3).
+///
+/// A modifier entry applies a qualifier to the type that its `DW_AT_type` attribute references.
+/// The supported modifiers are:
+///
+/// - `DW_TAG_const_type`: [`Qualifiers::CONST`]
+/// - `DW_TAG_volatile_type`: [`Qualifiers::VOLATILE`]
+/// - `DW_TAG_restrict_type`: [`Qualifiers::RESTRICT`]
+///
+/// Returns the qualifier and the reference to the modified type. The reference is `None` if the
+/// entry has no `DW_AT_type`, which means it qualifies `void`. Returns `None` if the entry is not a
+/// supported modifier, or if its `DW_AT_type` cannot be resolved.
+pub fn parse_modifier(
+    unit: UnitRef<'_, '_>,
+    offset: UnitOffset,
+) -> Result<Option<(Qualifiers, Option<DwarfTypeRef>)>, DwarfError> {
+    let entry = unit.unit.entry(offset)?;
+
+    let qualifiers = match entry.tag {
+        constants::DW_TAG_const_type => Qualifiers::CONST,
+        constants::DW_TAG_volatile_type => Qualifiers::VOLATILE,
+        constants::DW_TAG_restrict_type => Qualifiers::RESTRICT,
+        _ => return Ok(None),
+    };
+
+    let Some(attr) = entry
+        .attrs
+        .into_iter()
+        .find(|attr| attr.name() == constants::DW_AT_type)
+    else {
+        return Ok(Some((qualifiers, None)));
+    };
+
+    Ok(unit.to_type_ref(attr).map(|ty| (qualifiers, Some(ty))))
 }
 
 fn parse_base_type<'d>(
@@ -119,7 +154,7 @@ fn parse_pointer_type<'d>(
     }
 
     Some(PointerType {
-        pointee: pointee.map(Into::into),
+        pointee: pointee.unwrap_or_else(DwarfTypeRef::void).into(),
         size: size.unwrap_or_else(|| Size::Bytes(unit.unit.encoding().address_size.into())),
     })
 }
@@ -143,7 +178,7 @@ fn parse_typedef<'d>(
 
     Some(TypeDefType {
         name: name?,
-        ty: ty.map(Into::into),
+        ty: ty.unwrap_or_else(DwarfTypeRef::void).into(),
     })
 }
 

@@ -34,7 +34,10 @@ mod types;
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::{Type, TypeRef, Variable, VariableKind, VariableLocation, VariableLocationInfo};
+use crate::{
+    QualifiedType, Qualifiers, Type, TypeRef, Variable, VariableKind, VariableLocation,
+    VariableLocationInfo,
+};
 
 /// This is a fake BcSymbolMap used when macho support is turned off since they are unfortunately
 /// part of the dwarf interface
@@ -184,6 +187,15 @@ enum DwarfTypeRefInner {
     },
     /// A type signature.
     Signature(DebugTypeSignature),
+    /// `void`, which DWARF represents as a missing `DW_AT_type`.
+    Void,
+}
+
+impl DwarfTypeRef {
+    /// Creates a [`DwarfTypeRef`] to `void`.
+    fn void() -> Self {
+        Self(DwarfTypeRefInner::Void)
+    }
 }
 
 /// DWARF section information including its data.
@@ -302,10 +314,10 @@ impl<'d> DwarfLineProgram<'d> {
                 continue;
             }
 
-            if let Some(last_row) = sequence_rows.last_mut() {
-                if address >= last_row.address {
-                    last_row.size = Some(address - last_row.address);
-                }
+            if let Some(last_row) = sequence_rows.last_mut()
+                && address >= last_row.address
+            {
+                last_row.size = Some(address - last_row.address);
             }
 
             if program_row.end_sequence() {
@@ -336,12 +348,12 @@ impl<'d> DwarfLineProgram<'d> {
                 let file_index = program_row.file_index();
                 let line = program_row.line().map(|v| v.get());
                 let mut duplicate = false;
-                if let Some(last_row) = sequence_rows.last_mut() {
-                    if last_row.address == address {
-                        last_row.file_index = file_index;
-                        last_row.line = line;
-                        duplicate = true;
-                    }
+                if let Some(last_row) = sequence_rows.last_mut()
+                    && last_row.address == address
+                {
+                    last_row.file_index = file_index;
+                    last_row.line = line;
+                    duplicate = true;
                 }
                 if !duplicate {
                     sequence_rows.push(DwarfRow {
@@ -1030,10 +1042,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             call_line,
         };
 
-        if range_buf.is_empty() {
-            if let Some(range) = Self::convert_pc_range(low_pc, high_pc, high_pc_rel, kind)? {
-                range_buf.push(range);
-            }
+        if range_buf.is_empty()
+            && let Some(range) = Self::convert_pc_range(low_pc, high_pc, high_pc_rel, kind)?
+        {
+            range_buf.push(range);
         }
 
         // Filter out invalid (empty and reverse) ranges.
@@ -1427,10 +1439,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     let frame_base = function_stack
                         .last()
                         .and_then(|f| f.frame_base(&function_stack));
-                    if let Some(variable) = self.parse_variable(entries, abbrev, frame_base)? {
-                        if let Some(last_function) = function_stack.last_mut() {
-                            last_function.push_variable(variable);
-                        }
+                    if let Some(variable) = self.parse_variable(entries, abbrev, frame_base)?
+                        && let Some(last_function) = function_stack.last_mut()
+                    {
+                        last_function.push_variable(variable);
                     }
                 }
                 _ => {
@@ -1544,7 +1556,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     VariableLocationInfo {
                         address: offset(address, self.inner.info.address_offset),
                         size: lr.end.min(range.end) - address,
-                        location: location.location.clone(),
+                        location: location.clone(),
                     }
                 })
                 .collect(),
@@ -1576,25 +1588,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         let mut result = Vec::new();
         let locations = self.inner.attr_locations(value)?.into_iter().flatten();
-        for location in locations {
-            let location = location?;
-
-            let range = location.range;
-            let address = offset(range.begin, self.inner.info.address_offset);
-            let Some(size) = range.end.checked_sub(range.begin) else {
-                // Invalid range, end before start.
-                continue;
-            };
-
-            let location = VariableLocationInfo {
-                address,
-                size,
-                location: match self.parse_location_expression(location.data, frame_base) {
-                    Some(location) => location,
-                    None => continue,
-                },
-            };
-            result.push((range, location));
+        for entry in locations {
+            let entry = entry?;
+            if let Some(location) = self.parse_location_expression(entry.data, frame_base) {
+                result.push((entry.range, location));
+            }
         }
 
         result.sort_unstable_by_key(|(r, _)| *r);
@@ -1711,7 +1709,7 @@ enum Locations {
     /// A single location.
     Single(VariableLocation),
     /// Many locations, dependent on the PC at runtime.
-    Many(Vec<(Range, VariableLocationInfo)>),
+    Many(Vec<(Range, VariableLocation)>),
 }
 
 impl Locations {
@@ -1729,7 +1727,7 @@ impl Locations {
         };
 
         let mut added = Vec::new();
-        for (range, info) in other {
+        for (range, location) in other {
             let mut cursor = range.begin;
             for (covered, _) in existing.iter() {
                 if cursor >= range.end || covered.begin >= range.end {
@@ -1739,12 +1737,20 @@ impl Locations {
                     continue;
                 }
                 if covered.begin > cursor {
-                    added.push(sub_location(range, &info, cursor, covered.begin));
+                    let uncovered = Range {
+                        begin: cursor,
+                        end: covered.begin,
+                    };
+                    added.push((uncovered, location.clone()));
                 }
                 cursor = cursor.max(covered.end);
             }
             if cursor < range.end {
-                added.push(sub_location(range, &info, cursor, range.end));
+                let uncovered = Range {
+                    begin: cursor,
+                    end: range.end,
+                };
+                added.push((uncovered, location));
             }
         }
 
@@ -1753,21 +1759,6 @@ impl Locations {
             existing.sort_unstable_by_key(|(r, _)| *r);
         }
     }
-}
-
-/// Returns the part `begin..end` of a location entry that covers `range`.
-fn sub_location(
-    range: Range,
-    info: &VariableLocationInfo,
-    begin: u64,
-    end: u64,
-) -> (Range, VariableLocationInfo) {
-    let info = VariableLocationInfo {
-        address: info.address + (begin - range.begin),
-        size: end - begin,
-        location: info.location.clone(),
-    };
-    (Range { begin, end }, info)
 }
 
 /// The state we pass around during function parsing.
@@ -1983,10 +1974,10 @@ impl<'data> DwarfUnitTable<'data> {
             Err(next_index) => next_index - 1,
         };
 
-        if let Some(unit) = self.get_unit(index, inner)? {
-            if let Some(unit_offset) = offset.to_unit_offset(unit) {
-                return Ok((unit, unit_offset));
-            }
+        if let Some(unit) = self.get_unit(index, inner)?
+            && let Some(unit_offset) = offset.to_unit_offset(unit)
+        {
+            return Ok((unit, unit_offset));
         }
 
         Err(DwarfErrorKind::InvalidUnitRef(offset.0).into())
@@ -2263,28 +2254,68 @@ impl<'data> DwarfDebugSession<'data> {
     ///
     /// See also: [`DebugSession::lookup_type`].
     pub fn lookup_type(&self, ty: &TypeRef) -> Result<Option<Type<'_>>, DwarfError> {
-        let Some(DwarfTypeRef(ty)) = ty.as_dwarf() else {
-            return Ok(None);
-        };
+        /// The maximum number of adjacent type modifier entries merged into one
+        /// [`QualifiedType`].
+        ///
+        /// Modifier chains in valid DWARF are short (e.g. `const volatile`), this limit only
+        /// protects against cycles in malformed debug information.
+        const MAX_MODIFIER_DEPTH: u8 = 16;
 
-        let info = self.cell.get();
-        let unit = match ty {
-            DwarfTypeRefInner::Offset {
-                section: SectionId::DebugInfo,
-                offset,
-            } => Some(info.find_info_unit_offset(gimli::DebugInfoOffset(offset.0))?),
-            DwarfTypeRefInner::Offset {
-                section: SectionId::DebugTypes,
-                offset,
-            } => Some(info.find_types_unit_offset(*offset)?),
-            DwarfTypeRefInner::Signature(signature) => info.find_type_signature(*signature)?,
-            DwarfTypeRefInner::Offset { .. } => None,
-        };
-        let Some((unit, offset)) = unit else {
-            return Ok(None);
-        };
+        /// Looks up a DWARF type. Adjacent modifier entries, such as `const volatile`, are merged
+        /// into one [`QualifiedType`]: `qualifiers` holds the qualifiers of the modifier entries
+        /// already followed, and `depth` limits how many more are followed.
+        fn lookup<'d>(
+            info: &DwarfInfo<'d>,
+            ty: &DwarfTypeRefInner,
+            qualifiers: Qualifiers,
+            depth: u8,
+        ) -> Result<Option<Type<'d>>, DwarfError> {
+            let unit = match ty {
+                DwarfTypeRefInner::Offset {
+                    section: SectionId::DebugInfo,
+                    offset,
+                } => Some(info.find_info_unit_offset(gimli::DebugInfoOffset(offset.0))?),
+                DwarfTypeRefInner::Offset {
+                    section: SectionId::DebugTypes,
+                    offset,
+                } => Some(info.find_types_unit_offset(*offset)?),
+                DwarfTypeRefInner::Signature(signature) => info.find_type_signature(*signature)?,
+                DwarfTypeRefInner::Offset { .. } => None,
+                // A modifier of `void` has no `DW_AT_type`, so `void` is only reached unqualified.
+                DwarfTypeRefInner::Void => return Ok(Some(Type::Void)),
+            };
+            let Some((unit, offset)) = unit else {
+                return Ok(None);
+            };
 
-        self::types::parse_type(unit, offset)
+            match types::parse_modifier(unit, offset)? {
+                // Not a modifier and not qualified: the entry is the type itself.
+                None if qualifiers.is_empty() => types::parse_type(unit, offset),
+                // Not a modifier: the entry is the type that the followed modifiers qualify.
+                None => Ok(Some(Type::Qualified(QualifiedType {
+                    qualifiers,
+                    ty: DwarfTypeRef(ty.clone()).into(),
+                }))),
+                // A modifier without a modified type qualifies `void`.
+                Some((modifier, None)) => Ok(Some(Type::Qualified(QualifiedType {
+                    qualifiers: qualifiers | modifier,
+                    ty: DwarfTypeRef::void().into(),
+                }))),
+                // A modifier chain longer than the depth limit.
+                Some(_) if depth == 0 => Ok(None),
+                // Recursive case: follow the modifier and add its qualifier.
+                Some((modifier, Some(DwarfTypeRef(modified)))) => {
+                    lookup(info, &modified, qualifiers | modifier, depth - 1)
+                }
+            }
+        }
+
+        match ty.as_dwarf() {
+            Some(DwarfTypeRef(ty)) => {
+                lookup(self.cell.get(), ty, Qualifiers::empty(), MAX_MODIFIER_DEPTH)
+            }
+            None => Ok(None),
+        }
     }
 
     /// See [`DebugSession::source_by_path`] for more information.

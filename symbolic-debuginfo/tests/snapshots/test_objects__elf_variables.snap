@@ -2,6 +2,25 @@
 source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug::new(&session, &functions)"
 ---
+> 0x150a: _Z16mixed_qualifiersPKPKcPVKi (0xf)
+  0x150a: variables.cpp:289 (/fixture)
+  0x1516: variables.cpp:290 (/fixture)
+  variables:
+    strs (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Qualified: const
+            > Pointer (8 bytes)
+              > Qualified: const
+                > Primitive: char (SignedChar, 1 byte)
+      0x150a..0x1519: cfa -24
+    cv (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Qualified: const volatile
+            > Primitive: int (SignedInt, 4 bytes)
+      0x150a..0x1519: cfa -32
+
 > 0x1415: main (0xf5)
   0x1415: variables.cpp:264 (/fixture)
   0x141e: variables.cpp:265 (/fixture)
@@ -112,7 +131,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x132a..0x133f: cfa -36
     slot (local)
       type:
-        > Unknown
+        > Qualified: volatile
+          > Primitive: int (SignedInt, 4 bytes)
       0x132a..0x133f: cfa -20
 
 > 0x1312: _Z13optimized_outi (0x18)
@@ -300,7 +320,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
       0x11ae..0x121a: cfa -52
     constant (local)
       type:
-        > Unknown
+        > Qualified: const
+          > Primitive: int (SignedInt, 4 bytes)
       0x11ae..0x121a: cfa -24
 
 > 0x1193: _Z8pointersPiPS_PKcPvPFiiE (0x1b)
@@ -321,7 +342,8 @@ expression: "FunctionsDebug::new(&session, &functions)"
     str (parameter)
       type:
         > Pointer (8 bytes)
-          > Unknown
+          > Qualified: const
+            > Primitive: char (SignedChar, 1 byte)
       0x1193..0x11ae: cfa -40
     any (parameter)
       type:
@@ -399,18 +421,18 @@ expression: "FunctionsDebug::new(&session, &functions)"
         > Primitive: complex float (ComplexFloat, 8 bytes)
       0x1126..0x1193: cfa -76
 
-> 0x150a: _Z7inlinedi (0x1a)
-  0x150a: variables.cpp:126 (/fixture)
-  0x1511: variables.cpp:127 (/fixture)
-  0x1519: variables.cpp:128 (/fixture)
-  0x151c: variables.cpp:129 (/fixture)
-  0x1522: variables.cpp:130 (/fixture)
+> 0x1519: _Z7inlinedi (0x1a)
+  0x1519: variables.cpp:126 (/fixture)
+  0x1520: variables.cpp:127 (/fixture)
+  0x1528: variables.cpp:128 (/fixture)
+  0x152b: variables.cpp:129 (/fixture)
+  0x1531: variables.cpp:130 (/fixture)
   variables:
     param (parameter)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x150a..0x1524: cfa -36
+      0x1519..0x1533: cfa -36
     doubled (local)
       type:
         > Primitive: int (SignedInt, 4 bytes)
-      0x150a..0x1524: cfa -20
+      0x1519..0x1533: cfa -20

@@ -23,6 +23,14 @@ impl TypeRef {
             _ => None,
         }
     }
+
+    #[cfg(feature = "ms")]
+    pub(crate) fn as_pdb(&self) -> Option<&crate::pdb::PdbTypeRef> {
+        match &self.0 {
+            NativeTypeRef::Pdb(pdb) => Some(pdb),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -30,6 +38,8 @@ enum NativeTypeRef {
     Generic(u64),
     #[cfg(feature = "dwarf")]
     Dwarf(crate::dwarf::DwarfTypeRef),
+    #[cfg(feature = "ms")]
+    Pdb(crate::pdb::PdbTypeRef),
 }
 
 #[cfg(feature = "dwarf")]
@@ -39,9 +49,18 @@ impl From<crate::dwarf::DwarfTypeRef> for TypeRef {
     }
 }
 
+#[cfg(feature = "ms")]
+impl From<crate::pdb::PdbTypeRef> for TypeRef {
+    fn from(value: crate::pdb::PdbTypeRef) -> Self {
+        Self(NativeTypeRef::Pdb(value))
+    }
+}
+
 /// A concrete type.
 #[derive(Debug, Clone)]
 pub enum Type<'data> {
+    /// `void`.
+    Void,
     /// A primitive type.
     Primitive(PrimitiveType<'data>),
     /// A pointer type.
@@ -50,6 +69,59 @@ pub enum Type<'data> {
     TypeDef(TypeDefType<'data>),
     /// A structure type.
     StructureType(StructureType<'data>),
+    /// A type with qualifiers, such as `const`, applied to it.
+    Qualified(QualifiedType),
+}
+
+bitflags::bitflags! {
+    /// Type qualifiers, such as `const` or `volatile`.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct Qualifiers: u8 {
+        /// The `const` qualifier.
+        const CONST = 1 << 0;
+        /// The `volatile` qualifier.
+        const VOLATILE = 1 << 1;
+        /// The `restrict` qualifier.
+        const RESTRICT = 1 << 2;
+    }
+}
+
+/// Formats the qualifiers as their C keywords separated by spaces, in the order `const`,
+/// `volatile`, `restrict`. No qualifiers format as an empty string.
+///
+/// ```
+/// use symbolic_debuginfo::Qualifiers;
+///
+/// assert_eq!((Qualifiers::RESTRICT | Qualifiers::CONST).to_string(), "const restrict");
+/// assert_eq!(Qualifiers::empty().to_string(), "");
+/// ```
+impl fmt::Display for Qualifiers {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let keywords = [
+            (Self::CONST, "const"),
+            (Self::VOLATILE, "volatile"),
+            (Self::RESTRICT, "restrict"),
+        ]
+        .into_iter()
+        .filter(|(qualifier, _)| self.contains(*qualifier))
+        .map(|(_, keyword)| keyword)
+        .collect::<Vec<_>>()
+        .join(" ");
+
+        f.write_str(&keywords)
+    }
+}
+
+/// A type with qualifiers, such as `const` or `volatile`, applied to it.
+///
+/// All qualifiers applied directly to a type are merged into a single [`QualifiedType`], so
+/// [`ty`](Self::ty) never refers to another [`Type::Qualified`].
+#[derive(Debug, Clone)]
+pub struct QualifiedType {
+    /// The qualifiers applied to [`ty`](Self::ty).
+    pub qualifiers: Qualifiers,
+    /// The qualified type.
+    pub ty: TypeRef,
 }
 
 impl<'data> From<PrimitiveType<'data>> for Type<'data> {
@@ -73,6 +145,12 @@ impl<'data> From<TypeDefType<'data>> for Type<'data> {
 impl<'data> From<StructureType<'data>> for Type<'data> {
     fn from(value: StructureType<'data>) -> Self {
         Self::StructureType(value)
+    }
+}
+
+impl<'data> From<QualifiedType> for Type<'data> {
+    fn from(value: QualifiedType) -> Self {
+        Self::Qualified(value)
     }
 }
 
@@ -132,9 +210,7 @@ pub struct ValueBits {
 #[derive(Debug, Clone)]
 pub struct PointerType {
     /// The type the pointer references.
-    ///
-    /// A value of `None` indicates that the pointer has no referenced type, e.g. for `void*`.
-    pub pointee: Option<TypeRef>,
+    pub pointee: TypeRef,
     /// The size of a pointer.
     pub size: Size,
 }
@@ -146,9 +222,9 @@ pub struct TypeDefType<'data> {
     pub name: Cow<'data, str>,
     /// The linked type.
     ///
-    /// This may be `None` if the debug information provides no underlying type reference,
+    /// This resolves to [`Type::Void`] if the debug information provides no underlying type reference,
     /// for example an alias to `void` or a type declaration without a definition.
-    pub ty: Option<TypeRef>,
+    pub ty: TypeRef,
 }
 
 /// A structure type.
@@ -179,7 +255,7 @@ pub struct StructureMember<'data> {
     pub offset: Option<Size>,
     /// The size of this member's storage.
     ///
-    /// This is an optional override of type of this member.
+    /// If specified, this overrides the default size for the member's type.
     pub size: Option<Size>,
 }
 
@@ -190,6 +266,12 @@ pub enum Size {
     Bytes(u64),
     /// The value is given in bits.
     Bits(u64),
+}
+
+impl Default for Size {
+    fn default() -> Self {
+        Size::Bytes(0)
+    }
 }
 
 impl fmt::Display for Size {

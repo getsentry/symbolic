@@ -11,7 +11,7 @@ use symbolic_common::DebugId;
 /// The current [`Header::variable_header`] version.
 ///
 /// On a version mismatch, the sections referenced in the [`VariableHeader`] must not be parsed.
-pub const VARIABLE_HEADER_VERSION: u16 = 4;
+pub const VARIABLE_HEADER_VERSION: u16 = 6;
 
 /// This [`FunctionVariables`] is a sentinel for functions without variables.
 pub const NO_VARIABLES: FunctionVariables = FunctionVariables {
@@ -265,11 +265,22 @@ pub struct PrimitiveType {
     /// The type name (reference to a [`String`]).
     pub name_offset: u32,
     /// The size of the type in memory.
-    pub size: u32,
+    pub size: Size,
+    /// The meaningful value range within the primitive's storage.
+    pub value_bits: ValueBits,
     /// The encoding of the type.
     pub encoding: u8,
     /// Padding.
-    pub _reserved: [u8; 7],
+    pub _reserved: [u8; 3],
+}
+
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct ValueBits {
+    /// The actual size of the value in bits.
+    pub size: u16,
+    /// The bit offset of the value from the beginning of the storage.
+    pub offset: u16,
 }
 
 /// A representation of a pointer type.
@@ -278,11 +289,10 @@ pub struct PrimitiveType {
 pub struct PointerType {
     /// The type this pointer points to (reference to a [`Type`]).
     ///
-    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown, while [`Type::VOID`]
-    /// indicates that the pointer has no referenced type (e.g. `void*`).
+    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown.
     pub pointee_idx: u32,
     /// The size/width of the pointer.
-    pub size: u32,
+    pub size: Size,
     /// Padding.
     pub _reserved: [u8; 8],
 }
@@ -295,8 +305,7 @@ pub struct TypeDefType {
     pub name_offset: u32,
     /// The type this pointer points to (reference to a [`Type`]).
     ///
-    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown, while [`Type::VOID`]
-    /// indicates that the `typedef` has no associated type.
+    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown.
     pub ty_idx: u32,
     /// Padding.
     pub _reserved: [u8; 8],
@@ -309,11 +318,33 @@ pub struct StructureType {
     /// The optional structure name (reference to a [`String`]).
     pub name_offset: u32,
     /// The size in bytes, or [`u32::MAX`] if unknown.
-    pub size: u32,
+    pub size: Size,
     /// The first member (reference to a [`StructureMember`]).
     pub member_idx: u32,
     /// The number of members in the structure.
     pub num_members: u32,
+}
+
+/// A representation of a qualified type, such as `const int`.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct QualifiedType {
+    /// The qualified type (reference to a [`Type`]).
+    ///
+    /// [`Type::UNKNOWN`] indicates that the referenced type is unknown.
+    pub ty_idx: u32,
+    /// The bits of [`Qualifiers`](symbolic_debuginfo::Qualifiers).
+    pub qualifiers: u8,
+    /// Padding.
+    pub _reserved: [u8; 11],
+}
+
+/// A representation of `void`.
+#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub struct VoidType {
+    /// Padding.
+    pub _reserved: [u8; 16],
 }
 
 /// A representation of a structure member.
@@ -327,7 +358,11 @@ pub struct StructureMember {
     /// The offset from the beginning of the structure, packed into the low 31 bits.
     ///
     /// The top bit is set for bit offsets and clear for byte offsets.
-    pub offset: u32,
+    pub offset: Size,
+    /// The size of this member's storage.
+    ///
+    /// If specified, this overrides the default size for the member's type.
+    pub size: Size,
 }
 
 pub mod ty {
@@ -338,6 +373,8 @@ pub mod ty {
         pointer: PointerType,
         typedef: TypeDefType,
         structure: StructureType,
+        void: VoidType,
+        qualified: QualifiedType,
     }
 }
 
@@ -355,9 +392,6 @@ pub struct Type {
 impl Type {
     /// Sentinel value for a [`Type`] index indicating that the type is unknown.
     pub const UNKNOWN: u32 = u32::MAX;
-
-    /// Sentinel value for a [`Type`] index indicating the absence of a type (`void`).
-    pub const VOID: u32 = u32::MAX - 1;
 
     pub fn as_enum(&self) -> Option<ty::Enum> {
         self.ty.into_enum(self.kind)
@@ -401,6 +435,17 @@ impl std::hash::Hash for Type {
     }
 }
 
+/// A [`symbolic_debuginfo::Size`] packed into a `u32`.
+///
+/// The packed representation uses:
+///  - The top bit is used to indicate [`symbolic_debuginfo::Size::Bits`].
+///  - `u32::MAX` to indicate missing or overflow.
+///
+/// See: [`convert`](super::convert) for the conversions.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct Size(pub u32);
+
 unsafe impl Pod for Header {}
 unsafe impl Pod for VariableHeader {}
 unsafe impl Pod for Function {}
@@ -418,7 +463,11 @@ unsafe impl Pod for PrimitiveType {}
 unsafe impl Pod for PointerType {}
 unsafe impl Pod for TypeDefType {}
 unsafe impl Pod for StructureType {}
+unsafe impl Pod for VoidType {}
+unsafe impl Pod for QualifiedType {}
 unsafe impl Pod for StructureMember {}
+unsafe impl Pod for Size {}
+unsafe impl Pod for ValueBits {}
 
 #[cfg(test)]
 mod tests {
@@ -462,7 +511,7 @@ mod tests {
         assert_eq!(mem::size_of::<StructureType>(), 16);
         assert_eq!(mem::align_of::<StructureType>(), 4);
 
-        assert_eq!(mem::size_of::<StructureMember>(), 12);
+        assert_eq!(mem::size_of::<StructureMember>(), 16);
         assert_eq!(mem::align_of::<StructureMember>(), 4);
     }
 

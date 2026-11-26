@@ -121,7 +121,9 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       Destination (parameter)
         type:
           > Pointer (8 bytes)
-            > Unknown
+            > Qualified: volatile
+              > Pointer (8 bytes)
+                > Void
         0x104e..0x105f: register rdi
       ExChange (parameter)
         type:
@@ -153,7 +155,9 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       Destination (parameter)
         type:
           > Pointer (8 bytes)
-            > Unknown
+            > Qualified: volatile
+              > Pointer (8 bytes)
+                > Void
         0x10db..0x10ec: register rdi
       ExChange (parameter)
         type:
@@ -285,7 +289,9 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         Destination (parameter)
           type:
             > Pointer (8 bytes)
-              > Unknown
+              > Qualified: volatile
+                > Pointer (8 bytes)
+                  > Void
           0x12bf..0x12cf: register rsi
         ExChange (parameter)
           type:
@@ -650,7 +656,9 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x15fb..0x1601: register rsi
     connectivityState (local)
       type:
-        > Unknown
+        > Qualified: const
+          > TypeDef: GNetworkConnectivity
+            > Unknown
       0x1505..0x15ac: register rdi
 
   > 0x1505: _ZN12_GLOBAL__N_136reachabilityFromGNetworkConnectivityE20GNetworkConnectivity (0x16)

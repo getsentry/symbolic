@@ -214,13 +214,13 @@ impl<'d> Parse<'d> for WasmObject<'d> {
 
                                         // The names for imported functions are also in this table, but
                                         // we don't care about them
-                                        if fname.index >= num_imported_funcs {
-                                            if let Some(func) = funcs.get_mut(
+                                        if fname.index >= num_imported_funcs
+                                            && let Some(func) = funcs.get_mut(
                                                 (fname.index - num_imported_funcs) as usize,
-                                            ) {
-                                                func.name =
-                                                    Some(std::borrow::Cow::Borrowed(fname.name));
-                                            }
+                                            )
+                                        {
+                                            func.name =
+                                                Some(std::borrow::Cow::Borrowed(fname.name));
                                         }
                                     }
                                 }
