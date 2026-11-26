@@ -1052,15 +1052,14 @@ impl<'s> Unit<'s> {
                         })
                         .map(|func| stack.inlinee(depth, func))
                 }
-                Ok(symbol) => {
+                symbol => {
                     if let Some(top) = stack.top_mut() {
-                        top.visit_for_variables(depth, &symbol);
+                        top.visit_for_variables(depth, symbol);
                     }
+                    // We need to ignore errors here since the PDB crate does not yet implement all
+                    // symbol types. Instead of erroring too often, it's better to swallow these.
                     continue;
                 }
-                // We need to ignore errors here since the PDB crate does not yet implement all
-                // symbol types. Instead of erroring too often, it's better to swallow these.
-                _ => continue,
             };
 
             match function {

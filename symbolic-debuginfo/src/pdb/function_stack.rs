@@ -112,7 +112,7 @@ pub struct FunctionBuilder<'a> {
 
 impl<'a> FunctionBuilder<'a> {
     /// Visitor for each symbol which is parsed within the scope of the function.
-    pub fn visit_for_variables(&mut self, depth: isize, symbol: &SymbolData<'a>) {
+    pub fn visit_for_variables(&mut self, depth: isize, symbol: pdb::Result<SymbolData<'a>>) {
         let Some(vars) = self.variables.last_mut() else {
             return;
         };
@@ -126,12 +126,12 @@ impl<'a> FunctionBuilder<'a> {
         }
 
         match symbol {
-            SymbolData::Block(block) => {
+            Ok(SymbolData::Block(block)) => {
                 let rva = block.offset.to_rva(&self.debug_info.address_map);
                 let nested = vars.nested(rva, block.len.into());
                 self.variables.push(nested);
             }
-            symbol => vars.add(symbol),
+            symbol => vars.visit(symbol),
         }
     }
 
