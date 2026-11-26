@@ -1,10 +1,17 @@
 use std::cell::RefCell;
+use std::collections::{HashMap, HashSet, hash_map::Entry};
 
 use pdb_addr2line::pdb::{
     self, FallibleIterator, Indirection, ItemInformation, TypeData, TypeFinder, TypeIndex, TypeIter,
 };
 
-use crate::{PointerType, PrimitiveType, Size, Type, TypeDefType, pdb::PdbTypeRef};
+use crate::pdb::PdbTypeRef;
+use crate::{PointerType, PrimitiveType, Size, StructureMember, StructureType, Type, TypeDefType};
+
+/// A type as it is returned by [`Types::find`].
+///
+/// It's a tuple of the type's [raw kind](pdb::Type::raw_kind) and the parsed [`TypeData`].
+type FoundType<'a> = (u16, TypeData<'a>);
 
 pub struct Types<'a> {
     indexer: RefCell<TypeIndexer<'a>>,
@@ -16,12 +23,13 @@ impl<'a> Types<'a> {
             indexer: RefCell::new(TypeIndexer {
                 finder: info.finder(),
                 iter: Some(info.iter()),
+                class_definitions: HashMap::new(),
             }),
         }
     }
 
     pub fn lookup(&self, index: TypeIndex) -> pdb::Result<Option<Type<'a>>> {
-        let Some(ty) = self.find(index)? else {
+        let Some((kind, ty)) = self.find(index)? else {
             return Ok(None);
         };
 
@@ -32,23 +40,124 @@ impl<'a> Types<'a> {
             TypeData::Primitive(ty) => parse_primitive(ty.kind),
             TypeData::Pointer(ty) => parse_pointer(ty),
             TypeData::Alias(ty) => Some(parse_alias(ty)),
+            TypeData::Class(ty) => self.parse_class(kind, ty)?.map(Into::into),
             _ => None,
         })
     }
 
-    fn find(&self, index: TypeIndex) -> pdb::Result<Option<TypeData<'a>>> {
+    fn find(&self, index: TypeIndex) -> pdb::Result<Option<FoundType<'a>>> {
         let item = self.indexer.borrow_mut().find(index);
-        match item.and_then(|item| item.parse()) {
+        match item.and_then(|item| {
+            let data = item.parse()?;
+            Ok((item.raw_kind(), data))
+        }) {
             Ok(data) => Ok(Some(data)),
             Err(pdb::Error::UnimplementedTypeKind(_) | pdb::Error::TypeNotFound(_)) => Ok(None),
             Err(error) => Err(error),
         }
     }
+
+    fn resolve_forward_reference(
+        &self,
+        kind: u16,
+        ty: pdb::ClassType<'a>,
+    ) -> pdb::Result<Option<pdb::ClassType<'a>>> {
+        let Some(name) = ty.unique_name.filter(|name| !name.is_empty()) else {
+            return Ok(None);
+        };
+
+        let class_def = {
+            let mut indexer = self.indexer.borrow_mut();
+            indexer.find_class_definition(kind, name)?
+        };
+
+        Ok(class_def
+            .and_then(|x| self.find(x).transpose())
+            .transpose()?
+            .and_then(|(_, td)| match td {
+                TypeData::Class(ty) => Some(ty),
+                _ => None,
+            }))
+    }
+
+    fn parse_class(
+        &self,
+        kind: u16,
+        mut ty: pdb::ClassType<'a>,
+    ) -> pdb::Result<Option<StructureType<'a>>> {
+        if ty.kind == pdb::ClassKind::Interface {
+            return Ok(None);
+        }
+
+        if ty.properties.forward_reference() {
+            ty = match self.resolve_forward_reference(kind, ty)? {
+                Some(ty) => ty,
+                None => return Ok(None),
+            };
+        }
+
+        let name = |name: pdb::RawString<'a>| match name.is_empty() {
+            false => Some(name.to_string()),
+            true => None,
+        };
+
+        let mut members = Vec::new();
+        let mut seen = HashSet::new();
+
+        let mut fields = ty.fields;
+        while let Some(index) = fields {
+            // Prevent cycles via the `continuation` field.
+            //
+            // This is either malformed or malicious.
+            if !seen.insert(index) {
+                return Ok(None);
+            }
+
+            let Some((_, TypeData::FieldList(list))) = self.find(index)? else {
+                return Ok(None);
+            };
+
+            let members_from_list = list
+                .fields
+                .into_iter()
+                .filter_map(|f| match f {
+                    TypeData::Member(member) => Some(member),
+                    _ => None,
+                })
+                .map(|member| StructureMember {
+                    name: name(member.name),
+                    ty: PdbTypeRef(member.field_type).into(),
+                    offset: Some(Size::Bytes(member.offset)),
+                    size: None,
+                });
+
+            members.extend(members_from_list);
+
+            fields = list.continuation;
+        }
+
+        Ok(Some(StructureType {
+            name: name(ty.name),
+            size: Some(Size::Bytes(ty.size)),
+            members,
+        }))
+    }
+}
+
+/// A unique identifier made up from a [`pdb::Type::raw_kind`] and [`pdb::ClassType::unique_name`].
+///
+/// Used to store and resolve forward references of classes.
+type ClassKey<'a> = (u16, pdb::RawString<'a>);
+
+struct NextType<'a> {
+    ty: pdb::Type<'a>,
+    class_def: Option<ClassKey<'a>>,
 }
 
 struct TypeIndexer<'a> {
     finder: TypeFinder<'a>,
     iter: Option<TypeIter<'a>>,
+    class_definitions: HashMap<ClassKey<'a>, TypeIndex>,
 }
 
 impl<'a> TypeIndexer<'a> {
@@ -58,17 +167,95 @@ impl<'a> TypeIndexer<'a> {
             result => return result,
         }
 
-        if let Some(mut iter) = self.iter.take() {
-            while let Some(item) = iter.next()? {
-                self.finder.update(&iter);
-                if item.index() == index {
-                    self.iter = Some(iter);
-                    return Ok(item);
-                }
+        while let Some(NextType { ty, .. }) = self.next_type()? {
+            if ty.index() == index {
+                return Ok(ty);
             }
         }
 
         Err(pdb::Error::TypeNotFound(index.0))
+    }
+
+    fn find_class_definition(
+        &mut self,
+        kind: u16,
+        name: pdb::RawString<'a>,
+    ) -> pdb::Result<Option<TypeIndex>> {
+        let key = (kind, name);
+        if let Some(&index) = self.class_definitions.get(&key) {
+            return Ok(Some(index));
+        }
+
+        // The class definition isn't resolved yet, so it must be in one of the following types we
+        // have yet to consume.
+        while let Some(NextType { ty, class_def }) = self.next_type()? {
+            if class_def == Some(key) {
+                return Ok(Some(ty.index()));
+            }
+        }
+
+        // Or it doesn't exist at all.
+        Ok(None)
+    }
+
+    fn next_type(&mut self) -> pdb::Result<Option<NextType<'a>>> {
+        let Some(iter) = &mut self.iter else {
+            return Ok(None);
+        };
+
+        match iter.next() {
+            Ok(Some(ty)) => {
+                self.finder.update(iter);
+                let class_def = self.index_class_definition(&ty);
+                Ok(Some(NextType { ty, class_def }))
+            }
+            Ok(None) => {
+                self.iter = None;
+                Ok(None)
+            }
+            Err(error) => {
+                self.iter = None;
+                Err(error)
+            }
+        }
+    }
+
+    fn index_class_definition(&mut self, item: &pdb::Type<'a>) -> Option<ClassKey<'a>> {
+        // PDB constants as they can be found in the `pdb2` source code.
+        // Unfortunately they are not directly exposed.
+        const LF_CLASS: u16 = 0x1504;
+        const LF_CLASS_ST: u16 = 0x1004;
+        const LF_CLASS2: u16 = 0x1608;
+        const LF_STRUCTURE: u16 = 0x1505;
+        const LF_STRUCTURE_ST: u16 = 0x1005;
+        const LF_STRUCTURE2: u16 = 0x1609;
+
+        let kind = item.raw_kind();
+
+        // A fast check, so we don't have to parse every type.
+        let is_class = matches!(
+            kind,
+            LF_CLASS | LF_CLASS_ST | LF_CLASS2 | LF_STRUCTURE | LF_STRUCTURE_ST | LF_STRUCTURE2
+        );
+
+        if is_class
+            && let Ok(TypeData::Class(class)) = item.parse()
+            && !class.properties.forward_reference()
+            && let Some(name) = class.unique_name.filter(|name| !name.is_empty())
+        {
+            // The same forward reference can be resolved multiple times when different compilation
+            // units emit debug information for the same type.
+            //
+            // In all cases they should describe the same layout of the underlying type, so we
+            // follow what LLVM does and use the first match for the forward reference we find.
+            let key = (kind, name);
+            if let Entry::Vacant(entry) = self.class_definitions.entry(key) {
+                entry.insert(item.index());
+                return Some(key);
+            }
+        }
+
+        None
     }
 }
 
