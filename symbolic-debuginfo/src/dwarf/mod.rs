@@ -489,23 +489,6 @@ impl<'d> UnitRef<'d, '_> {
         }
     }
 
-    /// Returns the section offset of the DIE an attribute refers to, if it is a reference into
-    /// `.debug_info` or `.debug_types`.
-    ///
-    /// Two attributes referring to the same DIE yield equal offsets, also across units.
-    fn reference_offset(self, attr: Attribute<'d>) -> Option<(SectionId, UnitSectionOffset)> {
-        match attr.value() {
-            AttributeValue::UnitRef(offset) => Some((
-                self.unit.section(),
-                offset.to_unit_section_offset(self.unit),
-            )),
-            AttributeValue::DebugInfoRef(offset) => offset
-                .to_unit_section_offset(self.unit)
-                .map(|offset| (SectionId::DebugInfo, offset)),
-            _ => None,
-        }
-    }
-
     /// Resolves a attribute unit ref or debug info ref to a [`DwarfTypeRef`].
     ///
     /// Returns `None` for attributes not containing a reference or unsupported references.
@@ -1507,7 +1490,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             return Ok(None);
         }
 
-        let origin_offset = origin.and_then(|attr| self.inner.reference_offset(attr));
+        let origin_ref = origin.and_then(|attr| self.inner.to_type_ref(attr));
 
         if let Some(attr) = origin {
             if variable.name.is_none() || variable.ty.is_none() {
@@ -1538,7 +1521,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             ty,
             kind,
             locations,
-            origin: origin_offset,
+            origin: origin_ref,
         }))
     }
 
@@ -1707,7 +1690,7 @@ struct ParsedVariable<'data> {
     ///
     /// Variables of the same function with the same origin describe the same source variable
     /// and are merged, see [`InProgressSubProgram::push_variable`].
-    origin: Option<(SectionId, UnitSectionOffset)>,
+    origin: Option<DwarfTypeRef>,
 }
 
 /// The name and type of a variable, collected across the DIE and its abstract origin or
