@@ -578,7 +578,7 @@ impl<'d> UnitRef<'d, '_> {
     fn resolve_variable_origin(
         &self,
         attr: Attribute<'d>,
-        variable: &mut VariableOrigin<'d>,
+        variable: &mut PartialVariable<'d>,
         depth: u8,
     ) -> Result<(), DwarfError> {
         if depth == 0 {
@@ -603,10 +603,10 @@ impl<'d> UnitRef<'d, '_> {
                 }
             }
 
-            if let Some(attr) = reference {
-                if variable.name.is_none() || variable.ty.is_none() {
-                    ref_unit.resolve_variable_origin(*attr, variable, depth - 1)?;
-                }
+            if let Some(attr) = reference
+                && !variable.is_complete()
+            {
+                ref_unit.resolve_variable_origin(*attr, variable, depth - 1)?;
             }
 
             Ok(Some(()))
@@ -1452,7 +1452,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         abbrev: &gimli::Abbreviation,
         frame_base: Option<FrameBase>,
     ) -> Result<Option<ParsedVariable<'d>>, DwarfError> {
-        let mut variable = VariableOrigin::default();
+        let mut variable = PartialVariable::default();
         let mut origin = None;
         let mut locations = None;
         let mut is_declaration = false;
@@ -1492,18 +1492,14 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         let origin_ref = origin.and_then(|attr| self.inner.to_type_ref(attr));
 
-        if let Some(attr) = origin {
-            if variable.name.is_none() || variable.ty.is_none() {
-                // A reference that cannot be followed only costs us this variable's name or
-                // type, like a missing attribute would; it should not fail the whole unit.
-                self.inner
-                    .resolve_variable_origin(
-                        attr,
-                        &mut variable,
-                        UnitRef::MAX_ABSTRACT_ORIGIN_DEPTH,
-                    )
-                    .ok();
-            }
+        if let Some(attr) = origin
+            && !variable.is_complete()
+        {
+            // A reference that cannot be followed only costs us this variable's name or
+            // type, like a missing attribute would; it should not fail the whole unit.
+            self.inner
+                .resolve_variable_origin(attr, &mut variable, UnitRef::MAX_ABSTRACT_ORIGIN_DEPTH)
+                .ok();
         }
 
         let (Some(name), Some(locations)) = (variable.name, locations) else {
@@ -1693,12 +1689,21 @@ struct ParsedVariable<'data> {
     origin: Option<DwarfTypeRef>,
 }
 
-/// The name and type of a variable, collected across the DIE and its abstract origin or
-/// specification. See [`UnitRef::resolve_variable_origin`].
+/// The name and type of a variable while it is being parsed.
+///
+/// Either can come from the variable's own DIE or from the DIE its abstract origin or
+/// specification refers to, see [`UnitRef::resolve_variable_origin`].
 #[derive(Default)]
-struct VariableOrigin<'data> {
+struct PartialVariable<'data> {
     name: Option<Cow<'data, str>>,
     ty: Option<TypeRef>,
+}
+
+impl PartialVariable<'_> {
+    /// Returns `true` if both the name and the type are known.
+    fn is_complete(&self) -> bool {
+        self.name.is_some() && self.ty.is_some()
+    }
 }
 
 /// Return value of [`DwarfUnit::parse_locations`].
