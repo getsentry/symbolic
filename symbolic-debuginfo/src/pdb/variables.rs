@@ -4,7 +4,7 @@ use std::ops::Range;
 
 use hashbrown::{DefaultHashBuilder, HashTable};
 use pdb_addr2line::pdb::{
-    AddressGap, AddressMap, AddressRange, DefRangeFramePointerRelativeFullScopeSymbol,
+    self, AddressGap, AddressMap, AddressRange, DefRangeFramePointerRelativeFullScopeSymbol,
     DefRangeFramePointerRelativeSymbol, DefRangeRegisterRelativeSymbol, DefRangeRegisterSymbol,
     PdbInternalRva, RawString, RegisterRelativeSymbol, RegisterVariableSymbol, Rva, SymbolData,
     TypeIndex,
@@ -44,7 +44,7 @@ pub struct Scope<'a> {
     bounds: Option<Range<u64>>,
     /// Frame information from the current frame.
     frame: function_stack::Frame,
-    /// Whether [`Self::add`] expects a range specifier and can attribute it to the latest variable.
+    /// Whether [`Self::visit`] expects a range specifier and can attribute it to the latest variable.
     expect_range_symbol: bool,
     /// Append only list of locals discovered from `S_LOCAL` symbols.
     locals: Vec<Variable<'a>>,
@@ -112,12 +112,12 @@ impl<'a> Scope<'a> {
     }
 
     /// Interprets the `symbol` and adds its information to the [`Scope`].
-    pub fn add(&mut self, symbol: &SymbolData<'a>) {
+    pub fn visit(&mut self, symbol: pdb::Result<SymbolData<'a>>) {
         use SymbolData::*;
         match symbol {
-            RegisterVariable(local) => self.add_single_record_variable(local),
-            RegisterRelative(local) => self.add_single_record_variable(local),
-            Local(local) => {
+            Ok(RegisterVariable(local)) => self.add_single_record_variable(local),
+            Ok(RegisterRelative(local)) => self.add_single_record_variable(local),
+            Ok(Local(local)) => {
                 self.expect_range_symbol = !local.flags.isoptimizedout;
                 self.push_local(Variable {
                     name: local.name.to_string(),
@@ -129,12 +129,16 @@ impl<'a> Scope<'a> {
                     locations: Vec::new(),
                 });
             }
-            DefRangeRegister(symbol) => self.add_def_range(symbol),
-            DefRangeRegisterRelative(symbol) => self.add_def_range(symbol),
-            DefRangeFramePointerRelative(symbol) => self.add_def_range(symbol),
-            DefRangeFramePointerRelativeFullScope(symbol) => self.add_def_range(symbol),
-            DefRange(_) | DefRangeSubField(_) | DefRangeSubFieldRegister(_) => {}
+            Ok(DefRangeRegister(symbol)) => self.add_def_range(symbol),
+            Ok(DefRangeRegisterRelative(symbol)) => self.add_def_range(symbol),
+            Ok(DefRangeFramePointerRelative(symbol)) => self.add_def_range(symbol),
+            Ok(DefRangeFramePointerRelativeFullScope(symbol)) => self.add_def_range(symbol),
+            Ok(DefRange(_) | DefRangeSubField(_) | DefRangeSubFieldRegister(_)) => {
+                // Not yet implemented as they require complex expressions to resolve.
+            }
             _ => {
+                // Always reset the expectation of a range symbol, even for unknown/invalid symbols.
+                // At this point we expect that the next "def range" is no longer attached to latest local.
                 self.expect_range_symbol = false;
             }
         }
@@ -159,7 +163,7 @@ impl<'a> Scope<'a> {
             .is_some()
     }
 
-    fn add_def_range<T>(&mut self, symbol: &T)
+    fn add_def_range<T>(&mut self, symbol: T)
     where
         T: DefRangeSymbol,
     {
@@ -199,7 +203,7 @@ impl<'a> Scope<'a> {
         }
     }
 
-    fn add_single_record_variable<T>(&mut self, var: &T)
+    fn add_single_record_variable<T>(&mut self, var: T)
     where
         T: SingleRecordVariable<'a>,
     {
