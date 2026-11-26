@@ -2517,12 +2517,8 @@ mod tests {
         let locations = ranges
             .iter()
             .map(|&(begin, end)| {
-                let info = VariableLocationInfo {
-                    address: begin,
-                    size: end - begin,
-                    location: VariableLocation::CfaOffset { offset: 0 },
-                };
-                (Range { begin, end }, info)
+                let location = VariableLocation::CfaOffset { offset: 0 };
+                (Range { begin, end }, location)
             })
             .collect();
 
