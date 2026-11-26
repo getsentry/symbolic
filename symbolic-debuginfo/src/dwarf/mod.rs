@@ -1720,11 +1720,10 @@ impl Locations {
     /// Where both describe the same addresses, the existing locations win, so only the parts of
     /// `other` that `self` does not cover yet are added. This keeps the ranges sorted and free
     /// of overlaps.
-    ///
-    /// A [`Locations::Single`] applies to the whole enclosing function (see
-    /// `DwarfUnit::variable_for_range`), so it already covers everything when it is `self`, and
-    /// cannot be placed precisely when it is `other`. Both cases keep `self` unchanged.
     fn merge(&mut self, other: Locations) {
+        // A `Single` applies to the whole enclosing function (see
+        // `DwarfUnit::variable_for_range`). As `self` it already covers everything, and as
+        // `other` it has no range that says where it applies, so there is nothing to merge.
         let (Locations::Many(existing), Locations::Many(other)) = (&mut *self, other) else {
             return;
         };
