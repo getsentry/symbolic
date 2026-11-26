@@ -127,6 +127,36 @@ pub enum Type<'data> {
     Qualified(QualifiedType),
 }
 
+impl<'data> From<PrimitiveType<'data>> for Type<'data> {
+    fn from(value: PrimitiveType<'data>) -> Self {
+        Self::Primitive(value)
+    }
+}
+
+impl<'data> From<PointerType> for Type<'data> {
+    fn from(value: PointerType) -> Self {
+        Self::Pointer(value)
+    }
+}
+
+impl<'data> From<TypeDefType<'data>> for Type<'data> {
+    fn from(value: TypeDefType<'data>) -> Self {
+        Self::TypeDef(value)
+    }
+}
+
+impl<'data> From<StructureType<'data>> for Type<'data> {
+    fn from(value: StructureType<'data>) -> Self {
+        Self::StructureType(value)
+    }
+}
+
+impl<'data> From<QualifiedType> for Type<'data> {
+    fn from(value: QualifiedType) -> Self {
+        Self::Qualified(value)
+    }
+}
+
 /// A primitive type contained in the SymCache.
 #[derive(Clone, Debug)]
 pub struct PrimitiveType<'data> {
