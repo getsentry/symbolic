@@ -219,6 +219,12 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
 
   > 0x11e9: _InterlockedCompareExchangePointer (0x8)
     0x11e9: intrin-impl.h:1737 (/mxe/usr/x86_64-w64-mingw32.static/include/psdk_inc)
+    variables:
+      ExChange (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Void
+        0x11e9..0x11f1: register rsi
 
   > 0x1315: duplicate_ppstrings (0x71)
     0x1315: crtexe.c:403 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
@@ -239,6 +245,33 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0x1373: crtexe.c:412 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
     0x1378: crtexe.c:412 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
     0x137f: crtexe.c:413 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
+    variables:
+      ac (parameter)
+        type:
+          > Primitive: int (SignedInt, 4 bytes)
+        0x1315..0x1386: register rbp
+      avl (local)
+        type:
+          > Pointer (8 bytes)
+            > Pointer (8 bytes)
+              > Primitive: char (SignedChar, 1 byte)
+        0x1332..0x1386: register r13
+      i (local)
+        type:
+          > Primitive: int (SignedInt, 4 bytes)
+        0x1338..0x1369: register rbx
+      n (local)
+        type:
+          > Pointer (8 bytes)
+            > Pointer (8 bytes)
+              > Primitive: char (SignedChar, 1 byte)
+        0x1332..0x1338: register rax
+        0x1338..0x1386: register rdi
+      l (local)
+        type:
+          > TypeDef: size_t
+            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+        0x134e..0x1378: register rsi
 
   > 0x1445: _InterlockedExchangePointer (0xb)
     0x1445: intrin-impl.h:1748 (/mxe/usr/x86_64-w64-mingw32.static/include/psdk_inc)
@@ -307,16 +340,397 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0x104b: crtexe.c:353 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
     0x104f: crtexe.c:353 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
     0x1052: crtexe.c:354 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
+    variables:
+      pPEHeader (local)
+        type:
+          > TypeDef: PIMAGE_NT_HEADERS
+            > TypeDef: PIMAGE_NT_HEADERS64
+              > Pointer (8 bytes)
+                > Structure: _IMAGE_NT_HEADERS64 (264 bytes)
+                  > Member: Signature (offset 0 bytes)
+                    > TypeDef: DWORD
+                      > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                  > Member: FileHeader (offset 4 bytes)
+                    > TypeDef: IMAGE_FILE_HEADER
+                      > Structure: _IMAGE_FILE_HEADER (20 bytes)
+                        > Member: Machine (offset 0 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: NumberOfSections (offset 2 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: TimeDateStamp (offset 4 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: PointerToSymbolTable (offset 8 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: NumberOfSymbols (offset 12 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: SizeOfOptionalHeader (offset 16 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: Characteristics (offset 18 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                  > Member: OptionalHeader (offset 24 bytes)
+                    > TypeDef: IMAGE_OPTIONAL_HEADER64
+                      > Structure: _IMAGE_OPTIONAL_HEADER64 (240 bytes)
+                        > Member: Magic (offset 0 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MajorLinkerVersion (offset 2 bytes)
+                          > TypeDef: BYTE
+                            > Primitive: unsigned char (UnsignedChar, 1 byte)
+                        > Member: MinorLinkerVersion (offset 3 bytes)
+                          > TypeDef: BYTE
+                            > Primitive: unsigned char (UnsignedChar, 1 byte)
+                        > Member: SizeOfCode (offset 4 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: SizeOfInitializedData (offset 8 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: SizeOfUninitializedData (offset 12 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: AddressOfEntryPoint (offset 16 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: BaseOfCode (offset 20 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: ImageBase (offset 24 bytes)
+                          > TypeDef: ULONGLONG
+                            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+                        > Member: SectionAlignment (offset 32 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: FileAlignment (offset 36 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: MajorOperatingSystemVersion (offset 40 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MinorOperatingSystemVersion (offset 42 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MajorImageVersion (offset 44 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MinorImageVersion (offset 46 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MajorSubsystemVersion (offset 48 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MinorSubsystemVersion (offset 50 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: Win32VersionValue (offset 52 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: SizeOfImage (offset 56 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: SizeOfHeaders (offset 60 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: CheckSum (offset 64 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: Subsystem (offset 68 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: DllCharacteristics (offset 70 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: SizeOfStackReserve (offset 72 bytes)
+                          > TypeDef: ULONGLONG
+                            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+                        > Member: SizeOfStackCommit (offset 80 bytes)
+                          > TypeDef: ULONGLONG
+                            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+                        > Member: SizeOfHeapReserve (offset 88 bytes)
+                          > TypeDef: ULONGLONG
+                            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+                        > Member: SizeOfHeapCommit (offset 96 bytes)
+                          > TypeDef: ULONGLONG
+                            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+                        > Member: LoaderFlags (offset 104 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: NumberOfRvaAndSizes (offset 108 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: DataDirectory (offset 112 bytes)
+                          > Unknown
+        0x1052..0x105a: register rax
 
   > 0x10c0: check_managed_app (0x38)
     0x10c0: crtexe.c:358 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
     0x10c4: crtexe.c:358 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
     0x10d2: crtexe.c:366 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
     0x10df: crtexe.c:368 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
+    variables:
+      pPEHeader (local)
+        type:
+          > TypeDef: PIMAGE_NT_HEADERS
+            > TypeDef: PIMAGE_NT_HEADERS64
+              > Pointer (8 bytes)
+                > Structure: _IMAGE_NT_HEADERS64 (264 bytes)
+                  > Member: Signature (offset 0 bytes)
+                    > TypeDef: DWORD
+                      > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                  > Member: FileHeader (offset 4 bytes)
+                    > TypeDef: IMAGE_FILE_HEADER
+                      > Structure: _IMAGE_FILE_HEADER (20 bytes)
+                        > Member: Machine (offset 0 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: NumberOfSections (offset 2 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: TimeDateStamp (offset 4 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: PointerToSymbolTable (offset 8 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: NumberOfSymbols (offset 12 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: SizeOfOptionalHeader (offset 16 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: Characteristics (offset 18 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                  > Member: OptionalHeader (offset 24 bytes)
+                    > TypeDef: IMAGE_OPTIONAL_HEADER64
+                      > Structure: _IMAGE_OPTIONAL_HEADER64 (240 bytes)
+                        > Member: Magic (offset 0 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MajorLinkerVersion (offset 2 bytes)
+                          > TypeDef: BYTE
+                            > Primitive: unsigned char (UnsignedChar, 1 byte)
+                        > Member: MinorLinkerVersion (offset 3 bytes)
+                          > TypeDef: BYTE
+                            > Primitive: unsigned char (UnsignedChar, 1 byte)
+                        > Member: SizeOfCode (offset 4 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: SizeOfInitializedData (offset 8 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: SizeOfUninitializedData (offset 12 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: AddressOfEntryPoint (offset 16 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: BaseOfCode (offset 20 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: ImageBase (offset 24 bytes)
+                          > TypeDef: ULONGLONG
+                            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+                        > Member: SectionAlignment (offset 32 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: FileAlignment (offset 36 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: MajorOperatingSystemVersion (offset 40 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MinorOperatingSystemVersion (offset 42 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MajorImageVersion (offset 44 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MinorImageVersion (offset 46 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MajorSubsystemVersion (offset 48 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MinorSubsystemVersion (offset 50 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: Win32VersionValue (offset 52 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: SizeOfImage (offset 56 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: SizeOfHeaders (offset 60 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: CheckSum (offset 64 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: Subsystem (offset 68 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: DllCharacteristics (offset 70 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: SizeOfStackReserve (offset 72 bytes)
+                          > TypeDef: ULONGLONG
+                            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+                        > Member: SizeOfStackCommit (offset 80 bytes)
+                          > TypeDef: ULONGLONG
+                            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+                        > Member: SizeOfHeapReserve (offset 88 bytes)
+                          > TypeDef: ULONGLONG
+                            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+                        > Member: SizeOfHeapCommit (offset 96 bytes)
+                          > TypeDef: ULONGLONG
+                            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+                        > Member: LoaderFlags (offset 104 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: NumberOfRvaAndSizes (offset 108 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: DataDirectory (offset 112 bytes)
+                          > Unknown
+        0x10c0..0x10f1: register rax
 
   > 0x1110: check_managed_app (0x1e)
     0x1110: crtexe.c:361 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
     0x111a: crtexe.c:363 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
+    variables:
+      pPEHeader (local)
+        type:
+          > TypeDef: PIMAGE_NT_HEADERS
+            > TypeDef: PIMAGE_NT_HEADERS64
+              > Pointer (8 bytes)
+                > Structure: _IMAGE_NT_HEADERS64 (264 bytes)
+                  > Member: Signature (offset 0 bytes)
+                    > TypeDef: DWORD
+                      > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                  > Member: FileHeader (offset 4 bytes)
+                    > TypeDef: IMAGE_FILE_HEADER
+                      > Structure: _IMAGE_FILE_HEADER (20 bytes)
+                        > Member: Machine (offset 0 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: NumberOfSections (offset 2 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: TimeDateStamp (offset 4 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: PointerToSymbolTable (offset 8 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: NumberOfSymbols (offset 12 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: SizeOfOptionalHeader (offset 16 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: Characteristics (offset 18 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                  > Member: OptionalHeader (offset 24 bytes)
+                    > TypeDef: IMAGE_OPTIONAL_HEADER64
+                      > Structure: _IMAGE_OPTIONAL_HEADER64 (240 bytes)
+                        > Member: Magic (offset 0 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MajorLinkerVersion (offset 2 bytes)
+                          > TypeDef: BYTE
+                            > Primitive: unsigned char (UnsignedChar, 1 byte)
+                        > Member: MinorLinkerVersion (offset 3 bytes)
+                          > TypeDef: BYTE
+                            > Primitive: unsigned char (UnsignedChar, 1 byte)
+                        > Member: SizeOfCode (offset 4 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: SizeOfInitializedData (offset 8 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: SizeOfUninitializedData (offset 12 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: AddressOfEntryPoint (offset 16 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: BaseOfCode (offset 20 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: ImageBase (offset 24 bytes)
+                          > TypeDef: ULONGLONG
+                            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+                        > Member: SectionAlignment (offset 32 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: FileAlignment (offset 36 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: MajorOperatingSystemVersion (offset 40 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MinorOperatingSystemVersion (offset 42 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MajorImageVersion (offset 44 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MinorImageVersion (offset 46 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MajorSubsystemVersion (offset 48 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: MinorSubsystemVersion (offset 50 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: Win32VersionValue (offset 52 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: SizeOfImage (offset 56 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: SizeOfHeaders (offset 60 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: CheckSum (offset 64 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: Subsystem (offset 68 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: DllCharacteristics (offset 70 bytes)
+                          > TypeDef: WORD
+                            > Primitive: short unsigned int (UnsignedInt, 2 bytes)
+                        > Member: SizeOfStackReserve (offset 72 bytes)
+                          > TypeDef: ULONGLONG
+                            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+                        > Member: SizeOfStackCommit (offset 80 bytes)
+                          > TypeDef: ULONGLONG
+                            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+                        > Member: SizeOfHeapReserve (offset 88 bytes)
+                          > TypeDef: ULONGLONG
+                            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+                        > Member: SizeOfHeapCommit (offset 96 bytes)
+                          > TypeDef: ULONGLONG
+                            > Primitive: long long unsigned int (UnsignedInt, 8 bytes)
+                        > Member: LoaderFlags (offset 104 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: NumberOfRvaAndSizes (offset 108 bytes)
+                          > TypeDef: DWORD
+                            > Primitive: long unsigned int (UnsignedInt, 4 bytes)
+                        > Member: DataDirectory (offset 112 bytes)
+                          > Unknown
+        0x1110..0x112e: register rax
 
 > 0x1000: __mingw_invalidParameterHandler (0x1)
   0x1000: crtexe.c:123 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)

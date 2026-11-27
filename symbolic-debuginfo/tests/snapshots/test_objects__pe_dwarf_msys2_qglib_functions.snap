@@ -56,6 +56,58 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0x11bc: mingw-w64/mingw-w64-crt/crt/crtdll.c:86 (D:/W/B/src)
   0x11c1: mingw-w64/mingw-w64-crt/crt/crtdll.c:88 (D:/W/B/src)
   0x11cc: mingw-w64/mingw-w64-crt/crt/crtdll.c:0 (D:/W/B/src)
+  variables:
+    hDllHandle (parameter)
+      type:
+        > TypeDef: HANDLE
+          > Pointer (8 bytes)
+            > Void
+      0x1000..0x106b: register rcx
+      0x10c1..0x10c4: register rcx
+      0x10c4..0x1196: register rbx
+      0x1196..0x1198: register rcx
+      0x11a9..0x11cc: register rbx
+    dwReason (parameter)
+      type:
+        > TypeDef: DWORD
+          > Primitive: unsigned long (UnsignedInt, 4 bytes)
+      0x1000..0x106b: register rdx
+      0x10c1..0x10f8: register rdx
+    lpreserved (parameter)
+      type:
+        > TypeDef: LPVOID
+          > Pointer (8 bytes)
+            > Void
+      0x1000..0x106b: register r8
+      0x10c1..0x10c7: register r8
+      0x10c7..0x1196: register r14
+      0x1196..0x1198: register r8
+      0x11a9..0x11cc: register r14
+    lock_free (local)
+      type:
+        > Pointer (8 bytes)
+          > Void
+      0x107f..0x108a: register rax
+    fiberid (local)
+      type:
+        > Pointer (8 bytes)
+          > Void
+      0x1047..0x1091: register rbx
+    lock_free (local)
+      type:
+        > Pointer (8 bytes)
+          > Void
+      0x110f..0x111a: register rax
+    fiberid (local)
+      type:
+        > Pointer (8 bytes)
+          > Void
+      0x10d4..0x1121: register r15
+    ret (local)
+      type:
+        > Primitive: int (SignedInt, 4 bytes)
+      0x1143..0x1160: register rax
+      0x11a9..0x11bc: register rax
 
   > 0x103a: NtCurrentTeb (0x9)
     0x103a: winnt.h:10409 (D:/M/msys64/clang64/include)
@@ -65,9 +117,28 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
 
   > 0x1047: _InterlockedCompareExchangePointer (0x18)
     0x1047: intrin-impl.h:1760 (D:/M/msys64/clang64/include/psdk_inc)
+    variables:
+      Destination (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Qualified: volatile
+              > Pointer (8 bytes)
+                > Void
+        0x104e..0x105f: register rdi
+      ExChange (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Void
+        0x1047..0x105f: register rbx
 
   > 0x1078: _InterlockedCompareExchangePointer (0xb)
     0x1078: intrin-impl.h:1760 (D:/M/msys64/clang64/include/psdk_inc)
+    variables:
+      ExChange (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Void
+        0x1078..0x1083: register rbx
 
   > 0x10b9: _InterlockedExchangePointer (0x8)
     0x10b9: intrin-impl.h:1771 (D:/M/msys64/clang64/include/psdk_inc)
@@ -80,9 +151,28 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
 
   > 0x10d4: _InterlockedCompareExchangePointer (0x18)
     0x10d4: intrin-impl.h:1760 (D:/M/msys64/clang64/include/psdk_inc)
+    variables:
+      Destination (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Qualified: volatile
+              > Pointer (8 bytes)
+                > Void
+        0x10db..0x10ec: register rdi
+      ExChange (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Void
+        0x10d4..0x10ec: register r15
 
   > 0x1108: _InterlockedCompareExchangePointer (0xb)
     0x1108: intrin-impl.h:1760 (D:/M/msys64/clang64/include/psdk_inc)
+    variables:
+      ExChange (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Void
+        0x1108..0x1113: register r15
 
   > 0x116d: _InterlockedExchangePointer (0x3)
     0x116d: intrin-impl.h:1771 (D:/M/msys64/clang64/include/psdk_inc)
@@ -162,6 +252,29 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0x1313: mingw-w64/mingw-w64-crt/crt/crtdll.c:127 (D:/W/B/src)
     0x131c: mingw-w64/mingw-w64-crt/crt/crtdll.c:129 (D:/W/B/src)
     0x1320: mingw-w64/mingw-w64-crt/crt/crtdll.c:131 (D:/W/B/src)
+    variables:
+      hDllHandle (parameter)
+        type:
+          > TypeDef: HANDLE
+            > Pointer (8 bytes)
+              > Void
+        0x1295..0x12b8: register rdi
+      lpreserved (parameter)
+        type:
+          > TypeDef: LPVOID
+            > Pointer (8 bytes)
+              > Void
+        0x1295..0x12bf: register rsi
+      lock_free (local)
+        type:
+          > Pointer (8 bytes)
+            > Void
+        0x12ef..0x12f9: register rax
+      fiberid (local)
+        type:
+          > Pointer (8 bytes)
+            > Void
+        0x12b8..0x1300: register rdi
 
     > 0x12ab: NtCurrentTeb (0x9)
       0x12ab: winnt.h:10409 (D:/M/msys64/clang64/include)
@@ -172,9 +285,28 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     > 0x12b8: _InterlockedCompareExchangePointer (0x17)
       0x12b8: intrin-impl.h:1760 (D:/M/msys64/clang64/include/psdk_inc)
       0x12c9: intrin-impl.h:0 (D:/M/msys64/clang64/include/psdk_inc)
+      variables:
+        Destination (parameter)
+          type:
+            > Pointer (8 bytes)
+              > Qualified: volatile
+                > Pointer (8 bytes)
+                  > Void
+          0x12bf..0x12cf: register rsi
+        ExChange (parameter)
+          type:
+            > Pointer (8 bytes)
+              > Void
+          0x12b8..0x12cf: register rdi
 
     > 0x12e8: _InterlockedCompareExchangePointer (0xa)
       0x12e8: intrin-impl.h:1760 (D:/M/msys64/clang64/include/psdk_inc)
+      variables:
+        ExChange (parameter)
+          type:
+            > Pointer (8 bytes)
+              > Void
+          0x12e8..0x12f2: register rdi
 
     > 0x1320: _InterlockedExchangePointer (0x5)
       0x1320: intrin-impl.h:1771 (D:/M/msys64/clang64/include/psdk_inc)
@@ -248,16 +380,58 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   > 0x19b2: _ZN37QGlibNetworkInformationBackendFactoryC2Ev (0x13)
     0x19b2: qtbase-everywhere-src-6.10.1/src/plugins/networkinformation/glib/qglibnetworkinformationbackend.cpp:83 (D:/W/B/src)
     0x19bb: qtbase-everywhere-src-6.10.1/src/plugins/networkinformation/glib/qglibnetworkinformationbackend.cpp:83 (D:/W/B/src)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: QGlibNetworkInformationBackendFactory (16 bytes)
+        0x19b2..0x19c5: register rsi
 
   > 0x19c5: _ZN8QPointerI7QObjectEaSEPS0_ (0x2d)
     0x19c5: qtbase-everywhere-src-6.10.1/src/corelib/kernel/qpointer.h:72 (D:/W/B/src)
+    variables:
+      p (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: QObject (16 bytes)
+              > Member: _vptr$QObject (offset 0 bytes)
+                > Pointer (8 bytes)
+                  > Pointer (8 bytes)
+                    > Unknown
+              > Member: d_ptr (offset 8 bytes)
+                > Structure: QScopedPointer<QObjectData, QScopedPointerDeleter<QObjectData> > (<unknown size>)
+        0x19c5..0x19f2: register rsi
 
     > 0x19c5: _ZN12QWeakPointerI7QObjectE6assignIS0_EERS1_PT_ (0x2d)
       0x19c5: qtbase-everywhere-src-6.10.1/src/corelib/tools/qsharedpointer_impl.h:771 (D:/W/B/src)
       0x19ce: qtbase-everywhere-src-6.10.1/src/corelib/tools/qsharedpointer_impl.h:771 (D:/W/B/src)
+      variables:
+        ptr (parameter)
+          type:
+            > Pointer (8 bytes)
+              > Structure: QObject (16 bytes)
+                > Member: _vptr$QObject (offset 0 bytes)
+                  > Pointer (8 bytes)
+                    > Pointer (8 bytes)
+                      > Unknown
+                > Member: d_ptr (offset 8 bytes)
+                  > Structure: QScopedPointer<QObjectData, QScopedPointerDeleter<QObjectData> > (<unknown size>)
+          0x19c5..0x19f2: register rsi
 
       > 0x19c5: _ZN12QWeakPointerI7QObjectEC2EPS0_b (0x9)
         0x19c5: qtbase-everywhere-src-6.10.1/src/corelib/tools/qsharedpointer_impl.h:776 (D:/W/B/src)
+        variables:
+          ptr (parameter)
+            type:
+              > Pointer (8 bytes)
+                > Structure: QObject (16 bytes)
+                  > Member: _vptr$QObject (offset 0 bytes)
+                    > Pointer (8 bytes)
+                      > Pointer (8 bytes)
+                        > Unknown
+                  > Member: d_ptr (offset 8 bytes)
+                    > Structure: QScopedPointer<QObjectData, QScopedPointerDeleter<QObjectData> > (<unknown size>)
+            0x19c5..0x19ce: register rsi
 
       > 0x19ce: _ZN12QWeakPointerI7QObjectEaSEOS1_ (0x24)
         0x19ce: qtbase-everywhere-src-6.10.1/src/corelib/tools/qsharedpointer_impl.h:633 (D:/W/B/src)
@@ -270,6 +444,28 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
           > 0x19ce: _Z11qt_ptr_swapIN15QtSharedPointer20ExternalRefCountDataEEvRPT_S4_ (0xe)
             0x19ce: qtbase-everywhere-src-6.10.1/src/corelib/global/qswap.h:31 (D:/W/B/src)
             0x19d5: qtbase-everywhere-src-6.10.1/src/corelib/global/qswap.h:32 (D:/W/B/src)
+            variables:
+              tmp (local)
+                type:
+                  > Pointer (8 bytes)
+                    > Structure: ExternalRefCountData (16 bytes)
+                      > Member: weakref (offset 0 bytes)
+                        > TypeDef: QBasicAtomicInt
+                          > Structure: QBasicAtomicInteger<int> (4 bytes)
+                            > Member: _q_value (offset 0 bytes)
+                              > TypeDef: Type
+                                > Structure: atomic<int> (4 bytes)
+                      > Member: strongref (offset 4 bytes)
+                        > TypeDef: QBasicAtomicInt
+                          > Structure: QBasicAtomicInteger<int> (4 bytes)
+                            > Member: _q_value (offset 0 bytes)
+                              > TypeDef: Type
+                                > Structure: atomic<int> (4 bytes)
+                      > Member: destroyer (offset 8 bytes)
+                        > TypeDef: DestroyerFn
+                          > Pointer (8 bytes)
+                            > Unknown
+                0x19d5..0x19dc: register rcx
 
           > 0x19dc: _Z11qt_ptr_swapI7QObjectEvRPT_S3_ (0x7)
             0x19dc: qtbase-everywhere-src-6.10.1/src/corelib/global/qswap.h:32 (D:/W/B/src)
@@ -283,18 +479,53 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
 
           > 0x19e8: _ZN19QBasicAtomicIntegerIiE5derefEv (0x3)
             0x19e8: qtbase-everywhere-src-6.10.1/src/corelib/thread/qbasicatomic.h:49 (D:/W/B/src)
+            variables:
+              this (parameter)
+                type:
+                  > Pointer (8 bytes)
+                    > Structure: QBasicAtomicInteger<int> (4 bytes)
+                      > Member: _q_value (offset 0 bytes)
+                        > TypeDef: Type
+                          > Structure: atomic<int> (4 bytes)
+                0x19e8..0x19eb: register rcx
 
             > 0x19e8: _ZN10QAtomicOpsIiE5derefIiEEbRNSt3__16atomicIT_EE (0x3)
               0x19e8: qtbase-everywhere-src-6.10.1/src/corelib/thread/qatomic_cxx11.h:267 (D:/W/B/src)
+              variables:
+                _q_value (parameter)
+                  type:
+                    > Pointer (8 bytes)
+                      > Structure: atomic<int> (4 bytes)
+                  0x19e8..0x19eb: register rcx
 
               > 0x19e8: _ZNSt3__113__atomic_baseIiLb1EE9fetch_subB8fn210108EiNS_12memory_orderE (0x3)
                 0x19e8: atomic.h:167 (D:/M/msys64/clang64/include/c++/v1/__atomic)
+                variables:
+                  this (parameter)
+                    type:
+                      > Pointer (8 bytes)
+                        > Structure: __atomic_base<int, true> (4 bytes)
+                    0x19e8..0x19eb: register rcx
 
                 > 0x19e8: _ZNSt3__122__cxx_atomic_fetch_subB8fn210108IiEET_PNS_22__cxx_atomic_base_implIS1_EES1_NS_12memory_orderE (0x3)
                   0x19e8: c11.h:207 (D:/M/msys64/clang64/include/c++/v1/__atomic/support)
+                  variables:
+                    __a (parameter)
+                      type:
+                        > Pointer (8 bytes)
+                          > Structure: __cxx_atomic_base_impl<int> (4 bytes)
+                            > Member: __a_value (offset 0 bytes)
+                              > Primitive: int (SignedInt, 4 bytes)
+                      0x19e8..0x19eb: register rcx
 
           > 0x19ed: _ZN15QtSharedPointer20ExternalRefCountDatadlEPv (0x5)
             0x19ed: qtbase-everywhere-src-6.10.1/src/corelib/tools/qsharedpointer_impl.h:142 (D:/W/B/src)
+            variables:
+              ptr (parameter)
+                type:
+                  > Pointer (8 bytes)
+                    > Void
+                0x19ed..0x19f2: register rcx
 
   > 0x19f2: _ZNK8QPointerI7QObjectEcvPS0_Ev (0x13)
     0x19f2: qtbase-everywhere-src-6.10.1/src/corelib/kernel/qpointer.h:83 (D:/W/B/src)
@@ -366,6 +597,27 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   > 0x13f0: _ZN26QNetworkInformationBackendC2Ev (0x15)
     0x13f0: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:47 (D:/W/B/src)
     0x13f8: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:126 (D:/W/B/src)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: QNetworkInformationBackend (40 bytes)
+              > Member: m_lock (offset 16 bytes)
+                > Structure: QReadWriteLock (8 bytes)
+                  > Member: d_ptr (offset 0 bytes)
+                    > Structure: QAtomicPointer<QReadWriteLockPrivate> (8 bytes)
+              > Member: m_reachability (offset 24 bytes)
+                > TypeDef: Reachability
+                  > Unknown
+              > Member: m_transportMedium (offset 28 bytes)
+                > TypeDef: TransportMedium
+                  > Unknown
+              > Member: m_behindCaptivePortal (offset 32 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+              > Member: m_metered (offset 33 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+        0x13f0..0x13f8: register rcx
+        0x13f8..0x1405: register rsi
 
 > 0x14d0: _ZN30QGlibNetworkInformationBackend18updateConnectivityEPS_ (0x131)
   0x14d0: qtbase-everywhere-src-6.10.1/src/plugins/networkinformation/glib/qglibnetworkinformationbackend.cpp:134 (D:/W/B/src)
@@ -411,6 +663,12 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
 
   > 0x1505: _ZN12_GLOBAL__N_136reachabilityFromGNetworkConnectivityE20GNetworkConnectivity (0x16)
     0x1505: qtbase-everywhere-src-6.10.1/src/plugins/networkinformation/glib/qglibnetworkinformationbackend.cpp:22 (D:/W/B/src)
+    variables:
+      connectivity (parameter)
+        type:
+          > TypeDef: GNetworkConnectivity
+            > Unknown
+        0x1505..0x151b: register rdi
 
   > 0x1525: _ZN26QNetworkInformationBackend15setReachabilityEN19QNetworkInformation12ReachabilityE (0x5b)
     0x1525: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:86 (D:/W/B/src)
@@ -421,9 +679,52 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0x1563: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:90 (D:/W/B/src)
     0x156e: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:0 (D:/W/B/src)
     0x1574: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:92 (D:/W/B/src)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: QNetworkInformationBackend (40 bytes)
+              > Member: m_lock (offset 16 bytes)
+                > Structure: QReadWriteLock (8 bytes)
+                  > Member: d_ptr (offset 0 bytes)
+                    > Structure: QAtomicPointer<QReadWriteLockPrivate> (8 bytes)
+              > Member: m_reachability (offset 24 bytes)
+                > TypeDef: Reachability
+                  > Unknown
+              > Member: m_transportMedium (offset 28 bytes)
+                > TypeDef: TransportMedium
+                  > Unknown
+              > Member: m_behindCaptivePortal (offset 32 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+              > Member: m_metered (offset 33 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+        0x1525..0x1580: register rsi
+      reachability (parameter)
+        type:
+          > Unknown
+        0x1525..0x1580: register rbp
+      locker (local)
+        type:
+          > Structure: QWriteLocker (8 bytes)
+            > Member: q_val (offset 0 bytes)
+              > TypeDef: quintptr
+                > TypeDef: Unsigned
+                  > TypeDef: quint64
+                    > Primitive: unsigned long long (UnsignedInt, 8 bytes)
+        0x1529..0x154f: register rbx
+        0x155a..0x1571: register rbx
+        0x1571..0x1580: register rcx
 
     > 0x1529: _ZN12QWriteLockerC2EP14QReadWriteLock (0x29)
       0x1529: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:181 (D:/W/B/src)
+      variables:
+        areadWriteLock (parameter)
+          type:
+            > Pointer (8 bytes)
+              > Structure: QReadWriteLock (8 bytes)
+                > Member: d_ptr (offset 0 bytes)
+                  > Structure: QAtomicPointer<QReadWriteLockPrivate> (8 bytes)
+          0x1529..0x1552: register rbx
 
       > 0x1529: _ZN12QWriteLocker6relockEv (0x29)
         0x1529: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:161 (D:/W/B/src)
@@ -433,6 +734,14 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         > 0x1529: _ZN14QReadWriteLock12lockForWriteEv (0x22)
           0x1529: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:79 (D:/W/B/src)
           0x1542: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:79 (D:/W/B/src)
+          variables:
+            this (parameter)
+              type:
+                > Pointer (8 bytes)
+                  > Structure: QReadWriteLock (8 bytes)
+                    > Member: d_ptr (offset 0 bytes)
+                      > Structure: QAtomicPointer<QReadWriteLockPrivate> (8 bytes)
+              0x1529..0x154b: register rbx
 
           > 0x1529: _ZN14QDeadlineTimerC2ENS_15ForeverConstantEN2Qt9TimerTypeE (0x19)
             0x1529: qtbase-everywhere-src-6.10.1/src/corelib/kernel/qdeadlinetimer.h:31 (D:/W/B/src)
@@ -452,9 +761,46 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   > 0x1587: _ZN26QNetworkInformationBackend22setBehindCaptivePortalEb (0x1e)
     0x1587: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:96 (D:/W/B/src)
     0x159f: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:97 (D:/W/B/src)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: QNetworkInformationBackend (40 bytes)
+              > Member: m_lock (offset 16 bytes)
+                > Structure: QReadWriteLock (8 bytes)
+                  > Member: d_ptr (offset 0 bytes)
+                    > Structure: QAtomicPointer<QReadWriteLockPrivate> (8 bytes)
+              > Member: m_reachability (offset 24 bytes)
+                > TypeDef: Reachability
+                  > Unknown
+              > Member: m_transportMedium (offset 28 bytes)
+                > TypeDef: TransportMedium
+                  > Unknown
+              > Member: m_behindCaptivePortal (offset 32 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+              > Member: m_metered (offset 33 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+        0x1587..0x15a5: register rsi
+      locker (local)
+        type:
+          > Structure: QWriteLocker (8 bytes)
+            > Member: q_val (offset 0 bytes)
+              > TypeDef: quintptr
+                > TypeDef: Unsigned
+                  > TypeDef: quint64
+                    > Primitive: unsigned long long (UnsignedInt, 8 bytes)
+        0x1587..0x159f: register rbx
 
     > 0x1587: _ZN12QWriteLockerC2EP14QReadWriteLock (0x18)
       0x1587: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:181 (D:/W/B/src)
+      variables:
+        areadWriteLock (parameter)
+          type:
+            > Pointer (8 bytes)
+              > Structure: QReadWriteLock (8 bytes)
+                > Member: d_ptr (offset 0 bytes)
+                  > Structure: QAtomicPointer<QReadWriteLockPrivate> (8 bytes)
+          0x1587..0x159f: register rbx
 
       > 0x1587: _ZN12QWriteLocker6relockEv (0x18)
         0x1587: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:161 (D:/W/B/src)
@@ -462,6 +808,14 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         > 0x1587: _ZN14QReadWriteLock12lockForWriteEv (0x18)
           0x1587: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:79 (D:/W/B/src)
           0x1596: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:79 (D:/W/B/src)
+          variables:
+            this (parameter)
+              type:
+                > Pointer (8 bytes)
+                  > Structure: QReadWriteLock (8 bytes)
+                    > Member: d_ptr (offset 0 bytes)
+                      > Structure: QAtomicPointer<QReadWriteLockPrivate> (8 bytes)
+              0x1587..0x159f: register rbx
 
           > 0x1587: _ZN14QDeadlineTimerC2ENS_15ForeverConstantEN2Qt9TimerTypeE (0xf)
             0x1587: qtbase-everywhere-src-6.10.1/src/corelib/kernel/qdeadlinetimer.h:31 (D:/W/B/src)
@@ -473,6 +827,40 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0x15b9: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:100 (D:/W/B/src)
     0x15c4: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:0 (D:/W/B/src)
     0x15cb: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:102 (D:/W/B/src)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: QNetworkInformationBackend (40 bytes)
+              > Member: m_lock (offset 16 bytes)
+                > Structure: QReadWriteLock (8 bytes)
+                  > Member: d_ptr (offset 0 bytes)
+                    > Structure: QAtomicPointer<QReadWriteLockPrivate> (8 bytes)
+              > Member: m_reachability (offset 24 bytes)
+                > TypeDef: Reachability
+                  > Unknown
+              > Member: m_transportMedium (offset 28 bytes)
+                > TypeDef: TransportMedium
+                  > Unknown
+              > Member: m_behindCaptivePortal (offset 32 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+              > Member: m_metered (offset 33 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+        0x15ac..0x15da: register rsi
+      behindPortal (parameter)
+        type:
+          > Primitive: bool (Boolean, 1 byte)
+        0x15ac..0x15c7: register rbp
+      locker (local)
+        type:
+          > Structure: QWriteLocker (8 bytes)
+            > Member: q_val (offset 0 bytes)
+              > TypeDef: quintptr
+                > TypeDef: Unsigned
+                  > TypeDef: quint64
+                    > Primitive: unsigned long long (UnsignedInt, 8 bytes)
+        0x15b0..0x15c7: register rbx
+        0x15c7..0x15da: register r14
 
     > 0x15b0: _ZN12QWriteLocker6unlockEv (0x9)
       0x15b0: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:152 (D:/W/B/src)
@@ -524,9 +912,47 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0x1675: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:117 (D:/W/B/src)
     0x167b: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:0 (D:/W/B/src)
     0x1683: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:122 (D:/W/B/src)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: QNetworkInformationBackend (40 bytes)
+              > Member: m_lock (offset 16 bytes)
+                > Structure: QReadWriteLock (8 bytes)
+                  > Member: d_ptr (offset 0 bytes)
+                    > Structure: QAtomicPointer<QReadWriteLockPrivate> (8 bytes)
+              > Member: m_reachability (offset 24 bytes)
+                > TypeDef: Reachability
+                  > Unknown
+              > Member: m_transportMedium (offset 28 bytes)
+                > TypeDef: TransportMedium
+                  > Unknown
+              > Member: m_behindCaptivePortal (offset 32 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+              > Member: m_metered (offset 33 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+        0x1645..0x167f: register rsi
+      locker (local)
+        type:
+          > Structure: QWriteLocker (8 bytes)
+            > Member: q_val (offset 0 bytes)
+              > TypeDef: quintptr
+                > TypeDef: Unsigned
+                  > TypeDef: quint64
+                    > Primitive: unsigned long long (UnsignedInt, 8 bytes)
+        0x1649..0x1675: register rdi
+        0x167f..0x1687: register rsi
 
     > 0x1653: _ZN12QWriteLockerC2EP14QReadWriteLock (0x22)
       0x1653: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:181 (D:/W/B/src)
+      variables:
+        areadWriteLock (parameter)
+          type:
+            > Pointer (8 bytes)
+              > Structure: QReadWriteLock (8 bytes)
+                > Member: d_ptr (offset 0 bytes)
+                  > Structure: QAtomicPointer<QReadWriteLockPrivate> (8 bytes)
+          0x1653..0x1675: register rdi
 
       > 0x1653: _ZN12QWriteLocker6relockEv (0x22)
         0x1653: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:161 (D:/W/B/src)
@@ -534,6 +960,14 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
         > 0x1653: _ZN14QReadWriteLock12lockForWriteEv (0x22)
           0x1653: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:79 (D:/W/B/src)
           0x166c: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:79 (D:/W/B/src)
+          variables:
+            this (parameter)
+              type:
+                > Pointer (8 bytes)
+                  > Structure: QReadWriteLock (8 bytes)
+                    > Member: d_ptr (offset 0 bytes)
+                      > Structure: QAtomicPointer<QReadWriteLockPrivate> (8 bytes)
+              0x1653..0x1675: register rdi
 
           > 0x1653: _ZN14QDeadlineTimerC2ENS_15ForeverConstantEN2Qt9TimerTypeE (0x19)
             0x1653: qtbase-everywhere-src-6.10.1/src/corelib/kernel/qdeadlinetimer.h:31 (D:/W/B/src)
@@ -551,6 +985,40 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0x1699: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:120 (D:/W/B/src)
     0x16a4: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:0 (D:/W/B/src)
     0x16ab: qtbase-everywhere-src-6.10.1/src/network/kernel/qnetworkinformation_p.h:122 (D:/W/B/src)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: QNetworkInformationBackend (40 bytes)
+              > Member: m_lock (offset 16 bytes)
+                > Structure: QReadWriteLock (8 bytes)
+                  > Member: d_ptr (offset 0 bytes)
+                    > Structure: QAtomicPointer<QReadWriteLockPrivate> (8 bytes)
+              > Member: m_reachability (offset 24 bytes)
+                > TypeDef: Reachability
+                  > Unknown
+              > Member: m_transportMedium (offset 28 bytes)
+                > TypeDef: TransportMedium
+                  > Unknown
+              > Member: m_behindCaptivePortal (offset 32 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+              > Member: m_metered (offset 33 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+        0x168c..0x16a7: register rsi
+      isMetered (parameter)
+        type:
+          > Primitive: bool (Boolean, 1 byte)
+        0x168c..0x16ad: register rbp
+      locker (local)
+        type:
+          > Structure: QWriteLocker (8 bytes)
+            > Member: q_val (offset 0 bytes)
+              > TypeDef: quintptr
+                > TypeDef: Unsigned
+                  > TypeDef: quint64
+                    > Primitive: unsigned long long (UnsignedInt, 8 bytes)
+        0x1690..0x16a7: register rdi
+        0x16a7..0x16ba: register rsi
 
     > 0x1690: _ZN12QWriteLocker6unlockEv (0x9)
       0x1690: qtbase-everywhere-src-6.10.1/src/corelib/thread/qreadwritelock.h:152 (D:/W/B/src)

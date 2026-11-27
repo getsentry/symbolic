@@ -477,12 +477,11 @@ impl<'d> UnitRef<'d, '_> {
         Ok(self.info.attr_locations(self.unit, value)?)
     }
 
-    /// Reads a referenced DIE into the supplied buffer and returns its owning unit.
+    /// Reads a referenced DIE and returns it together with its owning unit.
     fn read_reference(
         self,
         value: AttributeValue<Slice<'d>>,
-        entry: &mut Die<'d>,
-    ) -> Result<Option<Self>, DwarfError> {
+    ) -> Result<Option<(Self, Die<'d>)>, DwarfError> {
         let (unit, offset) = match value {
             AttributeValue::UnitRef(offset) => (self, offset),
             AttributeValue::DebugInfoRef(offset) => self.info.find_info_unit_offset(offset)?,
@@ -490,8 +489,9 @@ impl<'d> UnitRef<'d, '_> {
             _ => return Ok(None),
         };
 
+        let mut entry = Die::null();
         let mut entries = unit.unit.entries_raw(Some(offset))?;
-        Ok((entries.read_entry(entry)? && !entry.is_null()).then_some(unit))
+        Ok((entries.read_entry(&mut entry)? && !entry.is_null()).then_some((unit, entry)))
     }
 
     /// Resolves a attribute unit ref or debug info ref to a [`DwarfTypeRef`].
@@ -559,7 +559,7 @@ impl<'d> UnitRef<'d, '_> {
         const MAX_ABSTRACT_ORIGIN_DEPTH: u8 = 16;
 
         let mut unit = *self;
-        let mut entry = Die::null();
+        let mut entry;
         let mut current = die;
 
         let mut depth = 0;
@@ -572,17 +572,17 @@ impl<'d> UnitRef<'d, '_> {
                 break Ok(None);
             }
 
-            let ref_unit = ref_attrs
+            let reference = ref_attrs
                 .iter()
                 .find_map(|&name| current.attr_value(name))
-                .and_then(|v| unit.read_reference(v, &mut entry).transpose())
+                .and_then(|v| unit.read_reference(v).transpose())
                 .transpose()?;
 
-            let Some(ref_unit) = ref_unit else {
+            let Some(reference) = reference else {
                 break Ok(None);
             };
 
-            unit = ref_unit;
+            (unit, entry) = reference;
             current = &entry;
 
             depth += 1;
@@ -1371,8 +1371,9 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         abbrev: &gimli::Abbreviation,
         frame_base: Option<FrameBase>,
     ) -> Result<Option<ParsedVariable<'d>>, DwarfError> {
-        let mut ty = None;
         let mut name = None;
+        let mut ty = None;
+        let mut origin = None;
         let mut locations = None;
         let mut is_declaration = false;
 
@@ -1381,6 +1382,9 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             match attr.name() {
                 constants::DW_AT_name => {
                     name = self.inner.string_value(attr.value());
+                }
+                constants::DW_AT_abstract_origin | constants::DW_AT_specification => {
+                    origin = Some(attr);
                 }
                 constants::DW_AT_declaration if attr.value() == AttributeValue::Flag(true) => {
                     // We don't care about declarations, we only care about actual definitions of
@@ -1402,6 +1406,38 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         if is_declaration {
             return Ok(None);
+        }
+
+        // A concrete inlined or out-of-line instance of a variable only carries what is specific
+        // to that instance, typically its location, and references the abstract instance for
+        // everything else (DWARF 5, section 3.3.8.2). Likewise, a definition completing an earlier
+        // declaration does not need to repeat the declaration's attributes (section 2.13.2).
+        //
+        // Attributes on the variable's own DIE take precedence. A reference that cannot be
+        // followed only costs us this variable's name or type, like a missing attribute would;
+        // it should not fail the whole unit.
+        if (name.is_none() || ty.is_none())
+            && let Some(origin) = origin
+            && let Ok(Some((unit, entry))) = self.inner.read_reference(origin.value())
+        {
+            let follow = &[DW_AT_abstract_origin, DW_AT_specification];
+            if name.is_none() {
+                name = unit
+                    .attr_integrate(&entry, follow, |unit, entry| {
+                        unit.string_value(entry.attr_value(constants::DW_AT_name)?)
+                    })
+                    .ok()
+                    .flatten();
+            }
+            if ty.is_none() {
+                ty = unit
+                    .attr_integrate(&entry, follow, |unit, entry| {
+                        unit.to_type_ref(*entry.attr(constants::DW_AT_type)?)
+                    })
+                    .ok()
+                    .flatten()
+                    .map(TypeRef::from);
+            }
         }
 
         let (Some(name), Some(locations)) = (name, locations) else {

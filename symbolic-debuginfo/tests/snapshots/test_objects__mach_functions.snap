@@ -8,6 +8,24 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0xd2a: minidump_file_writer.cc:95 (../deps/breakpad/src/client)
   0xd31: minidump_file_writer.cc:96 (../deps/breakpad/src/client)
   0xd39: minidump_file_writer.cc:97 (../deps/breakpad/src/client)
+  variables:
+    this (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Structure: MinidumpFileWriter (24 bytes)
+            > Member: file_ (offset 0 bytes)
+              > Primitive: int (SignedInt, 4 bytes)
+            > Member: close_file_when_destroyed_ (offset 4 bytes)
+              > Primitive: bool (Boolean, 1 byte)
+            > Member: position_ (offset 8 bytes)
+              > TypeDef: MDRVA
+                > TypeDef: uint32_t
+                  > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            > Member: size_ (offset 16 bytes)
+              > TypeDef: size_t
+                > TypeDef: __darwin_size_t
+                  > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+      0xd20..0xd3a: register rdi
 
 > 0xd40: _ZN15google_breakpad18MinidumpFileWriterC1Ev (0x1a)
   0xd40: minidump_file_writer.cc:96 (../deps/breakpad/src/client)
@@ -36,6 +54,24 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0xd46: minidump_file_writer.cc:94 (../deps/breakpad/src/client)
     0xd4a: minidump_file_writer.cc:95 (../deps/breakpad/src/client)
     0xd51: minidump_file_writer.cc:96 (../deps/breakpad/src/client)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: MinidumpFileWriter (24 bytes)
+              > Member: file_ (offset 0 bytes)
+                > Primitive: int (SignedInt, 4 bytes)
+              > Member: close_file_when_destroyed_ (offset 4 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+              > Member: position_ (offset 8 bytes)
+                > TypeDef: MDRVA
+                  > TypeDef: uint32_t
+                    > Primitive: unsigned int (UnsignedInt, 4 bytes)
+              > Member: size_ (offset 16 bytes)
+                > TypeDef: size_t
+                  > TypeDef: __darwin_size_t
+                    > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+        0xd40..0xd59: register rdi
 
 > 0xd60: _ZN15google_breakpad18MinidumpFileWriterD2Ev (0x34)
   0xd60: minidump_file_writer.cc:99 (../deps/breakpad/src/client)
@@ -43,6 +79,26 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0xd6a: minidump_file_writer.cc:101 (../deps/breakpad/src/client)
   0xd8a: minidump_file_writer.cc:102 (../deps/breakpad/src/client)
   0xd8c: minidump_file_writer.cc:101 (../deps/breakpad/src/client)
+  variables:
+    this (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Structure: MinidumpFileWriter (24 bytes)
+            > Member: file_ (offset 0 bytes)
+              > Primitive: int (SignedInt, 4 bytes)
+            > Member: close_file_when_destroyed_ (offset 4 bytes)
+              > Primitive: bool (Boolean, 1 byte)
+            > Member: position_ (offset 8 bytes)
+              > TypeDef: MDRVA
+                > TypeDef: uint32_t
+                  > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            > Member: size_ (offset 16 bytes)
+              > TypeDef: size_t
+                > TypeDef: __darwin_size_t
+                  > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+      0xd60..0xd64: register rdi
+      0xd64..0xd8b: register rbx
+      0xd8c..0xd94: register rbx
 
   > 0xd6a: _ZN15google_breakpad18MinidumpFileWriter5CloseEv (0x20)
     0xd6a: minidump_file_writer.cc:127 (../deps/breakpad/src/client)
@@ -53,6 +109,24 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0xd7d: minidump_file_writer.cc:140 (../deps/breakpad/src/client)
     0xd7f: minidump_file_writer.cc:140 (../deps/breakpad/src/client)
     0xd84: minidump_file_writer.cc:142 (../deps/breakpad/src/client)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: MinidumpFileWriter (24 bytes)
+              > Member: file_ (offset 0 bytes)
+                > Primitive: int (SignedInt, 4 bytes)
+              > Member: close_file_when_destroyed_ (offset 4 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+              > Member: position_ (offset 8 bytes)
+                > TypeDef: MDRVA
+                  > TypeDef: uint32_t
+                    > Primitive: unsigned int (UnsignedInt, 4 bytes)
+              > Member: size_ (offset 16 bytes)
+                > TypeDef: size_t
+                  > TypeDef: __darwin_size_t
+                    > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+        0xd6a..0xd8a: register rbx
 
 > 0xda0: _ZN15google_breakpad18MinidumpFileWriter5CloseEv (0x31)
   0xda0: minidump_file_writer.cc:124 (../deps/breakpad/src/client)
@@ -66,6 +140,25 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   0xdc4: minidump_file_writer.cc:140 (../deps/breakpad/src/client)
   0xdc9: minidump_file_writer.cc:142 (../deps/breakpad/src/client)
   0xdcf: minidump_file_writer.cc:146 (../deps/breakpad/src/client)
+  variables:
+    this (parameter)
+      type:
+        > Pointer (8 bytes)
+          > Structure: MinidumpFileWriter (24 bytes)
+            > Member: file_ (offset 0 bytes)
+              > Primitive: int (SignedInt, 4 bytes)
+            > Member: close_file_when_destroyed_ (offset 4 bytes)
+              > Primitive: bool (Boolean, 1 byte)
+            > Member: position_ (offset 8 bytes)
+              > TypeDef: MDRVA
+                > TypeDef: uint32_t
+                  > Primitive: unsigned int (UnsignedInt, 4 bytes)
+            > Member: size_ (offset 16 bytes)
+              > TypeDef: size_t
+                > TypeDef: __darwin_size_t
+                  > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+      0xda0..0xda4: register rdi
+      0xda4..0xdd0: register rbx
 
 > 0xde0: _ZN15google_breakpad18MinidumpFileWriterD1Ev (0x34)
   0xde0: minidump_file_writer.cc:99 (../deps/breakpad/src/client)
@@ -96,6 +189,24 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
   > 0xde4: _ZN15google_breakpad18MinidumpFileWriterD2Ev (0x26)
     0xde4: minidump_file_writer.cc:100 (../deps/breakpad/src/client)
     0xdea: minidump_file_writer.cc:101 (../deps/breakpad/src/client)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: MinidumpFileWriter (24 bytes)
+              > Member: file_ (offset 0 bytes)
+                > Primitive: int (SignedInt, 4 bytes)
+              > Member: close_file_when_destroyed_ (offset 4 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+              > Member: position_ (offset 8 bytes)
+                > TypeDef: MDRVA
+                  > TypeDef: uint32_t
+                    > Primitive: unsigned int (UnsignedInt, 4 bytes)
+              > Member: size_ (offset 16 bytes)
+                > TypeDef: size_t
+                  > TypeDef: __darwin_size_t
+                    > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+        0xde4..0xe0a: register rbx
 
     > 0xdea: _ZN15google_breakpad18MinidumpFileWriter5CloseEv (0x20)
       0xdea: minidump_file_writer.cc:127 (../deps/breakpad/src/client)
@@ -106,9 +217,45 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0xdfd: minidump_file_writer.cc:140 (../deps/breakpad/src/client)
       0xdff: minidump_file_writer.cc:140 (../deps/breakpad/src/client)
       0xe04: minidump_file_writer.cc:142 (../deps/breakpad/src/client)
+      variables:
+        this (parameter)
+          type:
+            > Pointer (8 bytes)
+              > Structure: MinidumpFileWriter (24 bytes)
+                > Member: file_ (offset 0 bytes)
+                  > Primitive: int (SignedInt, 4 bytes)
+                > Member: close_file_when_destroyed_ (offset 4 bytes)
+                  > Primitive: bool (Boolean, 1 byte)
+                > Member: position_ (offset 8 bytes)
+                  > TypeDef: MDRVA
+                    > TypeDef: uint32_t
+                      > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                > Member: size_ (offset 16 bytes)
+                  > TypeDef: size_t
+                    > TypeDef: __darwin_size_t
+                      > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+          0xdea..0xe0a: register rbx
 
   > 0xe0c: _ZN15google_breakpad18MinidumpFileWriterD2Ev (0x8)
     0xe0c: minidump_file_writer.cc:101 (../deps/breakpad/src/client)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: MinidumpFileWriter (24 bytes)
+              > Member: file_ (offset 0 bytes)
+                > Primitive: int (SignedInt, 4 bytes)
+              > Member: close_file_when_destroyed_ (offset 4 bytes)
+                > Primitive: bool (Boolean, 1 byte)
+              > Member: position_ (offset 8 bytes)
+                > TypeDef: MDRVA
+                  > TypeDef: uint32_t
+                    > Primitive: unsigned int (UnsignedInt, 4 bytes)
+              > Member: size_ (offset 16 bytes)
+                > TypeDef: size_t
+                  > TypeDef: __darwin_size_t
+                    > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+        0xe0c..0xe14: register rbx
 
 > 0xe20: _ZN15google_breakpad18MinidumpFileWriter4OpenEPKc (0x49)
   0xe20: minidump_file_writer.cc:104 (../deps/breakpad/src/client)
@@ -248,15 +395,69 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0xefa: minidump_file_writer-inl.h:83 (../deps/breakpad/src/client)
     0xf0e: minidump_file_writer-inl.h:84 (../deps/breakpad/src/client)
     0xf12: minidump_file_writer-inl.h:84 (../deps/breakpad/src/client)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: TypedMDRVA<MDString> (40 bytes)
+              > Member: data_ (offset 24 bytes)
+                > Structure: <anonymous> (8 bytes)
+                  > Member: length (offset 0 bytes)
+                    > TypeDef: uint32_t
+                      > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                  > Member: buffer (offset 4 bytes)
+                    > Unknown
+              > Member: allocation_state_ (offset 32 bytes)
+                > Unknown
+        0xefa..0xf1f: register r12
 
     > 0xf12: _ZN15google_breakpad18MinidumpFileWriter4CopyEjPKvl (0xd)
       0xf12: minidump_file_writer.cc:313 (../deps/breakpad/src/client)
+      variables:
+        this (parameter)
+          type:
+            > Pointer (8 bytes)
+              > Structure: MinidumpFileWriter (24 bytes)
+                > Member: file_ (offset 0 bytes)
+                  > Primitive: int (SignedInt, 4 bytes)
+                > Member: close_file_when_destroyed_ (offset 4 bytes)
+                  > Primitive: bool (Boolean, 1 byte)
+                > Member: position_ (offset 8 bytes)
+                  > TypeDef: MDRVA
+                    > TypeDef: uint32_t
+                      > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                > Member: size_ (offset 16 bytes)
+                  > TypeDef: size_t
+                    > TypeDef: __darwin_size_t
+                      > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+          0xf12..0xf1f: register r13
 
   > 0xf23: _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm (0x44)
     0xf23: minidump_file_writer-inl.h:86 (../deps/breakpad/src/client)
     0xf2a: minidump_file_writer-inl.h:85 (../deps/breakpad/src/client)
     0xf2f: minidump_file_writer-inl.h:86 (../deps/breakpad/src/client)
     0xf34: minidump_file_writer-inl.h:84 (../deps/breakpad/src/client)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: TypedMDRVA<MDString> (40 bytes)
+              > Member: data_ (offset 24 bytes)
+                > Structure: <anonymous> (8 bytes)
+                  > Member: length (offset 0 bytes)
+                    > TypeDef: uint32_t
+                      > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                  > Member: buffer (offset 4 bytes)
+                    > Unknown
+              > Member: allocation_state_ (offset 32 bytes)
+                > Unknown
+        0xf23..0xf41: register r12
+      length (parameter)
+        type:
+          > TypeDef: size_t
+            > TypeDef: __darwin_size_t
+              > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+        0xf23..0xf67: register rbx
 
     > 0xf34: _ZN15google_breakpad18MinidumpFileWriter4CopyEjPKvl (0x33)
       0xf34: minidump_file_writer.cc:316 (../deps/breakpad/src/client)
@@ -266,13 +467,70 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0xf50: minidump_file_writer.cc:328 (../deps/breakpad/src/client)
       0xf57: minidump_file_writer.cc:328 (../deps/breakpad/src/client)
       0xf62: minidump_file_writer.cc:328 (../deps/breakpad/src/client)
+      variables:
+        this (parameter)
+          type:
+            > Pointer (8 bytes)
+              > Structure: MinidumpFileWriter (24 bytes)
+                > Member: file_ (offset 0 bytes)
+                  > Primitive: int (SignedInt, 4 bytes)
+                > Member: close_file_when_destroyed_ (offset 4 bytes)
+                  > Primitive: bool (Boolean, 1 byte)
+                > Member: position_ (offset 8 bytes)
+                  > TypeDef: MDRVA
+                    > TypeDef: uint32_t
+                      > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                > Member: size_ (offset 16 bytes)
+                  > TypeDef: size_t
+                    > TypeDef: __darwin_size_t
+                      > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+          0xf34..0xf67: register r13
+        size (parameter)
+          type:
+            > TypeDef: ssize_t
+              > TypeDef: __darwin_ssize_t
+                > Primitive: long int (SignedInt, 8 bytes)
+          0xf34..0xf67: register rbx
 
   > 0xfa9: _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm (0x3e)
     0xfa9: minidump_file_writer-inl.h:83 (../deps/breakpad/src/client)
     0xfc8: minidump_file_writer-inl.h:84 (../deps/breakpad/src/client)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: TypedMDRVA<MDString> (40 bytes)
+              > Member: data_ (offset 24 bytes)
+                > Structure: <anonymous> (8 bytes)
+                  > Member: length (offset 0 bytes)
+                    > TypeDef: uint32_t
+                      > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                  > Member: buffer (offset 4 bytes)
+                    > Unknown
+              > Member: allocation_state_ (offset 32 bytes)
+                > Unknown
+        0xfa9..0xfe7: register r12
 
     > 0xfc8: _ZN15google_breakpad18MinidumpFileWriter4CopyEjPKvl (0x1f)
       0xfc8: minidump_file_writer.cc:313 (../deps/breakpad/src/client)
+      variables:
+        this (parameter)
+          type:
+            > Pointer (8 bytes)
+              > Structure: MinidumpFileWriter (24 bytes)
+                > Member: file_ (offset 0 bytes)
+                  > Primitive: int (SignedInt, 4 bytes)
+                > Member: close_file_when_destroyed_ (offset 4 bytes)
+                  > Primitive: bool (Boolean, 1 byte)
+                > Member: position_ (offset 8 bytes)
+                  > TypeDef: MDRVA
+                    > TypeDef: uint32_t
+                      > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                > Member: size_ (offset 16 bytes)
+                  > TypeDef: size_t
+                    > TypeDef: __darwin_size_t
+                      > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+          0xfc8..0xfe7: register r13
 
 > 0xff0: _ZN15google_breakpad18MinidumpFileWriter20CopyStringToMDStringEPKcjPNS_10TypedMDRVAI8MDStringEE (0x147)
   0xff0: minidump_file_writer.cc:183 (../deps/breakpad/src/client)
@@ -347,15 +605,69 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
     0x1049: minidump_file_writer-inl.h:83 (../deps/breakpad/src/client)
     0x1058: minidump_file_writer-inl.h:84 (../deps/breakpad/src/client)
     0x105b: minidump_file_writer-inl.h:84 (../deps/breakpad/src/client)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: TypedMDRVA<MDString> (40 bytes)
+              > Member: data_ (offset 24 bytes)
+                > Structure: <anonymous> (8 bytes)
+                  > Member: length (offset 0 bytes)
+                    > TypeDef: uint32_t
+                      > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                  > Member: buffer (offset 4 bytes)
+                    > Unknown
+              > Member: allocation_state_ (offset 32 bytes)
+                > Unknown
+        0x1049..0x1067: register r14
 
     > 0x105b: _ZN15google_breakpad18MinidumpFileWriter4CopyEjPKvl (0xc)
       0x105b: minidump_file_writer.cc:313 (../deps/breakpad/src/client)
+      variables:
+        this (parameter)
+          type:
+            > Pointer (8 bytes)
+              > Structure: MinidumpFileWriter (24 bytes)
+                > Member: file_ (offset 0 bytes)
+                  > Primitive: int (SignedInt, 4 bytes)
+                > Member: close_file_when_destroyed_ (offset 4 bytes)
+                  > Primitive: bool (Boolean, 1 byte)
+                > Member: position_ (offset 8 bytes)
+                  > TypeDef: MDRVA
+                    > TypeDef: uint32_t
+                      > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                > Member: size_ (offset 16 bytes)
+                  > TypeDef: size_t
+                    > TypeDef: __darwin_size_t
+                      > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+          0x105b..0x1067: register r15
 
   > 0x106b: _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm (0x48)
     0x106b: minidump_file_writer-inl.h:86 (../deps/breakpad/src/client)
     0x1072: minidump_file_writer-inl.h:85 (../deps/breakpad/src/client)
     0x1076: minidump_file_writer-inl.h:86 (../deps/breakpad/src/client)
     0x107b: minidump_file_writer-inl.h:84 (../deps/breakpad/src/client)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: TypedMDRVA<MDString> (40 bytes)
+              > Member: data_ (offset 24 bytes)
+                > Structure: <anonymous> (8 bytes)
+                  > Member: length (offset 0 bytes)
+                    > TypeDef: uint32_t
+                      > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                  > Member: buffer (offset 4 bytes)
+                    > Unknown
+              > Member: allocation_state_ (offset 32 bytes)
+                > Unknown
+        0x106b..0x107b: register r14
+      length (parameter)
+        type:
+          > TypeDef: size_t
+            > TypeDef: __darwin_size_t
+              > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+        0x106b..0x10b3: register rbp
 
     > 0x107b: _ZN15google_breakpad18MinidumpFileWriter4CopyEjPKvl (0x38)
       0x107b: minidump_file_writer.cc:316 (../deps/breakpad/src/client)
@@ -365,13 +677,70 @@ expression: "FunctionsDebug::new(&session, &functions[..10])"
       0x109b: minidump_file_writer.cc:328 (../deps/breakpad/src/client)
       0x10a3: minidump_file_writer.cc:328 (../deps/breakpad/src/client)
       0x10ae: minidump_file_writer.cc:328 (../deps/breakpad/src/client)
+      variables:
+        this (parameter)
+          type:
+            > Pointer (8 bytes)
+              > Structure: MinidumpFileWriter (24 bytes)
+                > Member: file_ (offset 0 bytes)
+                  > Primitive: int (SignedInt, 4 bytes)
+                > Member: close_file_when_destroyed_ (offset 4 bytes)
+                  > Primitive: bool (Boolean, 1 byte)
+                > Member: position_ (offset 8 bytes)
+                  > TypeDef: MDRVA
+                    > TypeDef: uint32_t
+                      > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                > Member: size_ (offset 16 bytes)
+                  > TypeDef: size_t
+                    > TypeDef: __darwin_size_t
+                      > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+          0x107b..0x10a3: register r15
+        size (parameter)
+          type:
+            > TypeDef: ssize_t
+              > TypeDef: __darwin_ssize_t
+                > Primitive: long int (SignedInt, 8 bytes)
+          0x107b..0x10b3: register rbp
 
   > 0x10f9: _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm (0x3e)
     0x10f9: minidump_file_writer-inl.h:83 (../deps/breakpad/src/client)
     0x1118: minidump_file_writer-inl.h:84 (../deps/breakpad/src/client)
+    variables:
+      this (parameter)
+        type:
+          > Pointer (8 bytes)
+            > Structure: TypedMDRVA<MDString> (40 bytes)
+              > Member: data_ (offset 24 bytes)
+                > Structure: <anonymous> (8 bytes)
+                  > Member: length (offset 0 bytes)
+                    > TypeDef: uint32_t
+                      > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                  > Member: buffer (offset 4 bytes)
+                    > Unknown
+              > Member: allocation_state_ (offset 32 bytes)
+                > Unknown
+        0x10f9..0x1137: register r14
 
     > 0x1118: _ZN15google_breakpad18MinidumpFileWriter4CopyEjPKvl (0x1f)
       0x1118: minidump_file_writer.cc:313 (../deps/breakpad/src/client)
+      variables:
+        this (parameter)
+          type:
+            > Pointer (8 bytes)
+              > Structure: MinidumpFileWriter (24 bytes)
+                > Member: file_ (offset 0 bytes)
+                  > Primitive: int (SignedInt, 4 bytes)
+                > Member: close_file_when_destroyed_ (offset 4 bytes)
+                  > Primitive: bool (Boolean, 1 byte)
+                > Member: position_ (offset 8 bytes)
+                  > TypeDef: MDRVA
+                    > TypeDef: uint32_t
+                      > Primitive: unsigned int (UnsignedInt, 4 bytes)
+                > Member: size_ (offset 16 bytes)
+                  > TypeDef: size_t
+                    > TypeDef: __darwin_size_t
+                      > Primitive: long unsigned int (UnsignedInt, 8 bytes)
+          0x1118..0x1137: register r15
 
 > 0x1140: _ZN15google_breakpad18MinidumpFileWriter11WriteStringEPKwjP20MDLocationDescriptor (0x5)
   0x1140: minidump_file_writer.cc:245 (../deps/breakpad/src/client)

@@ -369,10 +369,10 @@ fn test_variable_cache_size() -> Result<(), Error> {
     writeln!(&mut s, "with variables: {with_vars:.2} KiB")?;
     writeln!(&mut s, "variables     : {delta:.2} KiB ({perc:.2}%)")?;
 
-    insta::assert_snapshot!(s, @r"
+    insta::assert_snapshot!(s, @"
     no variables  : 219.95 KiB
-    with variables: 285.90 KiB
-    variables     : 65.95 KiB (23.07%)
+    with variables: 484.18 KiB
+    variables     : 264.23 KiB (54.57%)
     ");
 
     Ok(())
