@@ -14,9 +14,10 @@ use std::ops::Deref;
 use std::sync::{Arc, OnceLock};
 
 use fallible_iterator::FallibleIterator;
+use gimli::constants::{DW_AT_abstract_origin, DW_AT_specification};
 use gimli::read::{AttributeValue, Error as GimliError, Range};
 use gimli::{
-    AbbreviationsCacheStrategy, DebugTypeSignature, DwarfFileType, Expression, LocListIter,
+    AbbreviationsCacheStrategy, DebugTypeSignature, DwAt, DwarfFileType, Expression, LocListIter,
     LocationLists, Operation, SectionId, UnitSectionOffset, UnitType, constants,
 };
 use indexmap::IndexSet;
@@ -476,29 +477,21 @@ impl<'d> UnitRef<'d, '_> {
         Ok(self.info.attr_locations(self.unit, value)?)
     }
 
-    /// Resolves an entry and if found invokes a function to transform it.
-    ///
-    /// As this might resolve into cached information the data borrowed from
-    /// abbrev can only be temporarily accessed in the callback.
-    fn resolve_reference<T, F>(&self, attr: Attribute<'d>, f: F) -> Result<Option<T>, DwarfError>
-    where
-        F: FnOnce(Self, &Die<'d>) -> Result<Option<T>, DwarfError>,
-    {
-        let (unit, offset) = match attr.value() {
-            AttributeValue::UnitRef(offset) => (*self, offset),
+    /// Reads a referenced DIE into the supplied buffer and returns its owning unit.
+    fn read_reference(
+        self,
+        value: AttributeValue<Slice<'d>>,
+        entry: &mut Die<'d>,
+    ) -> Result<Option<Self>, DwarfError> {
+        let (unit, offset) = match value {
+            AttributeValue::UnitRef(offset) => (self, offset),
             AttributeValue::DebugInfoRef(offset) => self.info.find_info_unit_offset(offset)?,
             // TODO: There is probably more that can come back here.
             _ => return Ok(None),
         };
 
-        let mut entries = unit.unit.entries_at_offset(offset)?;
-        entries.next_entry()?;
-
-        if let Some(entry) = entries.current() {
-            f(unit, entry)
-        } else {
-            Ok(None)
-        }
+        let mut entries = unit.unit.entries_raw(Some(offset))?;
+        Ok((entries.read_entry(entry)? && !entry.is_null()).then_some(unit))
     }
 
     /// Resolves a attribute unit ref or debug info ref to a [`DwarfTypeRef`].
@@ -544,145 +537,56 @@ impl<'d> UnitRef<'d, '_> {
         Ok(Some(language_from_dwarf(lang)))
     }
 
-    /// Maximum recursion depth for following `DW_AT_abstract_origin` chains, matching the limit
-    /// used by elfutils `dwarf_attr_integrate`.
-    const MAX_ABSTRACT_ORIGIN_DEPTH: u8 = 16;
-
-    /// Resolves the source language for a DIE by following `DW_AT_abstract_origin` chains,
-    /// including across compilation unit boundaries. `depth` limits recursion to guard against
-    /// cycles or malformed DWARF.
-    fn resolve_entry_language(
-        &self,
-        entry: &Die<'d>,
-        depth: u8,
-    ) -> Result<Option<Language>, DwarfError> {
-        if depth == 0 {
-            return Ok(None);
-        }
-        if let Some(attr) = entry.attr(constants::DW_AT_abstract_origin) {
-            return self.resolve_reference(*attr, |ref_unit, ref_entry| {
-                // Recurse first to follow deeper chains.
-                if let Some(lang) = ref_unit.resolve_entry_language(ref_entry, depth - 1)? {
-                    return Ok(Some(lang));
-                }
-                // No deeper reference: use the CU language if this is a cross-unit ref.
-                if self.offset() != ref_unit.offset() {
-                    ref_unit.language()
-                } else {
-                    Ok(None)
-                }
-            });
-        }
-        Ok(None)
-    }
-
-    /// Fills in the name and type of a variable from the DIE referenced by its
-    /// `DW_AT_abstract_origin` or `DW_AT_specification` attribute.
+    /// Looks up an attribute on a debugging information entry.
     ///
-    /// A concrete inlined or out-of-line instance of a variable only carries what is specific to
-    /// that instance, typically its location, and references the abstract instance for everything
-    /// else (DWARF 5, section 3.3.8.2). Likewise, a definition completing an earlier declaration
-    /// does not need to repeat the declaration's attributes (section 2.13.2). The referenced DIE
-    /// may itself defer to yet another DIE, so chains are followed up to `depth` levels.
+    /// The lookup integrates referenced DIEs by treating them as additional
+    /// places to look for the same attribute.
     ///
-    /// Attributes already present in `variable` take precedence over those found on referenced
-    /// DIEs, and lookup stops as soon as both name and type are known.
-    fn resolve_variable_origin(
+    /// Follows attributes in `ref_attrs` in order, typically this contains
+    /// [`DW_AT_abstract_origin`] and/or [`DW_AT_specification`].
+    ///
+    /// This is a helper which `elfutils` refers to as `dwarf_attr_integrate`.
+    fn attr_integrate<T, F>(
         &self,
-        attr: Attribute<'d>,
-        variable: &mut PartialVariable<'d>,
-        depth: u8,
-    ) -> Result<(), DwarfError> {
-        if depth == 0 {
-            return Ok(());
-        }
+        die: &Die<'d>,
+        ref_attrs: &[DwAt],
+        mut search: F,
+    ) -> Result<Option<T>, DwarfError>
+    where
+        F: FnMut(Self, &Die<'d>) -> Option<T>,
+    {
+        /// Maximum reference depth, matching the lookup limit in elfutils `dwarf_attr_integrate`.
+        const MAX_ABSTRACT_ORIGIN_DEPTH: u8 = 16;
 
-        self.resolve_reference(attr, |ref_unit, ref_entry| {
-            let mut reference = None;
+        let mut unit = *self;
+        let mut entry = Die::null();
+        let mut current = die;
 
-            for attr in ref_entry.attrs() {
-                match attr.name() {
-                    constants::DW_AT_name if variable.name.is_none() => {
-                        variable.name = ref_unit.string_value(attr.value());
-                    }
-                    constants::DW_AT_type if variable.ty.is_none() => {
-                        variable.ty = ref_unit.to_type_ref(*attr).map(TypeRef::from);
-                    }
-                    constants::DW_AT_abstract_origin | constants::DW_AT_specification => {
-                        reference = Some(attr);
-                    }
-                    _ => {}
-                }
+        let mut depth = 0;
+        loop {
+            if let Some(value) = search(unit, current) {
+                break Ok(Some(value));
             }
 
-            if let Some(attr) = reference
-                && !variable.is_complete()
-            {
-                ref_unit.resolve_variable_origin(*attr, variable, depth - 1)?;
+            if depth >= MAX_ABSTRACT_ORIGIN_DEPTH {
+                break Ok(None);
             }
 
-            Ok(Some(()))
-        })?;
+            let ref_unit = ref_attrs
+                .iter()
+                .find_map(|&name| current.attr_value(name))
+                .and_then(|v| unit.read_reference(v, &mut entry).transpose())
+                .transpose()?;
 
-        Ok(())
-    }
+            let Some(ref_unit) = ref_unit else {
+                break Ok(None);
+            };
 
-    /// Resolves the function name of a debug entry.
-    fn resolve_function_name(
-        &self,
-        entry: &Die<'d>,
-        language: Language,
-        bcsymbolmap: Option<&'d BcSymbolMap<'d>>,
-        depth: u8,
-    ) -> Result<Option<Name<'d>>, DwarfError> {
-        let mut fallback_name = None;
-        let mut reference_target = None;
+            unit = ref_unit;
+            current = &entry;
 
-        for attr in entry.attrs() {
-            match attr.name() {
-                // Prioritize these. If we get them, take them.
-                constants::DW_AT_linkage_name | constants::DW_AT_MIPS_linkage_name => {
-                    return Ok(self
-                        .string_value(attr.value())
-                        .map(|n| resolve_cow_name(bcsymbolmap, n))
-                        .map(|n| Name::new(n, NameMangling::Mangled, language)));
-                }
-                constants::DW_AT_name => {
-                    fallback_name = Some(attr);
-                }
-                constants::DW_AT_abstract_origin | constants::DW_AT_specification => {
-                    reference_target = Some(attr);
-                }
-                _ => {}
-            }
+            depth += 1;
         }
-
-        if let Some(attr) = fallback_name {
-            return Ok(self
-                .string_value(attr.value())
-                .map(|n| resolve_cow_name(bcsymbolmap, n))
-                .map(|n| Name::new(n, NameMangling::Unmangled, language)));
-        }
-
-        if let Some(attr) = reference_target {
-            return self.resolve_reference(*attr, |ref_unit, ref_entry| {
-                // Avoid infinite recursion.
-                if depth == 0 {
-                    return Err(DwarfError::new(
-                        DwarfErrorKind::CorruptedData,
-                        "Exceeded maximum resolve_function_name depth",
-                    ));
-                }
-
-                if self.offset() != ref_unit.offset() || entry.offset() != ref_entry.offset() {
-                    ref_unit.resolve_function_name(ref_entry, language, bcsymbolmap, depth - 1)
-                } else {
-                    Ok(None)
-                }
-            });
-        }
-
-        Ok(None)
     }
 }
 
@@ -888,9 +792,6 @@ impl<'a> InProgressSubProgram<'a> {
 }
 
 impl<'d, 'a> DwarfUnit<'d, 'a> {
-    /// The maximum depth to recurse to in order to resolve a function name.
-    const MAX_RESOLVE_FUNCTION_DEPTH: u8 = 32;
-
     /// Creates a DWARF unit from the gimli `Unit` type.
     fn from_unit(
         unit: &'a Unit<'d>,
@@ -1162,13 +1063,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         let folded = symbol_map.folded(address);
         if !folded.is_empty() {
             let dwarf_name = self
-                .inner
-                .resolve_function_name(
-                    entry,
-                    language,
-                    self.bcsymbolmap,
-                    DwarfUnit::MAX_RESOLVE_FUNCTION_DEPTH,
-                )
+                .resolve_function_name(entry, language, self.bcsymbolmap)
                 .ok()
                 .flatten();
             if let Some(dwarf_name) = dwarf_name {
@@ -1187,6 +1082,39 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         Some(Name::new(name, NameMangling::Mangled, language))
     }
 
+    /// Finds the nearest named DIE, preferring linkage names on that DIE.
+    fn resolve_function_name(
+        &self,
+        entry: &Die<'d>,
+        language: Language,
+        bcsymbolmap: Option<&'d BcSymbolMap<'d>>,
+    ) -> Result<Option<Name<'d>>, DwarfError> {
+        let search = |unit, current: &Die<'d>| {
+            let mut fallback_name = None;
+            for &attr in current.attrs() {
+                match attr.name() {
+                    constants::DW_AT_linkage_name | constants::DW_AT_MIPS_linkage_name => {
+                        return Some((unit, attr, NameMangling::Mangled));
+                    }
+                    constants::DW_AT_name => fallback_name = Some(attr),
+                    _ => {}
+                }
+            }
+            fallback_name.map(|attr| (unit, attr, NameMangling::Unmangled))
+        };
+        let matched = self.inner.attr_integrate(
+            entry,
+            &[DW_AT_abstract_origin, DW_AT_specification],
+            search,
+        )?;
+
+        Ok(matched.and_then(|(unit, attr, mangling)| {
+            let name = unit.string_value(attr.value())?;
+            let name = resolve_cow_name(bcsymbolmap, name);
+            Some(Name::new(name, mangling, language))
+        }))
+    }
+
     /// Resolves the source language for a function by following `DW_AT_abstract_origin` to the
     /// origin compilation unit when crossing unit boundaries.
     ///
@@ -1195,11 +1123,22 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     /// originally written in C). When such a CU's subprogram carries a cross-unit
     /// `DW_AT_abstract_origin`, the referenced CU's language is more authoritative.
     fn resolve_function_language(&self, entry: &Die<'d>, fallback_language: Language) -> Language {
-        self.inner
-            .resolve_entry_language(entry, UnitRef::MAX_ABSTRACT_ORIGIN_DEPTH)
-            .ok()
-            .flatten()
-            .unwrap_or(fallback_language)
+        let follow = &[DW_AT_abstract_origin];
+
+        let mut previous_unit = self.inner.offset();
+        let language = self.inner.attr_integrate(entry, follow, |unit, _| {
+            let offset = unit.offset();
+            if offset == previous_unit {
+                return None;
+            }
+            previous_unit = offset;
+            unit.language().transpose()
+        });
+
+        match language {
+            Ok(Some(Ok(language))) => language,
+            _ => fallback_language,
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1264,13 +1203,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         let name = symbol_name
             .or_else(|| {
-                self.inner
-                    .resolve_function_name(
-                        &entry,
-                        language,
-                        self.bcsymbolmap,
-                        DwarfUnit::MAX_RESOLVE_FUNCTION_DEPTH,
-                    )
+                self.resolve_function_name(&entry, language, self.bcsymbolmap)
                     .ok()
                     .flatten()
             })
@@ -1333,13 +1266,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         // self.language: the inlinee's DW_AT_abstract_origin may resolve to a partial unit
         // which carries the wrong language (e.g. a C++ LTO partial unit for C code).
         let name = self
-            .inner
-            .resolve_function_name(
-                &entry,
-                language,
-                self.bcsymbolmap,
-                DwarfUnit::MAX_RESOLVE_FUNCTION_DEPTH,
-            )
+            .resolve_function_name(&entry, language, self.bcsymbolmap)
             .ok()
             .flatten()
             .unwrap_or_else(|| Name::new("", NameMangling::Unmangled, language));
@@ -1509,9 +1436,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         {
             // A reference that cannot be followed only costs us this variable's name or
             // type, like a missing attribute would; it should not fail the whole unit.
-            self.inner
-                .resolve_variable_origin(attr, &mut variable, UnitRef::MAX_ABSTRACT_ORIGIN_DEPTH)
-                .ok();
+            self.resolve_variable_origin(attr, &mut variable).ok();
         }
 
         let (Some(name), Some(locations)) = (variable.name, locations) else {
@@ -1531,6 +1456,47 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             locations,
             origin: origin_ref,
         }))
+    }
+
+    /// Fills in the name and type of a variable from the DIE referenced by its
+    /// `DW_AT_abstract_origin` or `DW_AT_specification` attribute.
+    ///
+    /// A concrete inlined or out-of-line instance of a variable only carries what is specific to
+    /// that instance, typically its location, and references the abstract instance for everything
+    /// else (DWARF 5, section 3.3.8.2). Likewise, a definition completing an earlier declaration
+    /// does not need to repeat the declaration's attributes (section 2.13.2). The referenced DIE
+    /// may itself defer to yet another DIE, see [`UnitRef::attr_integrate`].
+    ///
+    /// Attributes already present in `variable` take precedence over those found on referenced
+    /// DIEs, and lookup stops as soon as both name and type are known.
+    fn resolve_variable_origin(
+        &self,
+        origin: Attribute<'d>,
+        variable: &mut PartialVariable<'d>,
+    ) -> Result<(), DwarfError> {
+        let mut entry = Die::null();
+        let Some(unit) = self.inner.read_reference(origin.value(), &mut entry)? else {
+            return Ok(());
+        };
+
+        let follow = &[DW_AT_abstract_origin, DW_AT_specification];
+        unit.attr_integrate(&entry, follow, |unit, entry| {
+            for attr in entry.attrs() {
+                match attr.name() {
+                    constants::DW_AT_name if variable.name.is_none() => {
+                        variable.name = unit.string_value(attr.value());
+                    }
+                    constants::DW_AT_type if variable.ty.is_none() => {
+                        variable.ty = unit.to_type_ref(*attr).map(TypeRef::from);
+                    }
+                    _ => {}
+                }
+            }
+
+            variable.is_complete().then_some(())
+        })?;
+
+        Ok(())
     }
 
     fn variable_for_range(
@@ -1690,7 +1656,7 @@ struct ParsedVariable<'data> {
 /// The name and type of a variable while it is being parsed.
 ///
 /// Either can come from the variable's own DIE or from the DIE its abstract origin or
-/// specification refers to, see [`UnitRef::resolve_variable_origin`].
+/// specification refers to, see [`DwarfUnit::resolve_variable_origin`].
 #[derive(Default)]
 struct PartialVariable<'data> {
     name: Option<Cow<'data, str>>,
