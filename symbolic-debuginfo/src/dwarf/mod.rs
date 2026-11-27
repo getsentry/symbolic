@@ -6,6 +6,7 @@
 //! The dwarf debug session object can be obtained via getters on those types.
 
 use std::borrow::Cow;
+use std::collections::hash_map::Entry;
 use std::collections::{BTreeSet, HashMap};
 use std::error::Error;
 use std::fmt;
@@ -677,6 +678,8 @@ impl<'a> InProgressSubProgram<'a> {
         match self {
             InProgressSubProgram::Deadcode(_) => Ok(()),
             InProgressSubProgram::Regular(mut p) => {
+                merge_same_origin(&mut p.variables);
+
                 for (range, builder) in p.builders.iter_mut() {
                     for variable in &p.variables {
                         if let Some(variable) = dwarf_unit.variable_for_range(variable, *range) {
@@ -707,7 +710,9 @@ impl<'a> InProgressSubProgram<'a> {
 
             // Inlinees don't output anything directly, they just contribute to the running list
             // of function builders.
-            InProgressSubProgram::Inlined(p) => {
+            InProgressSubProgram::Inlined(mut p) => {
+                merge_same_origin(&mut p.variables);
+
                 let Some(builders) = function_stack[p.owning_function_idx].own_builder_mut() else {
                     return Err(FunctionBuilderErrorKind::TooManyInlineeNestings.into());
                 };
@@ -754,31 +759,11 @@ impl<'a> InProgressSubProgram<'a> {
         }
     }
 
-    /// Adds a variable to this function.
-    ///
-    /// GCC may describe one source variable several times within a single function, for example
-    /// a parameter once at the top and again inside a `DW_TAG_lexical_block` with a narrower
-    /// location list. All of these refer to the same abstract instance through
-    /// `DW_AT_abstract_origin`. Lexical blocks are not tracked, so such entries are merged into
-    /// one variable here instead of showing up as duplicates.
-    ///
-    /// Only entries of the same function, inlined or not, are merged. Two inlined copies of the
-    /// same function share an origin but are separate frames with separate variables.
     fn push_variable(&mut self, variable: ParsedVariable<'a>) {
-        let variables = match self {
-            InProgressSubProgram::Deadcode(_) => return,
-            InProgressSubProgram::Regular(p) => &mut p.variables,
-            InProgressSubProgram::Inlined(p) => &mut p.variables,
-        };
-
-        let existing = match variable.origin {
-            Some(_) => variables.iter_mut().find(|v| v.origin == variable.origin),
-            None => None,
-        };
-
-        match existing {
-            Some(existing) => existing.locations.merge(variable.locations),
-            None => variables.push(variable),
+        match self {
+            InProgressSubProgram::Deadcode(_) => {}
+            InProgressSubProgram::Regular(p) => p.variables.push(variable),
+            InProgressSubProgram::Inlined(p) => p.variables.push(variable),
         }
     }
 
@@ -1649,8 +1634,49 @@ struct ParsedVariable<'data> {
     /// The DIE referenced by `DW_AT_abstract_origin` or `DW_AT_specification`, if any.
     ///
     /// Variables of the same function with the same origin describe the same source variable
-    /// and are merged, see [`InProgressSubProgram::push_variable`].
+    /// and are merged, see [`merge_same_origin`].
     origin: Option<DwarfTypeRef>,
+}
+
+/// Merges the variables of one function that share an origin into the first of them.
+///
+/// GCC may describe one source variable several times within a single function, for example
+/// a parameter once at the top and again inside a `DW_TAG_lexical_block` with a narrower
+/// location list. All of these refer to the same abstract instance through
+/// `DW_AT_abstract_origin`. Lexical blocks are not tracked, so such entries are merged into
+/// one variable here instead of showing up as duplicates.
+///
+/// The first entry keeps its place, name, type and kind, and later entries only add their
+/// locations to it. Variables without an origin are never merged.
+///
+/// This must only see the variables of a single function, inlined or not. Two inlined copies
+/// of the same function share an origin but are separate frames with separate variables.
+fn merge_same_origin(variables: &mut Vec<ParsedVariable<'_>>) {
+    // Nothing can be merged in the common case, which then needs no allocation.
+    if variables.iter().filter(|v| v.origin.is_some()).count() < 2 {
+        return;
+    }
+
+    // Maps an origin to the index in `merged` of the first variable that refers to it.
+    let mut first_by_origin: HashMap<DwarfTypeRef, usize> = HashMap::with_capacity(variables.len());
+    let mut merged = Vec::with_capacity(variables.len());
+
+    for variable in std::mem::take(variables) {
+        let Some(origin) = variable.origin.clone() else {
+            merged.push(variable);
+            continue;
+        };
+
+        match first_by_origin.entry(origin) {
+            Entry::Occupied(entry) => merged[*entry.get()].locations.merge(variable.locations),
+            Entry::Vacant(entry) => {
+                entry.insert(merged.len());
+                merged.push(variable);
+            }
+        }
+    }
+
+    *variables = merged;
 }
 
 /// The name and type of a variable while it is being parsed.
@@ -2446,5 +2472,75 @@ mod tests {
 
         let sections = DwarfSections::from_dwarf(&obj);
         assert_eq!(sections.debug_str_offsets.data.len(), 48);
+    }
+
+    /// Creates a variable that lives at the CFA in each of the given address ranges.
+    fn variable(
+        name: &'static str,
+        origin: Option<usize>,
+        ranges: &[(u64, u64)],
+    ) -> ParsedVariable<'static> {
+        let locations = ranges
+            .iter()
+            .map(|&(begin, end)| {
+                let location = VariableLocation::CfaOffset { offset: 0 };
+                (Range { begin, end }, location)
+            })
+            .collect();
+
+        ParsedVariable {
+            name: name.into(),
+            ty: None,
+            kind: VariableKind::Local,
+            locations: Locations::Many(locations),
+            origin: origin.map(|offset| {
+                DwarfTypeRef(DwarfTypeRefInner::Offset {
+                    section: SectionId::DebugInfo,
+                    offset: UnitSectionOffset(offset),
+                })
+            }),
+        }
+    }
+
+    /// Returns the name and address ranges of each variable.
+    fn names_and_ranges(variables: &[ParsedVariable<'_>]) -> Vec<(String, Vec<(u64, u64)>)> {
+        variables
+            .iter()
+            .map(|variable| {
+                let Locations::Many(locations) = &variable.locations else {
+                    panic!("expected a location list");
+                };
+                let ranges = locations.iter().map(|(r, _)| (r.begin, r.end)).collect();
+                (variable.name.to_string(), ranges)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn test_merge_same_origin() {
+        let mut variables = vec![
+            variable("a", Some(1), &[(0, 4)]),
+            variable("shadowed", None, &[(0, 4)]),
+            variable("b", Some(2), &[(0, 4)]),
+            // Overlaps the first `a`, which keeps its locations there.
+            variable("a", Some(1), &[(2, 8)]),
+            // Same name but no origin, so this is a different variable.
+            variable("shadowed", None, &[(4, 8)]),
+            variable("b", Some(2), &[(10, 12)]),
+            variable("c", Some(3), &[(0, 1)]),
+        ];
+
+        merge_same_origin(&mut variables);
+
+        assert_eq!(
+            names_and_ranges(&variables),
+            [
+                ("a".to_owned(), vec![(0, 4), (4, 8)]),
+                ("shadowed".to_owned(), vec![(0, 4)]),
+                ("b".to_owned(), vec![(0, 4), (10, 12)]),
+                ("shadowed".to_owned(), vec![(4, 8)]),
+                ("c".to_owned(), vec![(0, 1)]),
+            ]
+        );
     }
 }
