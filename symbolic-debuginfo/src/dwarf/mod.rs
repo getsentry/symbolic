@@ -754,31 +754,11 @@ impl<'a> InProgressSubProgram<'a> {
         }
     }
 
-    /// Adds a variable to this function.
-    ///
-    /// GCC may describe one source variable several times within a single function, for example
-    /// a parameter once at the top and again inside a `DW_TAG_lexical_block` with a narrower
-    /// location list. All of these refer to the same abstract instance through
-    /// `DW_AT_abstract_origin`. Lexical blocks are not tracked, so such entries are merged into
-    /// one variable here instead of showing up as duplicates.
-    ///
-    /// Only entries of the same function, inlined or not, are merged. Two inlined copies of the
-    /// same function share an origin but are separate frames with separate variables.
     fn push_variable(&mut self, variable: ParsedVariable<'a>) {
-        let variables = match self {
-            InProgressSubProgram::Deadcode(_) => return,
-            InProgressSubProgram::Regular(p) => &mut p.variables,
-            InProgressSubProgram::Inlined(p) => &mut p.variables,
-        };
-
-        let existing = match variable.origin {
-            Some(_) => variables.iter_mut().find(|v| v.origin == variable.origin),
-            None => None,
-        };
-
-        match existing {
-            Some(existing) => existing.locations.merge(variable.locations),
-            None => variables.push(variable),
+        match self {
+            InProgressSubProgram::Deadcode(_) => {}
+            InProgressSubProgram::Regular(p) => p.variables.push(variable),
+            InProgressSubProgram::Inlined(p) => p.variables.push(variable),
         }
     }
 
@@ -1429,8 +1409,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             return Ok(None);
         }
 
-        let origin_ref = origin.and_then(|attr| self.inner.to_type_ref(attr));
-
         if let Some(attr) = origin
             && !variable.is_complete()
         {
@@ -1454,7 +1432,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             ty,
             kind,
             locations,
-            origin: origin_ref,
         }))
     }
 
@@ -1646,11 +1623,6 @@ struct ParsedVariable<'data> {
     ty: Option<TypeRef>,
     kind: VariableKind,
     locations: Locations,
-    /// The DIE referenced by `DW_AT_abstract_origin` or `DW_AT_specification`, if any.
-    ///
-    /// Variables of the same function with the same origin describe the same source variable
-    /// and are merged, see [`InProgressSubProgram::push_variable`].
-    origin: Option<DwarfTypeRef>,
 }
 
 /// The name and type of a variable while it is being parsed.
@@ -1676,55 +1648,6 @@ enum Locations {
     Single(VariableLocation),
     /// Many locations, dependent on the PC at runtime.
     Many(Vec<(Range, VariableLocation)>),
-}
-
-impl Locations {
-    /// Merges the locations of another description of the same variable into `self`.
-    ///
-    /// Where both describe the same addresses, the existing locations win, so only the parts of
-    /// `other` that `self` does not cover yet are added. This keeps the ranges sorted and free
-    /// of overlaps.
-    fn merge(&mut self, other: Locations) {
-        // A `Single` applies to the whole enclosing function (see
-        // `DwarfUnit::variable_for_range`). As `self` it already covers everything, and as
-        // `other` it has no range that says where it applies, so there is nothing to merge.
-        let (Locations::Many(existing), Locations::Many(other)) = (&mut *self, other) else {
-            return;
-        };
-
-        let mut added = Vec::new();
-        for (range, location) in other {
-            let mut cursor = range.begin;
-            for (covered, _) in existing.iter() {
-                if cursor >= range.end || covered.begin >= range.end {
-                    break;
-                }
-                if covered.end <= cursor {
-                    continue;
-                }
-                if covered.begin > cursor {
-                    let uncovered = Range {
-                        begin: cursor,
-                        end: covered.begin,
-                    };
-                    added.push((uncovered, location.clone()));
-                }
-                cursor = cursor.max(covered.end);
-            }
-            if cursor < range.end {
-                let uncovered = Range {
-                    begin: cursor,
-                    end: range.end,
-                };
-                added.push((uncovered, location));
-            }
-        }
-
-        if !added.is_empty() {
-            existing.extend(added);
-            existing.sort_unstable_by_key(|(r, _)| *r);
-        }
-    }
 }
 
 /// The state we pass around during function parsing.
